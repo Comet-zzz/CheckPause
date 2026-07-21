@@ -1,0 +1,6 @@
+.env
+profile.json
+__pycache__/
+output/
+*.pyc
+.DS_Store

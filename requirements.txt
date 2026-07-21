@@ -1,0 +1,3 @@
+python-chess
+openai
+python-dotenv
