@@ -1,4 +1,4 @@
-# 🧠 CheckPause - 国际象棋AI教练 / Chess AI Coach
+# ♟️ CheckPause - 国际象棋AI教练 / Chess AI Coach
 
 一个基于 Stockfish + DeepSeek 的本地国际象棋复盘工具，支持连续追问，像真人教练一样帮你拆解棋局。
 
