@@ -1,6 +1,6 @@
 # ♟️ CheckPause - 国际象棋AI教练 / Chess AI Coach
 
-这是一个将博弈树搜索与自然语言生成相结合的棋谱分析工具，用于辅助棋手理解自己的决策偏差。
+将博弈树搜索与自然语言生成相结合的分析工具，用于辅助棋手理解自己的决策偏差。
 
 This chess analysis tool combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
