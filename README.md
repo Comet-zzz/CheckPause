@@ -1,8 +1,8 @@
 # ♟️ CheckPause - 国际象棋AI教练 / Chess AI Coach
 
-一个基于 Stockfish + DeepSeek 的本地国际象棋复盘工具，支持连续追问，像真人教练一样帮你拆解棋局。
+这是一个将博弈树搜索与自然语言生成相结合的棋谱分析工具，用于辅助棋手理解自己的决策偏差。
 
-A local chess analysis tool powered by Stockfish + DeepSeek. Upload a PGN and get natural-language coaching with unlimited follow-up questions.
+This chess analysis tool combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
 ---
 
