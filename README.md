@@ -1,4 +1,4 @@
-# ♟️ CheckPause - 国际象棋AI教练 / Chess AI Coach
+# ♟️ CheckPause 
 
 将博弈树搜索与自然语言生成相结合的分析工具，用于辅助棋手理解自己的决策偏差。
 
