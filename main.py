@@ -1,11 +1,12 @@
 import sys
 import time
 import io
+import os
 import chess
 import chess.pgn
 from config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from engine import analyze_with_stockfish
-from ai import chat_with_deepseek, extract_issues
+from ai import chat_with_deepseek
 from profile import load_profile, create_profile, update_profile, get_accuracy_trend, get_avg_accuracy
 
 def main():
@@ -30,13 +31,24 @@ def main():
             if avg:
                 print(f"   ─ Average accuracy: {avg:.1f}%")
             print(f"   ─ Total games analyzed: {profile['total_games']}")
-            print(f"   ─ Current main issue: {profile['latest_issues']}")
         print()
 
     print("Please paste your PGN game, then enter END on a new line:")
     lines = []
     while True:
         line = input()
+        if line.lower() in ["clear", "/reset"]:
+            confirm = input("⚠️ Confirm delete all user data? This cannot be undone! (y/n): ")
+            if confirm.lower() == 'y':
+                if os.path.exists("profile.json"):
+                    os.remove("profile.json")
+                    print("✅ All user data cleared. Please restart the program.")
+                    sys.exit(0)
+                else:
+                    print("⚠️ Profile file not found.")
+            else:
+                print("✅ Deletion cancelled.")
+            continue
         if line == "END":
             break
         lines.append(line)
@@ -58,10 +70,7 @@ def main():
         print("❌ Error:", err)
         sys.exit()
 
-    print("📊 Analyzing your player profile...")
-    issues = extract_issues(pgn, data)
-
-    profile = update_profile(profile, accuracy, issues, pgn)
+    profile = update_profile(profile, accuracy, pgn)
 
     print(f"\n🎯 Username: {profile['username']}")
     print(f"📅 Analysis date: {profile['history'][-1]['date']}")
@@ -70,7 +79,6 @@ def main():
         trend = get_accuracy_trend(profile)
         if trend:
             print(f"📊 Trend: {trend}")
-    print(f"📝 Current main issue: {issues}")
     print(f"📊 Total games: {profile['total_games']}")
     print()
 
@@ -82,10 +90,9 @@ def main():
 
     while True:
         user_input = input(f"{profile['username']}: ")
-        if user_input.lower() in ["/reset", "/clear"]:
+        if user_input.lower() in ["clear", "/reset", "/clear"]:
             confirm = input("⚠️ Confirm delete all user data? This cannot be undone! (y/n): ")
             if confirm.lower() == 'y':
-                import os
                 if os.path.exists("profile.json"):
                     os.remove("profile.json")
                     print("✅ All user data cleared. Please restart the program.")
@@ -95,9 +102,11 @@ def main():
             else:
                 print("✅ Deletion cancelled.")
             continue
+
         if user_input.lower() in ["exit", "quit"]:
             print("👋 Goodbye~")
             break
+
         messages.append({"role": "user", "content": user_input})
         print("💭 Thinking...")
 
