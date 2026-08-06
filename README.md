@@ -6,7 +6,7 @@ This chess analysis tool combines game-tree search with natural language generat
 
 ---
 
-## ✨ 功能特点 / Features
+## ✨ Features
 
 - **本地引擎分析**：使用 Stockfish 计算每一步的评分和最佳走法（不依赖网络）  
   Local analysis via Stockfish – no cloud dependency.
@@ -21,9 +21,9 @@ This chess analysis tool combines game-tree search with natural language generat
 
 ---
 
-## 🚀 快速开始 / Quick Start
+## 🚀 Quick Start
 
-### 1. 下载 Stockfish 引擎 / Download Stockfish
+### 1. Download Stockfish
 
 Stockfish 是开源国际象棋引擎，负责计算评分和最佳走法。
 
@@ -35,7 +35,7 @@ Stockfish is the open-source chess engine that calculates evaluations and best m
 
 ---
 
-### 2. 获取 DeepSeek API Key / Get your DeepSeek API Key
+### 2. Get your DeepSeek API Key
 
 DeepSeek 负责将引擎数据翻译成自然语言讲解。
 
@@ -47,7 +47,7 @@ DeepSeek translates engine data into conversational coaching.
 
 ---
 
-### 3. 配置环境变量 / Configure Environment Variables
+### 3. Configure Environment Variables
 
 复制 `.env.example` 文件，重命名为 `.env`，然后填入你的信息。
 
