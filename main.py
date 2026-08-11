@@ -2,12 +2,27 @@ import sys
 import time
 import io
 import os
+import threading
 import chess
 import chess.pgn
 from config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from engine import analyze_with_stockfish
 from ai import chat_with_deepseek
 from profile import load_profile, create_profile, update_profile, get_accuracy_trend, get_avg_accuracy
+
+
+def compact_analysis(results):
+    lines = []
+    for r in results:
+        move = r['move']
+        score = r['engine_score']
+        best = r.get('best_move')
+        if best and best != move:
+            lines.append(f"{move}(score:{score}, best:{best})")
+        else:
+            lines.append(f"{move}(score:{score})")
+    return "; ".join(lines)
+
 
 def main():
     profile = load_profile()
@@ -22,15 +37,13 @@ def main():
     else:
         print(f"🎯 Welcome back, {profile['username']}!")
         if profile["latest_accuracy"] is not None:
-            trend = get_accuracy_trend(profile)
             avg = get_avg_accuracy(profile)
-            print(f"\n📊 Your current stats:")
-            print(f"   ─ Latest accuracy: {profile['latest_accuracy']}%")
-            if trend:
-                print(f"   ─ Trend: {trend}")
+            last_date = profile['history'][-1]['date'] if profile['history'] else "N/A"
+            print(f"\n📊 Your stats:")
+            print(f"   ─ Last game: {last_date}")
             if avg:
                 print(f"   ─ Average accuracy: {avg:.1f}%")
-            print(f"   ─ Total games analyzed: {profile['total_games']}")
+            print(f"   ─ Total games: {profile['total_games']}")
         print()
 
     print("Please paste your PGN game, then enter END on a new line:")
@@ -70,19 +83,32 @@ def main():
         print("❌ Error:", err)
         sys.exit()
 
+    avg_before = get_avg_accuracy(profile)
+    prev_accuracy = profile.get("latest_accuracy")
     profile = update_profile(profile, accuracy, pgn)
+    avg_after = get_avg_accuracy(profile)
 
     print(f"\n🎯 Username: {profile['username']}")
     print(f"📅 Analysis date: {profile['history'][-1]['date']}")
-    print(f"📈 Game accuracy: {accuracy}%")
-    if profile['total_games'] > 1:
-        trend = get_accuracy_trend(profile)
-        if trend:
-            print(f"📊 Trend: {trend}")
+    print(f"📈 Latest accuracy: {accuracy}%")
+
+    if avg_after is not None:
+        trend_str = ""
+        if avg_before is not None:
+            diff = avg_after - avg_before
+            if diff > 0:
+                trend_str = f" (↑+{diff:.1f}%)"
+            elif diff < 0:
+                trend_str = f" (↓{diff:.1f}%)"
+            else:
+                trend_str = " (持平)"
+        print(f"📊 Average accuracy: {avg_after:.1f}%{trend_str}")
+
     print(f"📊 Total games: {profile['total_games']}")
     print()
 
-    first_user_message = USER_PROMPT_TEMPLATE.format(棋谱=pgn, 数据=data)
+    compact_data = compact_analysis(data)
+    first_user_message = USER_PROMPT_TEMPLATE.format(棋谱=pgn, 数据=compact_data)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": first_user_message}
@@ -108,19 +134,48 @@ def main():
             break
 
         messages.append({"role": "user", "content": user_input})
-        print("💭 Thinking...")
+
+        print("💭 Thinking... (0.0s)", end="", flush=True)
+        start_time = time.time()
+        stop_timer = threading.Event()
+        first_chunk_received = False
+
+        def update_timer():
+            while not stop_timer.is_set():
+                elapsed = time.time() - start_time
+                sys.stdout.write(f"\r💭 Thinking... ({elapsed:.1f}s)")
+                sys.stdout.flush()
+                time.sleep(0.1)
+
+        timer_thread = threading.Thread(target=update_timer, daemon=True)
+        timer_thread.start()
 
         full_reply = ""
-        print("\n", end="")
         for chunk in chat_with_deepseek(messages):
+            if not first_chunk_received:
+                first_chunk_received = True
+                stop_timer.set()
+                timer_thread.join(timeout=0.5)
+                elapsed_first = time.time() - start_time
+                sys.stdout.write(f"\r💭 Thinking... ({elapsed_first:.1f}s)\n")
+                sys.stdout.flush()
             for char in chunk:
                 sys.stdout.write(char)
                 sys.stdout.flush()
                 time.sleep(0.03)
             full_reply += chunk
+
+        if not first_chunk_received:
+            stop_timer.set()
+            timer_thread.join(timeout=0.5)
+            elapsed_first = time.time() - start_time
+            sys.stdout.write(f"\r💭 Thinking... ({elapsed_first:.1f}s)\n")
+            sys.stdout.flush()
+
         print("\n")
 
         messages.append({"role": "assistant", "content": full_reply})
+
 
 if __name__ == "__main__":
     main()
