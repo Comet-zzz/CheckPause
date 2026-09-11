@@ -1,10 +1,35 @@
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+load_dotenv(os.path.join(BASE_DIR, ".env"))
 
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
-STOCKFISH_PATH = os.getenv("STOCKFISH_PATH")
+
+def get_required_env(name: str) -> str:
+    value = os.getenv(name, "").strip()
+    if not value:
+        raise RuntimeError(
+            f"Missing required environment variable '{name}'. "
+            f"Please set it in the .env file or your environment."
+        )
+    return value
+
+
+DEEPSEEK_API_KEY = get_required_env("DEEPSEEK_API_KEY")
+
+configured_stockfish_path = os.getenv("STOCKFISH_PATH", "").strip()
+local_stockfish_path = os.path.join(
+    BASE_DIR, "stockfish", "stockfish", "stockfish-windows-x86-64-universal.exe"
+)
+STOCKFISH_PATH = configured_stockfish_path or local_stockfish_path
+if not os.path.isfile(STOCKFISH_PATH):
+    if os.path.isfile(local_stockfish_path):
+        STOCKFISH_PATH = local_stockfish_path
+    else:
+        raise RuntimeError(
+            "Stockfish executable not found. Set STOCKFISH_PATH in .env "
+            "or place Stockfish in the project's stockfish folder."
+        )
 
 import chess.engine
 ENGINE_LIMIT = chess.engine.Limit(depth=18, time=2.0)
@@ -25,4 +50,4 @@ PGN Game:
 Stockfish Analysis Data per move:
 {数据}"""
 
-MODEL_NAME = "deepseek-v4-flash"
+MODEL_NAME = "deepseek-flash"

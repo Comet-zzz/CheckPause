@@ -1,14 +1,12 @@
-import sys
-import time
 import io
-import os
-import threading
+import sys
 import chess
 import chess.pgn
+from chat_ui import run_chat
 from config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from engine import analyze_with_stockfish
-from ai import chat_with_deepseek
-from profile import load_profile, create_profile, update_profile, get_accuracy_trend, get_avg_accuracy
+from input_handler import read_pgn
+from profile import load_profile, create_profile, update_profile, get_avg_accuracy
 
 
 def compact_analysis(results):
@@ -46,26 +44,7 @@ def main():
             print(f"   ─ Total games: {profile['total_games']}")
         print()
 
-    print("Please paste your PGN game, then enter END on a new line:")
-    lines = []
-    while True:
-        line = input()
-        if line.lower() in ["clear", "/reset"]:
-            confirm = input("⚠️ Confirm delete all user data? This cannot be undone! (y/n): ")
-            if confirm.lower() == 'y':
-                if os.path.exists("profile.json"):
-                    os.remove("profile.json")
-                    print("✅ All user data cleared. Please restart the program.")
-                    sys.exit(0)
-                else:
-                    print("⚠️ Profile file not found.")
-            else:
-                print("✅ Deletion cancelled.")
-            continue
-        if line == "END":
-            break
-        lines.append(line)
-    pgn = "\n".join(lines)
+    pgn = read_pgn()
 
     print("📥 Parsing PGN...", end="")
     try:
@@ -84,7 +63,6 @@ def main():
         sys.exit()
 
     avg_before = get_avg_accuracy(profile)
-    prev_accuracy = profile.get("latest_accuracy")
     profile = update_profile(profile, accuracy, pgn)
     avg_after = get_avg_accuracy(profile)
 
@@ -114,67 +92,7 @@ def main():
         {"role": "user", "content": first_user_message}
     ]
 
-    while True:
-        user_input = input(f"{profile['username']}: ")
-        if user_input.lower() in ["clear", "/reset", "/clear"]:
-            confirm = input("⚠️ Confirm delete all user data? This cannot be undone! (y/n): ")
-            if confirm.lower() == 'y':
-                if os.path.exists("profile.json"):
-                    os.remove("profile.json")
-                    print("✅ All user data cleared. Please restart the program.")
-                    sys.exit(0)
-                else:
-                    print("⚠️ Profile file not found.")
-            else:
-                print("✅ Deletion cancelled.")
-            continue
-
-        if user_input.lower() in ["exit", "quit"]:
-            print("👋 Goodbye~")
-            break
-
-        messages.append({"role": "user", "content": user_input})
-
-        print("💭 Thinking... (0.0s)", end="", flush=True)
-        start_time = time.time()
-        stop_timer = threading.Event()
-        first_chunk_received = False
-
-        def update_timer():
-            while not stop_timer.is_set():
-                elapsed = time.time() - start_time
-                sys.stdout.write(f"\r💭 Thinking... ({elapsed:.1f}s)")
-                sys.stdout.flush()
-                time.sleep(0.1)
-
-        timer_thread = threading.Thread(target=update_timer, daemon=True)
-        timer_thread.start()
-
-        full_reply = ""
-        for chunk in chat_with_deepseek(messages):
-            if not first_chunk_received:
-                first_chunk_received = True
-                stop_timer.set()
-                timer_thread.join(timeout=0.5)
-                elapsed_first = time.time() - start_time
-                sys.stdout.write(f"\r💭 Thinking... ({elapsed_first:.1f}s)\n")
-                sys.stdout.flush()
-            for char in chunk:
-                sys.stdout.write(char)
-                sys.stdout.flush()
-                time.sleep(0.03)
-            full_reply += chunk
-
-        if not first_chunk_received:
-            stop_timer.set()
-            timer_thread.join(timeout=0.5)
-            elapsed_first = time.time() - start_time
-            sys.stdout.write(f"\r💭 Thinking... ({elapsed_first:.1f}s)\n")
-            sys.stdout.flush()
-
-        print("\n")
-
-        messages.append({"role": "assistant", "content": full_reply})
+    run_chat(profile, messages)
 
 
 if __name__ == "__main__":
