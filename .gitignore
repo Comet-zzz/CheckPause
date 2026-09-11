@@ -1,5 +1,8 @@
 .env
 profile.json
+.venv/
+stockfish/
+.idea/
 __pycache__/
 output/
 *.pyc
