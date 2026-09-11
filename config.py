@@ -9,8 +9,7 @@ def get_required_env(name: str) -> str:
     value = os.getenv(name, "").strip()
     if not value:
         raise RuntimeError(
-            f"Missing required environment variable '{name}'. "
-            f"Please set it in the .env file or your environment."
+            f"缺少必要的环境变量 '{name}'，请在 .env 文件或系统环境变量中设置。"
         )
     return value
 
@@ -27,8 +26,8 @@ if not os.path.isfile(STOCKFISH_PATH):
         STOCKFISH_PATH = local_stockfish_path
     else:
         raise RuntimeError(
-            "Stockfish executable not found. Set STOCKFISH_PATH in .env "
-            "or place Stockfish in the project's stockfish folder."
+            "未找到 Stockfish 可执行文件。请在 .env 中设置 STOCKFISH_PATH，"
+            "或将 Stockfish 放入项目的 stockfish 文件夹。"
         )
 
 import chess.engine
