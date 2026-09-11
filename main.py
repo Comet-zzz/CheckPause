@@ -6,6 +6,7 @@ from chat_ui import run_chat
 from config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from engine import analyze_with_stockfish
 from input_handler import read_pgn
+from i18n import choose_language, t
 from profile import load_profile, create_profile, update_profile, get_avg_accuracy
 
 
@@ -25,50 +26,52 @@ def compact_analysis(results):
 def main():
     profile = load_profile()
     if profile is None:
-        print("🎯 Welcome to CheckPause!")
-        print("First-time setup. Please enter your username")
-        username = input("Username: ").strip()
+        language = choose_language()
+        print(t("welcome", language))
+        print(t("first_setup", language))
+        username = input(t("username", language)).strip()
         if not username:
             username = "Player"
-        profile = create_profile(username)
-        print(f"✅ Profile created! Welcome, {username}!\n")
+        profile = create_profile(username, language)
+        print(t("profile_created", language, username=username))
     else:
-        print(f"🎯 Welcome back, {profile['username']}!")
+        language = profile.get("language", "zh-CN")
+        print(t("welcome_back", language, username=profile["username"]))
         if profile["latest_accuracy"] is not None:
             avg = get_avg_accuracy(profile)
             last_date = profile['history'][-1]['date'] if profile['history'] else "N/A"
-            print(f"\n📊 Your stats:")
-            print(f"   ─ Last game: {last_date}")
+            print(t("stats", language))
+            print(t("last_game", language, date=last_date))
             if avg:
-                print(f"   ─ Average accuracy: {avg:.1f}%")
-            print(f"   ─ Total games: {profile['total_games']}")
+                print(t("average_stat", language, accuracy=avg))
+            print(t("total_stat", language, total=profile["total_games"]))
         print()
 
-    pgn = read_pgn()
+    pgn = read_pgn(language)
 
-    print("📥 Parsing PGN...", end="")
+    print(t("parsing", language), end="")
     try:
         test_game = chess.pgn.read_game(io.StringIO(pgn))
         if test_game is None:
-            print(" Failed")
-            sys.exit("❌ Invalid PGN format.")
-        print(" Success")
+            print(t("failed", language))
+            sys.exit(t("parse_error", language, error="格式无效"))
+        print(t("success", language))
     except Exception as e:
-        print(" Failed")
-        sys.exit(f"❌ Parse error: {e}")
+        print(t("failed", language))
+        sys.exit(t("parse_error", language, error=e))
 
-    data, err, accuracy = analyze_with_stockfish(pgn)
+    data, err, accuracy = analyze_with_stockfish(pgn, language)
     if err:
-        print("❌ Error:", err)
+        print(t("error", language, error=err))
         sys.exit()
 
     avg_before = get_avg_accuracy(profile)
     profile = update_profile(profile, accuracy, pgn)
     avg_after = get_avg_accuracy(profile)
 
-    print(f"\n🎯 Username: {profile['username']}")
-    print(f"📅 Analysis date: {profile['history'][-1]['date']}")
-    print(f"📈 Latest accuracy: {accuracy}%")
+    print("\n" + t("username_stat", language, username=profile["username"]))
+    print(t("analysis_date", language, date=profile["history"][-1]["date"]))
+    print(t("latest_accuracy", language, accuracy=accuracy))
 
     if avg_after is not None:
         trend_str = ""
@@ -80,9 +83,9 @@ def main():
                 trend_str = f" (↓{diff:.1f}%)"
             else:
                 trend_str = " (持平)"
-        print(f"📊 Average accuracy: {avg_after:.1f}%{trend_str}")
+        print(t("average_accuracy", language, accuracy=avg_after, trend=trend_str))
 
-    print(f"📊 Total games: {profile['total_games']}")
+    print(t("total_games", language, total=profile["total_games"]))
     print()
 
     compact_data = compact_analysis(data)

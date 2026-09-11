@@ -7,21 +7,30 @@ PROFILE_FILE = "profile.json"
 def load_profile():
     if os.path.exists(PROFILE_FILE):
         with open(PROFILE_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
+            profile = json.load(f)
+            profile.setdefault("language", "zh-CN")
+            return profile
     return None
 
 def save_profile(profile):
     with open(PROFILE_FILE, "w", encoding="utf-8") as f:
         json.dump(profile, f, ensure_ascii=False, indent=2)
 
-def create_profile(username):
+def create_profile(username, language="zh-CN"):
     profile = {
         "username": username,
+        "language": language,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_games": 0,
         "history": [],
         "latest_accuracy": None
     }
+    save_profile(profile)
+    return profile
+
+
+def set_language(profile, language):
+    profile["language"] = language
     save_profile(profile)
     return profile
 

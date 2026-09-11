@@ -1,3 +1,68 @@
+# v0.3.1 – Bilingual CLI and Persistent Language Preferences
+
+> 本次更新为 CLI 加入中英文语言选择。用户可以在首次启动时选择界面语言，也可以在运行过程中随时切换。
+>
+> This release adds bilingual CLI support. Users can choose their interface language on first launch and switch languages at any time.
+
+---
+
+## 🎯 What's New
+### 🌐 Bilingual CLI
+- 首次启动时选择中文或 English。
+- PGN 输入提示、统计信息、Thinking 计时器、Stockfish 状态和错误提示会统一使用所选语言。
+- AI 回复逻辑保持不变，模型仍会根据用户提问的语言回答。
+
+- Choose Chinese or English on first launch.
+- PGN prompts, statistics, the thinking timer, Stockfish status, and error messages follow the selected language.
+- AI response behavior is unchanged and still follows the language of the user's question.
+
+### 💾 Persistent language preference
+- 语言偏好会保存到 `profile.json`。
+- 旧版档案没有语言字段时，默认使用中文，不影响现有用户。
+- 输入 `/language` 或 `/lang` 可以随时切换语言。
+
+- The language preference is stored in `profile.json`.
+- Existing profiles without a language field default to Chinese.
+- Use `/language` or `/lang` to switch languages at any time.
+
+### 🧩 Centralized localization
+- 新增 `i18n.py`，集中管理 CLI 文案。
+- 错误处理、Stockfish 分析和用户交互都接入统一的语言系统。
+
+- Added `i18n.py` to centralize CLI messages.
+- Error handling, Stockfish analysis, and user interaction now use the same localization system.
+
+---
+
+## 🛠️ Full Changelog
+- feat(i18n): add Chinese and English CLI messages
+- feat(profile): persist the user's preferred CLI language
+- feat(cli): add language selection during first launch
+- feat(cli): add `/language` and `/lang` commands
+- refactor(cli): route prompts and status messages through the localization layer
+- fix(ai): display request errors in the selected CLI language
+- fix(profile): keep existing profile files backward-compatible
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+- 旧版 `profile.json` 可以继续使用，未设置语言时默认使用中文。
+
+- No breaking changes.
+- Existing `profile.json` files remain compatible and default to Chinese when no language is configured.
+
+---
+
+## 🙏 Special Thanks
+
+感谢持续反馈 CLI 体验并帮助 CP 变得更友好。
+
+Thanks for helping make CP more accessible and user-friendly.
+
+---
+
 # v0.3 – Reliable AI, Easier Setup, Cleaner Architecture
 
 > 本次更新聚焦于 **稳定性**、**配置体验** 和 **代码结构**。CP 现在使用最新可用的 DeepSeek Flash 模型，并能更好地处理网络、API 和 Stockfish 配置问题。

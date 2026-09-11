@@ -3,24 +3,25 @@ import chess
 import chess.pgn
 import chess.engine
 from config import STOCKFISH_PATH, ENGINE_LIMIT
+from i18n import t
 
 engine = chess.engine.SimpleEngine.popen_uci(STOCKFISH_PATH)
 
-def analyze_with_stockfish(pgn_text):
+def analyze_with_stockfish(pgn_text, language="zh-CN"):
     board = chess.Board()
     game = chess.pgn.read_game(io.StringIO(pgn_text))
     if game is None:
-        return None, "Invalid PGN", None
+        return None, "PGN 格式无效", None
     moves = list(game.mainline_moves())
     total_moves = len(moves)
     if total_moves == 0:
-        return None, "No moves in PGN", None
+        return None, "PGN 中没有棋步", None
 
     results = []
     total_moves_analyzed = 0
     total_score = 0.0
 
-    print("⚙️ Stockfish engine analyzing...")
+    print(t("engine_analyzing", language))
     try:
         for idx, move in enumerate(moves, start=1):
             san = board.san(move)
@@ -96,7 +97,7 @@ def analyze_with_stockfish(pgn_text):
             bar = "█" * filled + "░" * (bar_length - filled)
             print(f"\r  progress: [{bar}] {percent}%", end="")
 
-        print("\n✅ Ready")
+        print(t("ready", language))
         if total_moves_analyzed > 0:
             accuracy = round((total_score / total_moves_analyzed) * 100, 1)
         else:
