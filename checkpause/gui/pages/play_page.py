@@ -120,9 +120,9 @@ class PlayPage(QWidget):
         else:
             self._update_status()
 
-    def _sync_views(self):
+    def _sync_views(self, animate=False):
         self.board.clear_selection()
-        self.board.set_moves(self._moves)
+        self.board.set_moves(self._moves, animate=animate)
         if self._moves:
             self._move_list.set_moves(self._pgn())
             self._move_list.set_current_ply(len(self._moves))
@@ -177,7 +177,7 @@ class PlayPage(QWidget):
     def _push_move(self, move):
         self._game.push(move)
         self._moves.append(move)
-        self._sync_views()
+        self._sync_views(animate=True)
         if self._finish_if_over():
             return
         if self._game.turn != self._human_color:
@@ -212,7 +212,7 @@ class PlayPage(QWidget):
             return
         self._game.push(move)
         self._moves.append(move)
-        self._sync_views()
+        self._sync_views(animate=True)
         if self._finish_if_over():
             return
         self._update_status()

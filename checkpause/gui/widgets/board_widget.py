@@ -1,10 +1,11 @@
 import io
 import math
 import os
+import time
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import (
@@ -30,6 +31,13 @@ LAST_MOVE_RGBA = (246, 246, 105, 150)
 CHECK_RGBA = (224, 82, 82, 110)
 SELECTED_RGBA = (255, 214, 102, 150)
 TARGET_RGBA = (40, 40, 40, 90)
+TARGET_HOVER_RGBA = (40, 40, 40, 130)
+HOVER_RGBA = (255, 255, 255, 36)
+DRAG_LIFT = 1.08
+
+ANIMATION_MS = 130
+FRAME_MS = 16
+DRAG_THRESHOLD = 5
 
 
 class _BoardCanvas(QWidget):
@@ -39,25 +47,145 @@ class _BoardCanvas(QWidget):
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
         )
+        self.setMouseTracking(True)
+        self._press_pos = None
+        self._press_square = None
+        self._press_was_selected = False
+        self._drag_square = None
+        self._dragging = False
+        self._drag_pos = None
+        self._hover_square = None
 
     def mousePressEvent(self, event):
         owner = self._owner
         if not owner._interactive:
             return
+        if event.button() == Qt.MouseButton.RightButton:
+            owner.clear_selection()
+            self._reset_press()
+            return
         if event.button() != Qt.MouseButton.LeftButton:
             return
-        x0, y0, board_size, square = self._geometry()
+        square = self._square_at(event.position())
+        if square is None:
+            return
+        self._press_pos = event.position()
+        self._press_square = square
+        self._press_was_selected = owner._selected == square
+        self._drag_square = None
+        self._dragging = False
+
+        if (
+            owner._selected is not None
+            and square in owner._targets
+            and owner.try_move(owner._selected, square)
+        ):
+            return
+        if owner.select_square(square):
+            self._drag_square = square
+        else:
+            owner.clear_selection()
+            self._reset_press()
+
+    def mouseMoveEvent(self, event):
+        owner = self._owner
+        if not owner._interactive:
+            return
         pos = event.position()
+        pressed = event.buttons() & Qt.MouseButton.LeftButton
+        if self._press_square is not None and pressed:
+            if not self._dragging:
+                delta = pos - self._press_pos
+                if (
+                    delta.x() * delta.x() + delta.y() * delta.y()
+                    > DRAG_THRESHOLD * DRAG_THRESHOLD
+                ):
+                    if (
+                        self._drag_square is not None
+                        and owner._selected == self._drag_square
+                    ):
+                        self._dragging = True
+                        self._drag_pos = pos
+                        self.setCursor(Qt.CursorShape.ClosedHandCursor)
+                    else:
+                        self._press_square = None
+            if self._dragging:
+                self._drag_pos = pos
+                self._hover_square = self._square_at(pos)
+                self.update()
+                return
+        square = self._square_at(pos)
+        if square != self._hover_square:
+            self._hover_square = square
+            self.update()
+        self._update_cursor(square)
+
+    def mouseReleaseEvent(self, event):
+        owner = self._owner
+        if not owner._interactive:
+            return
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        square = self._square_at(event.position())
+        if self._dragging:
+            self._dragging = False
+            self._drag_pos = None
+            self.setCursor(Qt.CursorShape.ArrowCursor)
+            handled = False
+            if (
+                square is not None
+                and owner._selected is not None
+                and square in owner._targets
+            ):
+                handled = owner.try_move(owner._selected, square)
+            if not handled and owner._selected is not None:
+                if (
+                    square is None
+                    or square == owner._selected
+                    or not owner.select_square(square)
+                ):
+                    owner.start_drag_return(
+                        event.position(), owner._selected
+                    )
+            self._reset_press()
+            self.update()
+        else:
+            if self._press_was_selected and square == self._press_square:
+                owner.clear_selection()
+            self._reset_press()
+        self._update_cursor(square)
+
+    def leaveEvent(self, event):
+        if self._hover_square is not None:
+            self._hover_square = None
+            self.update()
+
+    def _reset_press(self):
+        self._press_pos = None
+        self._press_square = None
+        self._press_was_selected = False
+        self._drag_square = None
+
+    def _square_at(self, pos):
+        x0, y0, board_size, square = self._geometry()
         if not (
             x0 <= pos.x() < x0 + board_size
             and y0 <= pos.y() < y0 + board_size
         ):
-            return
+            return None
         col = int((pos.x() - x0) // square)
         row = int((pos.y() - y0) // square)
-        owner.on_square_clicked(
-            self._square_from_display(row, col, owner._flipped)
-        )
+        return self._square_from_display(row, col, self._owner._flipped)
+
+    def _update_cursor(self, square):
+        owner = self._owner
+        if square is not None and (
+            (owner._selected is not None and square in owner._targets)
+            or owner.can_pick(square)
+        ):
+            self.setCursor(Qt.CursorShape.PointingHandCursor)
+        else:
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def _geometry(self):
         width = self.width()
@@ -101,6 +229,17 @@ class _BoardCanvas(QWidget):
 
         check_square = board.king(board.turn) if board.is_check() else None
 
+        hidden = set()
+        animation = owner._animation
+        if animation is not None:
+            hidden.add(animation["to"])
+            if animation["rook"] is not None:
+                hidden.add(animation["rook"][1])
+        if self._dragging and owner._selected is not None:
+            hidden.add(owner._selected)
+        if owner._drag_return is not None and not self._dragging:
+            hidden.add(owner._drag_return["origin"])
+
         flipped = owner._flipped
         for row in range(8):
             for col in range(8):
@@ -127,25 +266,32 @@ class _BoardCanvas(QWidget):
                 if owner._selected == sq:
                     painter.fillRect(rect, QColor(*SELECTED_RGBA))
 
+                if sq == self._hover_square and owner.can_pick(sq):
+                    painter.fillRect(rect, QColor(*HOVER_RGBA))
+
+                if (
+                    self._dragging
+                    and sq == self._hover_square
+                    and sq in owner._targets
+                ):
+                    painter.fillRect(rect, QColor(*TARGET_HOVER_RGBA))
+
                 piece = board.piece_at(sq)
-                if piece is not None:
-                    renderer = owner._piece_renderer(piece)
-                    if renderer is not None:
-                        inset = square * 0.06
-                        renderer.render(
-                            painter,
-                            QRectF(
-                                rect.x() + inset,
-                                rect.y() + inset,
-                                square - 2 * inset,
-                                square - 2 * inset,
-                            ),
-                        )
+                if piece is not None and sq not in hidden:
+                    self._draw_piece(painter, piece, rect, square)
 
                 if sq in owner._targets:
                     self._draw_target(painter, rect, square, piece)
 
         self._draw_coordinates(painter, palette, x0, y0, board_size, square)
+
+        if animation is not None:
+            self._draw_animation(painter, x0, y0, square, animation)
+        if self._dragging and owner._selected is not None:
+            self._draw_dragged(painter, owner._selected, square)
+        drag_return = owner._drag_return
+        if drag_return is not None and not self._dragging:
+            self._draw_drag_return(painter, x0, y0, square, drag_return)
 
         best = owner._best_moves.get(owner._index)
         if best:
@@ -154,6 +300,104 @@ class _BoardCanvas(QWidget):
             self._draw_arrow(painter, best, x0, y0, square, arrow)
 
         painter.end()
+
+    def _draw_piece(self, painter, piece, rect, square, scale=1.0):
+        renderer = self._owner._piece_renderer(piece)
+        if renderer is None:
+            return
+        size = (square * (1 - 2 * 0.06)) * scale
+        center = rect.center()
+        renderer.render(
+            painter,
+            QRectF(
+                center.x() - size / 2,
+                center.y() - size / 2,
+                size,
+                size,
+            ),
+        )
+
+    def _draw_piece_at(self, painter, piece, center, square, scale=1.0):
+        renderer = self._owner._piece_renderer(piece)
+        if renderer is None:
+            return
+        size = (square * (1 - 2 * 0.06)) * scale
+        renderer.render(
+            painter,
+            QRectF(
+                center.x() - size / 2,
+                center.y() - size / 2,
+                size,
+                size,
+            ),
+        )
+
+    def _center_of(self, square, x0, y0, cell):
+        row, col = self._display_from_square(square, self._owner._flipped)
+        return QPointF(x0 + (col + 0.5) * cell, y0 + (row + 0.5) * cell)
+
+    def _draw_animation(self, painter, x0, y0, cell, animation):
+        elapsed = time.monotonic() - animation["start"]
+        progress = min(1.0, elapsed / animation["duration"])
+        eased = 1 - (1 - progress) ** 3
+        owner = self._owner
+
+        captured = animation["captured_piece"]
+        if captured is not None:
+            painter.save()
+            painter.setOpacity(max(0.0, 1.0 - eased))
+            captured_center = self._center_of(
+                animation["captured_square"], x0, y0, cell
+            )
+            self._draw_piece_at(painter, captured, captured_center, cell)
+            painter.restore()
+
+        start = self._center_of(animation["from"], x0, y0, cell)
+        end = self._center_of(animation["to"], x0, y0, cell)
+        center = QPointF(
+            start.x() + (end.x() - start.x()) * eased,
+            start.y() + (end.y() - start.y()) * eased,
+        )
+        self._draw_piece_at(painter, animation["piece"], center, cell)
+
+        rook = animation["rook"]
+        if rook is not None:
+            rook_piece = owner._board.piece_at(rook[1])
+            if rook_piece is not None:
+                rook_start = self._center_of(rook[0], x0, y0, cell)
+                rook_end = self._center_of(rook[1], x0, y0, cell)
+                rook_center = QPointF(
+                    rook_start.x() + (rook_end.x() - rook_start.x()) * eased,
+                    rook_start.y() + (rook_end.y() - rook_start.y()) * eased,
+                )
+                self._draw_piece_at(
+                    painter, rook_piece, rook_center, cell
+                )
+
+    def _draw_dragged(self, painter, square, cell):
+        if self._drag_pos is None:
+            return
+        piece = self._owner._board.piece_at(square)
+        if piece is None:
+            return
+        painter.save()
+        painter.setOpacity(0.92)
+        self._draw_piece_at(
+            painter, piece, self._drag_pos, cell, DRAG_LIFT
+        )
+        painter.restore()
+
+    def _draw_drag_return(self, painter, x0, y0, cell, drag_return):
+        elapsed = time.monotonic() - drag_return["start"]
+        progress = min(1.0, elapsed / drag_return["duration"])
+        eased = 1 - (1 - progress) ** 3
+        end = self._center_of(drag_return["origin"], x0, y0, cell)
+        start = drag_return["from_pos"]
+        center = QPointF(
+            start.x() + (end.x() - start.x()) * eased,
+            start.y() + (end.y() - start.y()) * eased,
+        )
+        self._draw_piece_at(painter, drag_return["piece"], center, cell)
 
     def _draw_target(self, painter, rect, square, piece):
         color = QColor(*TARGET_RGBA)
@@ -268,6 +512,12 @@ class BoardWidget(QWidget):
         self._human_color = chess.WHITE
         self._selected = None
         self._targets = set()
+        self._animation = None
+        self._drag_return = None
+
+        self._anim_timer = QTimer(self)
+        self._anim_timer.setInterval(FRAME_MS)
+        self._anim_timer.timeout.connect(self._on_animation_tick)
 
         self._canvas = _BoardCanvas(self)
         self._canvas.setMinimumSize(520, 520)
@@ -329,7 +579,8 @@ class BoardWidget(QWidget):
         self._index = 0
         self.render()
 
-    def set_moves(self, moves, index=None):
+    def set_moves(self, moves, index=None, animate=False):
+        previous_count = len(self._moves)
         self._moves = list(moves)
         self._best_moves = {}
         if index is None:
@@ -337,6 +588,12 @@ class BoardWidget(QWidget):
         else:
             self._index = max(0, min(index, len(self._moves)))
         self.render()
+        if (
+            animate
+            and self._index == len(self._moves)
+            and len(self._moves) > previous_count
+        ):
+            self._start_animation(self._moves[-1])
 
     def set_interactive(self, enabled, human_color=chess.WHITE):
         self._interactive = enabled
@@ -349,28 +606,121 @@ class BoardWidget(QWidget):
         self._targets = set()
         self._canvas.update()
 
-    def on_square_clicked(self, square):
+    def can_pick(self, square):
         if not self._interactive or self._index != len(self._moves):
-            return
+            return False
         board = self._board
         if board.is_game_over() or board.turn != self._human_color:
-            return
+            return False
         piece = board.piece_at(square)
+        return piece is not None and piece.color == self._human_color
+
+    def select_square(self, square):
+        if not self.can_pick(square):
+            return False
+        self._selected = square
+        self._targets = {
+            move.to_square
+            for move in self._board.legal_moves
+            if move.from_square == square
+        }
+        self._canvas.update()
+        return True
+
+    def try_move(self, from_square, to_square):
+        if self._selected != from_square or to_square not in self._targets:
+            return False
+        self.clear_selection()
+        self.move_requested.emit(from_square, to_square)
+        return True
+
+    def on_square_clicked(self, square):
         if self._selected is not None and square in self._targets:
-            from_square = self._selected
-            self.clear_selection()
-            self.move_requested.emit(from_square, square)
+            self.try_move(self._selected, square)
             return
-        if piece is not None and piece.color == self._human_color:
-            self._selected = square
-            self._targets = {
-                move.to_square
-                for move in board.legal_moves
-                if move.from_square == square
-            }
-            self._canvas.update()
+        if self.select_square(square):
             return
         self.clear_selection()
+
+    def _start_animation(self, move):
+        piece = self._board.piece_at(move.to_square)
+        if piece is None:
+            return
+        previous = self._board.copy()
+        previous.pop()
+        captured_square = move.to_square
+        if previous.is_en_passant(move):
+            captured_square = chess.square(
+                chess.square_file(move.to_square),
+                chess.square_rank(move.from_square),
+            )
+        captured_piece = previous.piece_at(captured_square)
+
+        rook = None
+        if (
+            piece.piece_type == chess.KING
+            and abs(
+                chess.square_file(move.to_square)
+                - chess.square_file(move.from_square)
+            )
+            == 2
+        ):
+            rank = chess.square_rank(move.from_square)
+            if chess.square_file(move.to_square) > chess.square_file(
+                move.from_square
+            ):
+                rook = (chess.square(7, rank), chess.square(5, rank))
+            else:
+                rook = (chess.square(0, rank), chess.square(3, rank))
+
+        self._animation = {
+            "piece": piece,
+            "from": move.from_square,
+            "to": move.to_square,
+            "rook": rook,
+            "captured_square": captured_square,
+            "captured_piece": captured_piece,
+            "start": time.monotonic(),
+            "duration": ANIMATION_MS / 1000.0,
+        }
+        self._anim_timer.start()
+        self._canvas.update()
+
+    def start_drag_return(self, from_pos, square):
+        piece = self._board.piece_at(square)
+        if piece is None:
+            return
+        self._drag_return = {
+            "piece": piece,
+            "origin": square,
+            "from_pos": QPointF(from_pos),
+            "start": time.monotonic(),
+            "duration": ANIMATION_MS / 1000.0,
+        }
+        self._anim_timer.start()
+        self._canvas.update()
+
+    def _stop_animation(self):
+        self._animation = None
+        self._drag_return = None
+        if self._anim_timer.isActive():
+            self._anim_timer.stop()
+
+    def _on_animation_tick(self):
+        now = time.monotonic()
+        if (
+            self._animation is not None
+            and now - self._animation["start"] >= self._animation["duration"]
+        ):
+            self._animation = None
+        if (
+            self._drag_return is not None
+            and now - self._drag_return["start"] >= self._drag_return["duration"]
+        ):
+            self._drag_return = None
+        if self._animation is None and self._drag_return is None:
+            self._anim_timer.stop()
+        self._canvas.update()
 
     def goto(self, index):
         if not self._moves:
@@ -444,6 +794,7 @@ class BoardWidget(QWidget):
             self.render()
 
     def render(self):
+        self._stop_animation()
         self._selected = None
         self._targets = set()
         self._board = chess.Board()
