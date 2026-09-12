@@ -35,8 +35,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows 用户 / Windows users
 
-1. 从文末「下载」获取 `CheckPause-v1.2.0-windows-x64.zip`；  
-   Get `CheckPause-v1.2.0-windows-x64.zip` from the Download section at the end of this file.
+1. 从文末「下载」获取 `CheckPause-v1.2.1-windows-x64.zip`；  
+   Get `CheckPause-v1.2.1-windows-x64.zip` from the Download section at the end of this file.
 2. 解压到任意目录（请解压整个文件夹，Stockfish、开局库和棋子资源都在里面）；  
    Unzip the whole folder — Stockfish, the opening book, and piece assets are bundled inside.
 3. 双击 `CheckPause.exe` 启动，首次使用会要求设置用户名和界面语言；  
@@ -145,10 +145,10 @@ python -m unittest discover -s tests -v   # 单元测试
 
 ## ⬇️ 下载 / Download
 
-**最新版 / Latest: CheckPause v1.2.0（Windows x64）**
+**最新版 / Latest: CheckPause v1.2.1（Windows x64）**
 
-- 📦 [CheckPause-v1.2.0-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.2.0/CheckPause-v1.2.0-windows-x64.zip)（123.7 MB，已内置 Stockfish、开局库与棋子资源）
-- SHA-256：`4196C54FEDC3BD1E23D5C60633F7D0E488ECB1EF0424DD8C29DD3660BB9BEE16`
+- 📦 [CheckPause-v1.2.1-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.2.1/CheckPause-v1.2.1-windows-x64.zip)（123.7 MB，已内置 Stockfish、开局库与棋子资源）
+- SHA-256：`5EACBF0D16EA28CE8D7DD3F954F381AF6D3050F3F334146AF346FECEAA6701F9`
 - 解压后双击 `CheckPause.exe` 即可运行；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
   Unzip and run `CheckPause.exe`. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
