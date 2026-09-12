@@ -64,6 +64,7 @@ MESSAGES = {
     "api_model_placeholder": "deepseek-flash",
     "stockfish_missing": "Stockfish executable not found. Make sure the stockfish folder next to the app is complete.",
     "menu_help": "Help",
+    "nav_analysis": "Analysis",
     "action_open_pgn": "Open PGN file...",
     "action_change_language": "Change language",
     "action_delete_data": "Delete user data...",
@@ -136,6 +137,8 @@ MESSAGES = {
 
     "confirm_delete_title": "Confirm deletion",
     "confirm_delete_text": "Confirm delete all user data? This cannot be undone!",
+    "confirm_close_title": "Confirm close",
+    "confirm_close_text": "Close CheckPause?",
     "btn_yes": "OK",
     "btn_no": "Cancel",
     "deleted_restart": "User data deleted. Please restart the program.",

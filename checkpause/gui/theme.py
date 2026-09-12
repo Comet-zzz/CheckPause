@@ -32,6 +32,28 @@ QMenuBar::item {
 QMenuBar::item:selected {
     background-color: #d6d6d6;
 }
+#moduleRail {
+    background-color: #f3f4f6;
+    border-right: 1px solid #e3e5e9;
+}
+#moduleRail QToolButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #4b4f57;
+    font-size: 12px;
+    padding: 4px 6px;
+}
+#moduleRail QToolButton:hover {
+    background-color: #eceef1;
+}
+#moduleRail QToolButton:checked {
+    background-color: #e0e4e9;
+    color: #33373d;
+}
+#moduleRail QToolButton::menu-indicator {
+    image: none;
+}
 """
 
 DARK_STYLESHEET = """
@@ -154,6 +176,28 @@ QScrollBar::handle:vertical, QScrollBar::handle:horizontal {
 QScrollBar::add-line, QScrollBar::sub-line {
     height: 0px;
     width: 0px;
+}
+#moduleRail {
+    background-color: #202124;
+    border-right: 1px solid #34373b;
+}
+#moduleRail QToolButton {
+    background-color: transparent;
+    border: none;
+    border-radius: 12px;
+    color: #b6bac1;
+    font-size: 12px;
+    padding: 4px 6px;
+}
+#moduleRail QToolButton:hover {
+    background-color: #2f3237;
+}
+#moduleRail QToolButton:checked {
+    background-color: #3a3e44;
+    color: #f0f0f0;
+}
+#moduleRail QToolButton::menu-indicator {
+    image: none;
 }
 """
 
