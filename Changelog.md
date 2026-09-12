@@ -1,3 +1,82 @@
+# v1.2.0 – Play Against the Computer
+
+> 本次更新兑现了侧栏注册表的预留：新增「对弈」模块，可以直接和 Stockfish 下棋。点击棋子再点高亮落点即可行棋，支持执白/执黑、五档难度、悔棋、认输、升变选择与棋步回看，还能把整盘棋一键送入分析模块。引擎思考在后台线程运行，界面全程不卡顿。
+>
+> This release delivers on the module registry: a new Play module lets you take on Stockfish directly. Click a piece and a highlighted square to move, play as White or Black, choose from five difficulty levels, undo, resign, pick a promotion piece, and review every move; one click sends the game to the analysis module. The engine thinks on a background thread, so the interface never freezes.
+
+---
+
+## 🎯 What's New
+
+### 🤖 人机对弈 / Play against the computer
+- 侧栏新增「对弈」模块（位于「分析工具」上方），点击进入独立对弈界面。
+- 点击己方棋子选中，合法落点以圆点（空格）或圆环（可吃子）提示，再点落点即走子。
+- 支持「执白 / 执黑」：选择执黑时棋盘自动翻转，并由电脑先行。
+- 五档难度：入门、简单、中等、困难、大师，映射 Stockfish 的 `Skill Level` 与思考深度/时间。
+- 兵升变弹出选择框，可选后、车、象、马。
+
+- Added a Play module to the rail (above Analysis) with its own game screen.
+- Click one of your pieces to select it; legal targets show as dots (empty squares) or rings (captures), and clicking a target makes the move.
+- Play as White or Black: choosing Black flips the board and lets the engine move first.
+- Five levels — Beginner, Easy, Medium, Hard, Master — mapped to Stockfish's `Skill Level` plus depth/time.
+- Pawn promotion opens a picker for Queen, Rook, Bishop, or Knight.
+
+### 🎮 对局控制 / Game controls
+- 新对局、悔棋（回退你与电脑各一步，轮到你重新走）、认输。
+- 状态栏显示「轮到你走棋 / 电脑思考中 / 将军」，终局显示胜负或和棋结果。
+- 棋步列表实时更新，可点击回看任意局面；棋盘翻转与导航按钮沿用分析页的交互。
+- 「导入分析」把当前棋谱（含完整着法）直接送到分析模块，可立即开始 Stockfish 分析。
+
+- New game, undo (takes back both your move and the engine's reply, returning the turn to you), and resign.
+- The status line shows Your turn / Computer is thinking / Check, and the result appears when the game ends.
+- The move list updates live and lets you step back to any position; flip and navigation work like the analysis board.
+- Send to analysis pushes the full game into the analysis module, ready for an immediate Stockfish run.
+
+### ⚙️ 引擎与实现 / Engine and internals
+- 新增 `EngineMoveWorker`（`QThread`）：每次走子独立启动 Stockfish，思考过程不阻塞界面，关闭窗口或开新局时会安全回收线程。
+- `BoardWidget` 增加可复用的交互模式（选中高亮、合法落点、`move_requested` 信号），分析页仍保持只读浏览。
+- 对弈界面自动跟随现有主题、棋子集与棋盘配色设置。
+
+- Added `EngineMoveWorker` (`QThread`): each move spins up Stockfish in the background, the UI never blocks, and threads are reclaimed safely on exit or when starting a new game.
+- `BoardWidget` gained a reusable interactive mode (selection highlight, legal targets, a `move_requested` signal) while the analysis board stays read-only.
+- The Play screen follows the current theme, piece set, and board theme automatically.
+
+---
+
+## 🛠️ Full Changelog
+- feat(gui): add the Play page with an interactive board against Stockfish
+- feat(gui): register the Play module above Analysis in the module rail
+- feat(gui): support click-to-move with selection and legal-target highlights
+- feat(gui): add side selection, automatic board flip, and engine-first opening
+- feat(gui): add five difficulty levels backed by Stockfish Skill Level
+- feat(gui): add new game, undo, resign, and send-to-analysis controls
+- feat(gui): add a promotion dialog for queen, rook, bishop, or knight
+- feat(gui): show turn status, check, and final result messages
+- feat(worker): add `EngineMoveWorker` for background engine play
+- refactor(board): add interactive mode and `set_moves` to `BoardWidget`
+- feat(i18n): add Chinese and English strings for the Play module
+- chore(version): bump the app version to 1.2.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。现有 `profile.json`、棋子/棋盘偏好、API 配置与统计记录继续有效。
+- 对弈功能使用随程序分发的 Stockfish，无需额外安装。
+
+- No breaking changes. Existing `profile.json`, piece/board preferences, API settings, and statistics keep working.
+- Play uses the Stockfish binary bundled with the app; no extra installation is needed.
+
+---
+
+## 🙏 Special Thanks
+
+感谢从侧栏形态讨论之初就提出的「对弈」模块设想，以及围绕点击走子、难度分档与换边体验给出的建议，让这个外壳第一次真正住进了第二个模块。
+
+Thanks for proposing the Play module back when the rail was first discussed, and for the ideas around click-to-move, difficulty tiers, and switching sides — this release finally moves a second module into the shell.
+
+---
+
 # v1.1.0 – Module Rail and Close Confirmation
 
 > 本次更新为应用装上左侧模块侧栏：主窗口改为「侧栏 + 页面堆栈」的外壳结构，模块由注册表驱动，当前仅注册「分析工具」，后续谜题、对弈等模块可直接注册接入。同时新增关闭确认弹窗，避免误触退出打断分析或对话。

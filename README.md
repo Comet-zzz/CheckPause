@@ -20,6 +20,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
   AI explanations: streamed answers based on engine data, with follow-up questions like a real coach; works with DeepSeek, OpenAI, OpenRouter, and local models.
 - **可点击着法列表**：点击任意着法跳转局面并高亮当前步，分析过程中高亮随进度移动；支持翻转棋盘与引擎最佳着法箭头。  
   Clickable move list: jump to any position and highlight the current ply; the board also shows engine best-move arrows and can be flipped.
+- **人机对弈**：侧栏「对弈」模块可直接与 Stockfish 下棋，点击走子、执白/执黑、五档难度、悔棋、认输、升变选择与棋步回看，并可一键把整盘棋送入分析。  
+  Play against the computer: the Play module takes on Stockfish with click-to-move, White/Black, five difficulty levels, undo, resign, promotion picking, and move review — plus one-click send to analysis.
 - **表现评级与成长档案**：五档评级（卓越 / 精准 / 稳健 / 平均 / 欠考虑），统计页记录每盘棋的准确度与历史趋势。  
   Performance ratings and profile: five tiers (Optimal / Precise / Competent / Steady / Volatile) plus per-game accuracy history on the Statistics tab.
 - **个性化外观**：10 套 Lichess 开源棋子、6 种棋盘配色、明暗主题，选择即时生效并持久化。  
@@ -33,8 +35,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows 用户 / Windows users
 
-1. 从文末「下载」获取 `CheckPause-v1.1.0-windows-x64.zip`；  
-   Get `CheckPause-v1.1.0-windows-x64.zip` from the Download section at the end of this file.
+1. 从文末「下载」获取 `CheckPause-v1.2.0-windows-x64.zip`；  
+   Get `CheckPause-v1.2.0-windows-x64.zip` from the Download section at the end of this file.
 2. 解压到任意目录（请解压整个文件夹，Stockfish、开局库和棋子资源都在里面）；  
    Unzip the whole folder — Stockfish, the opening book, and piece assets are bundled inside.
 3. 双击 `CheckPause.exe` 启动，首次使用会要求设置用户名和界面语言；  
@@ -105,7 +107,7 @@ checkpause/
   data/      paths.py  settings.py  profile.py
   i18n/      zh_CN.py  en_US.py
   gui/       main_window.py  dialogs.py  theme.py  workers.py
-             pages/    analysis_page.py  chat_page.py  stats_page.py  welcome_page.py
+             pages/    analysis_page.py  chat_page.py  stats_page.py  play_page.py  welcome_page.py
              widgets/  board_widget.py  move_list.py
 cli/         main.py  chat_ui.py  input_handler.py  engine_cli.py
 tests/       unittest 测试
@@ -143,10 +145,10 @@ python -m unittest discover -s tests -v   # 单元测试
 
 ## ⬇️ 下载 / Download
 
-**最新版 / Latest: CheckPause v1.1.0（Windows x64）**
+**最新版 / Latest: CheckPause v1.2.0（Windows x64）**
 
-- 📦 [CheckPause-v1.1.0-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.1.0/CheckPause-v1.1.0-windows-x64.zip)（123.6 MB，已内置 Stockfish、开局库与棋子资源）
-- SHA-256：`923EA6433502A64DDCBC41442888D6E848170DFA1C50E9889136D26FD3FBF0D5`
+- 📦 [CheckPause-v1.2.0-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.2.0/CheckPause-v1.2.0-windows-x64.zip)（123.7 MB，已内置 Stockfish、开局库与棋子资源）
+- SHA-256：`4196C54FEDC3BD1E23D5C60633F7D0E488ECB1EF0424DD8C29DD3660BB9BEE16`
 - 解压后双击 `CheckPause.exe` 即可运行；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
   Unzip and run `CheckPause.exe`. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
