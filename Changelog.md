@@ -1,3 +1,62 @@
+# v1.2.1 – Smooth Board Interaction
+
+> 本次更新专注对弈手感：棋子可以拖拽，合法落点跟随悬停高亮，走子平滑滑动，被吃子淡出，拖到非法格会滑回原位并保持选中。整体交互向 Lichess / chess.com 靠拢，不再有瞬移和硬回弹。
+>
+> This release focuses on how the board feels: pieces can be dragged, legal targets respond to hover, moves slide smoothly, captures fade out, and an illegal drop slides the piece home while staying selected. The interaction now matches the intuition of Lichess and chess.com.
+
+---
+
+## 🎯 What's New
+
+### 🖱️ Drag and hover
+- 棋子支持拖拽：按住即可拖起，棋子跟随光标并微微放大，原格清空，合法落点圆点保持可见。
+- 拖动时悬停到合法落点会加深高亮；悬停到可动棋子或合法落点时光标变为手型。
+- 点击走子保留：点棋子显示圆点、点圆点走子；再点同一棋子或右键可取消选中。
+
+- Drag-and-drop: hold a piece to pick it up; it follows the cursor and lifts slightly while legal-target dots stay visible.
+- Hovering a legal target deepens its highlight, and the cursor becomes a hand over movable pieces and targets.
+- Click-to-move is unchanged: click a piece for dots, click a dot to move, click the same piece again or right-click to deselect.
+
+### 🎞️ Move animation
+- 走子改为 130ms ease-out 平滑滑动，你走和电脑走都有动画。
+- 王车易位时王与车同时滑动；被吃子在滑动过程中淡出，而不是瞬间消失。
+- 拖到非法格松手时，棋子以同样的缓动滑回原位并保持选中。
+
+- Moves slide with a 130ms ease-out animation, for both your moves and the engine's.
+- Castling animates king and rook together, and captured pieces fade out instead of vanishing.
+- Dropping on an illegal square slides the piece home with the same easing, keeping it selected.
+
+---
+
+## 🛠️ Full Changelog
+- feat(board): support drag-and-drop moves with the piece following the cursor
+- feat(board): keep click-to-move with legal-target dots and click-again to deselect
+- feat(board): add hover highlights and pointer/hand cursors
+- feat(board): animate moves with ease-out sliding, castling rooks, and capture fades
+- feat(board): animate pieces snapping back after an illegal drop
+- refactor(board): replay the move animation for both player and engine moves
+- chore(version): bump the app version to 1.2.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
+- 仅分析页保持只读浏览，动画与拖拽只在「对弈」模块启用。
+
+- No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
+- The analysis board stays read-only; dragging and animations only run in the Play module.
+
+---
+
+## 🙏 Special Thanks
+
+感谢指出走子手感生硬，并给出「像 Lichess / chess.com 那样顺滑」的具体参照，让这次更新聚焦在拖拽、悬停与动画这些真正影响手感的细节上。
+
+Thanks for calling out the stiff piece movement and pointing at Lichess and chess.com as the bar to clear — this release focused on the drag, hover, and animation details that actually change how the board feels.
+
+---
+
 # v1.2.0 – Play Against the Computer
 
 > 本次更新兑现了侧栏注册表的预留：新增「对弈」模块，可以直接和 Stockfish 下棋。点击棋子再点高亮落点即可行棋，支持执白/执黑、五档难度、悔棋、认输、升变选择与棋步回看，还能把整盘棋一键送入分析模块。引擎思考在后台线程运行，界面全程不卡顿。
@@ -8,7 +67,7 @@
 
 ## 🎯 What's New
 
-### 🤖 人机对弈 / Play against the computer
+### 🤖 Play against the computer
 - 侧栏新增「对弈」模块（位于「分析工具」上方），点击进入独立对弈界面。
 - 点击己方棋子选中，合法落点以圆点（空格）或圆环（可吃子）提示，再点落点即走子。
 - 支持「执白 / 执黑」：选择执黑时棋盘自动翻转，并由电脑先行。
@@ -21,7 +80,7 @@
 - Five levels — Beginner, Easy, Medium, Hard, Master — mapped to Stockfish's `Skill Level` plus depth/time.
 - Pawn promotion opens a picker for Queen, Rook, Bishop, or Knight.
 
-### 🎮 对局控制 / Game controls
+### 🎮 Game controls
 - 新对局、悔棋（回退你与电脑各一步，轮到你重新走）、认输。
 - 状态栏显示「轮到你走棋 / 电脑思考中 / 将军」，终局显示胜负或和棋结果。
 - 棋步列表实时更新，可点击回看任意局面；棋盘翻转与导航按钮沿用分析页的交互。
@@ -32,7 +91,7 @@
 - The move list updates live and lets you step back to any position; flip and navigation work like the analysis board.
 - Send to analysis pushes the full game into the analysis module, ready for an immediate Stockfish run.
 
-### ⚙️ 引擎与实现 / Engine and internals
+### ⚙️ Engine and internals
 - 新增 `EngineMoveWorker`（`QThread`）：每次走子独立启动 Stockfish，思考过程不阻塞界面，关闭窗口或开新局时会安全回收线程。
 - `BoardWidget` 增加可复用的交互模式（选中高亮、合法落点、`move_requested` 信号），分析页仍保持只读浏览。
 - 对弈界面自动跟随现有主题、棋子集与棋盘配色设置。
