@@ -1,3 +1,4 @@
 python-chess
 openai
 python-dotenv
+PyQt6
