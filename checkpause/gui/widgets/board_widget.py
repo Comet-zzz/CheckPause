@@ -28,6 +28,8 @@ from checkpause.resources import resource_path
 
 LAST_MOVE_RGBA = (246, 246, 105, 150)
 CHECK_RGBA = (224, 82, 82, 110)
+SELECTED_RGBA = (255, 214, 102, 150)
+TARGET_RGBA = (40, 40, 40, 90)
 
 
 class _BoardCanvas(QWidget):
@@ -36,6 +38,25 @@ class _BoardCanvas(QWidget):
         self._owner = owner
         self.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
+        )
+
+    def mousePressEvent(self, event):
+        owner = self._owner
+        if not owner._interactive:
+            return
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        x0, y0, board_size, square = self._geometry()
+        pos = event.position()
+        if not (
+            x0 <= pos.x() < x0 + board_size
+            and y0 <= pos.y() < y0 + board_size
+        ):
+            return
+        col = int((pos.x() - x0) // square)
+        row = int((pos.y() - y0) // square)
+        owner.on_square_clicked(
+            self._square_from_display(row, col, owner._flipped)
         )
 
     def _geometry(self):
@@ -103,6 +124,9 @@ class _BoardCanvas(QWidget):
                 if sq == check_square:
                     painter.fillRect(rect, QColor(*CHECK_RGBA))
 
+                if owner._selected == sq:
+                    painter.fillRect(rect, QColor(*SELECTED_RGBA))
+
                 piece = board.piece_at(sq)
                 if piece is not None:
                     renderer = owner._piece_renderer(piece)
@@ -118,6 +142,9 @@ class _BoardCanvas(QWidget):
                             ),
                         )
 
+                if sq in owner._targets:
+                    self._draw_target(painter, rect, square, piece)
+
         self._draw_coordinates(painter, palette, x0, y0, board_size, square)
 
         best = owner._best_moves.get(owner._index)
@@ -127,6 +154,21 @@ class _BoardCanvas(QWidget):
             self._draw_arrow(painter, best, x0, y0, square, arrow)
 
         painter.end()
+
+    def _draw_target(self, painter, rect, square, piece):
+        color = QColor(*TARGET_RGBA)
+        if piece is not None:
+            pen = QPen(color)
+            pen.setWidthF(square * 0.07)
+            painter.setPen(pen)
+            painter.setBrush(Qt.BrushStyle.NoBrush)
+            inset = square * 0.08
+            painter.drawEllipse(rect.adjusted(inset, inset, -inset, -inset))
+        else:
+            radius = square * 0.17
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.setBrush(color)
+            painter.drawEllipse(QPointF(rect.center()), radius, radius)
 
     def _draw_coordinates(self, painter, palette, x0, y0, board_size, square):
         font = painter.font()
@@ -207,6 +249,7 @@ class _BoardCanvas(QWidget):
 
 class BoardWidget(QWidget):
     index_changed = pyqtSignal(int)
+    move_requested = pyqtSignal(int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -221,6 +264,10 @@ class BoardWidget(QWidget):
         self._index = 0
         self._flipped = False
         self._piece_cache = {}
+        self._interactive = False
+        self._human_color = chess.WHITE
+        self._selected = None
+        self._targets = set()
 
         self._canvas = _BoardCanvas(self)
         self._canvas.setMinimumSize(520, 520)
@@ -281,6 +328,49 @@ class BoardWidget(QWidget):
         self._best_moves = {}
         self._index = 0
         self.render()
+
+    def set_moves(self, moves, index=None):
+        self._moves = list(moves)
+        self._best_moves = {}
+        if index is None:
+            self._index = len(self._moves)
+        else:
+            self._index = max(0, min(index, len(self._moves)))
+        self.render()
+
+    def set_interactive(self, enabled, human_color=chess.WHITE):
+        self._interactive = enabled
+        self._human_color = human_color
+        self._flipped = human_color == chess.BLACK
+        self.render()
+
+    def clear_selection(self):
+        self._selected = None
+        self._targets = set()
+        self._canvas.update()
+
+    def on_square_clicked(self, square):
+        if not self._interactive or self._index != len(self._moves):
+            return
+        board = self._board
+        if board.is_game_over() or board.turn != self._human_color:
+            return
+        piece = board.piece_at(square)
+        if self._selected is not None and square in self._targets:
+            from_square = self._selected
+            self.clear_selection()
+            self.move_requested.emit(from_square, square)
+            return
+        if piece is not None and piece.color == self._human_color:
+            self._selected = square
+            self._targets = {
+                move.to_square
+                for move in board.legal_moves
+                if move.from_square == square
+            }
+            self._canvas.update()
+            return
+        self.clear_selection()
 
     def goto(self, index):
         if not self._moves:
@@ -354,6 +444,8 @@ class BoardWidget(QWidget):
             self.render()
 
     def render(self):
+        self._selected = None
+        self._targets = set()
         self._board = chess.Board()
         for move in self._moves[: self._index]:
             self._board.push(move)
