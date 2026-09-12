@@ -1,7 +1,11 @@
+import chess
+import chess.engine
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.engine import StockfishAnalyzer
+from checkpause.i18n import t
+from checkpause.resources import get_stockfish_path
 
 
 class AnalysisWorker(QThread):
@@ -37,6 +41,50 @@ class AnalysisWorker(QThread):
 
     def _emit_move(self, index, total, san, fen, record):
         self.move_done.emit(index, total, san, fen)
+
+
+class EngineMoveWorker(QThread):
+    move_ready = pyqtSignal(str)
+    failed = pyqtSignal(str)
+
+    def __init__(self, fen, level, language="zh-CN", parent=None):
+        super().__init__(parent)
+        self.fen = fen
+        self.level = dict(level)
+        self.language = language
+
+    def run(self):
+        try:
+            path = get_stockfish_path(self.language)
+            engine = chess.engine.SimpleEngine.popen_uci(path)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+
+        try:
+            skill = self.level.get("skill")
+            if skill is not None:
+                try:
+                    engine.configure({"Skill Level": skill})
+                except chess.engine.EngineError:
+                    pass
+            limit = chess.engine.Limit(
+                depth=self.level.get("depth"), time=self.level.get("time")
+            )
+            result = engine.play(chess.Board(self.fen), limit)
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        finally:
+            try:
+                engine.quit()
+            except Exception:
+                pass
+
+        if result.move is None:
+            self.failed.emit(t("play_no_move", self.language))
+            return
+        self.move_ready.emit(result.move.uci())
 
 
 class ChatWorker(QThread):

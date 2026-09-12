@@ -1,3 +1,4 @@
+import chess
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QCheckBox,
@@ -5,9 +6,11 @@ from PyQt6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPushButton,
     QVBoxLayout,
 )
 
@@ -112,6 +115,40 @@ def api_settings_dialog(parent, language, config=None):
             "base_url": base_field.text().strip(),
             "model": model_field.text().strip(),
         }
+    return None
+
+
+def promotion_dialog(parent, language="zh-CN"):
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(t("play_promotion_title", language))
+
+    label = QLabel(t("play_promotion_hint", language))
+
+    choices = {}
+
+    def pick(value):
+        choices["piece"] = value
+        dialog.accept()
+
+    row = QHBoxLayout()
+    for piece_type, key in (
+        (chess.QUEEN, "queen"),
+        (chess.ROOK, "rook"),
+        (chess.BISHOP, "bishop"),
+        (chess.KNIGHT, "knight"),
+    ):
+        button = QPushButton(t("piece_" + key, language))
+        button.clicked.connect(
+            lambda _checked=False, value=piece_type: pick(value)
+        )
+        row.addWidget(button)
+
+    layout = QVBoxLayout(dialog)
+    layout.addWidget(label)
+    layout.addLayout(row)
+
+    if dialog.exec() == QDialog.DialogCode.Accepted:
+        return choices.get("piece")
     return None
 
 

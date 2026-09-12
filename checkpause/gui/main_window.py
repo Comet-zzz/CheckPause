@@ -40,6 +40,7 @@ from checkpause.gui.dialogs import (
 )
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
+from checkpause.gui.pages.play_page import PlayPage
 from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
@@ -49,6 +50,7 @@ from checkpause.gui.workers import AnalysisWorker, ChatWorker
 from checkpause.i18n import t
 
 MODULES = (
+    {"id": "play", "label_key": "nav_play"},
     {"id": "analysis", "label_key": "nav_analysis"},
 )
 
@@ -70,6 +72,7 @@ class MainWindow(QMainWindow):
         self._current_pgn = ""
         self._analysis_worker = None
         self._chat_worker = None
+        self._module = "analysis"
 
         self._stack = QStackedWidget()
 
@@ -102,6 +105,18 @@ class MainWindow(QMainWindow):
         self.resize(1164, 726)
 
     def _build_main_view(self):
+        self._analysis_view = self._build_analysis_view()
+
+        self.play_page = PlayPage()
+        self.play_page.analysis_requested.connect(self._on_play_import)
+
+        main_stack = QStackedWidget()
+        main_stack.addWidget(self._analysis_view)
+        main_stack.addWidget(self.play_page)
+        self._main_stack = main_stack
+        return main_stack
+
+    def _build_analysis_view(self):
         self.board = BoardWidget()
 
         self.analysis_page = AnalysisPage()
@@ -138,10 +153,20 @@ class MainWindow(QMainWindow):
         return rail
 
     def _on_module_selected(self, module_id):
-        if module_id != "analysis":
+        if module_id not in ("analysis", "play"):
             return
+        self._module = module_id
         if self._stack.currentWidget() is not self._main_view:
             self._enter_main()
+        else:
+            self._show_module()
+
+    def _show_module(self):
+        if self._module == "play":
+            self._main_stack.setCurrentWidget(self.play_page)
+        else:
+            self._main_stack.setCurrentWidget(self._analysis_view)
+        self._rail.set_active(self._module)
 
     def _build_menus(self):
         menubar = self.menuBar()
@@ -218,7 +243,7 @@ class MainWindow(QMainWindow):
     def _enter_main(self):
         self._language = (self.profile or {}).get("language", "zh-CN")
         self._stack.setCurrentWidget(self._main_view)
-        self._rail.set_active("analysis")
+        self._show_module()
         self._retranslate()
         self._refresh_stats()
 
@@ -274,6 +299,7 @@ class MainWindow(QMainWindow):
         self._rail.retranslate(self._language)
         self.board.retranslate(self._language)
         self.analysis_page.retranslate(self._language)
+        self.play_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
         self.stats_page.retranslate(self._language)
         self._refresh_stats()
@@ -384,6 +410,14 @@ class MainWindow(QMainWindow):
             self.analysis_page.show_moves(content)
         self.tabs.setCurrentWidget(self.analysis_page)
 
+    def _on_play_import(self, pgn):
+        self.analysis_page.set_pgn(pgn)
+        if self.board.load_pgn(pgn)[0]:
+            self.analysis_page.show_moves(pgn)
+        self._module = "analysis"
+        self._show_module()
+        self.tabs.setCurrentWidget(self.analysis_page)
+
     def _send_chat(self, text):
         if not self._messages:
             self.chat_page.append_notice(t("chat_no_analysis", self._language))
@@ -429,10 +463,13 @@ class MainWindow(QMainWindow):
         self.chat_page.set_theme(self._theme)
         self.board.set_theme(self._theme)
         self.analysis_page.set_theme(self._theme)
+        self.play_page.set_theme(self._theme)
 
     def _apply_board_preferences(self):
         self.board.set_piece_set(self._piece_set)
         self.board.set_board_theme(self._board_theme)
+        self.play_page.set_piece_set(self._piece_set)
+        self.play_page.set_board_theme(self._board_theme)
 
     def _change_theme(self, theme):
         if theme == self._theme:
@@ -499,6 +536,8 @@ class MainWindow(QMainWindow):
         self.analysis_page.set_accuracy(None)
         self.analysis_page.set_progress(0)
         self.chat_page.clear_history()
+        self.play_page.reset()
+        self._module = "analysis"
         self._refresh_stats()
         self._show_welcome()
 
@@ -512,4 +551,5 @@ class MainWindow(QMainWindow):
         if self._chat_worker and self._chat_worker.isRunning():
             self._chat_worker.terminate()
             self._chat_worker.wait(1000)
+        self.play_page.shutdown()
         super().closeEvent(event)
