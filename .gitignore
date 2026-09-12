@@ -5,5 +5,8 @@ stockfish/
 .idea/
 __pycache__/
 output/
+build/
+dist/
 *.pyc
+.Rhistory
 .DS_Store
