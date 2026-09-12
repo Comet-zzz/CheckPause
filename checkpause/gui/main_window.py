@@ -3,11 +3,13 @@ from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QHBoxLayout,
     QMainWindow,
     QMessageBox,
     QSplitter,
     QStackedWidget,
     QTabWidget,
+    QWidget,
 )
 
 from checkpause.assets import (
@@ -32,6 +34,7 @@ from checkpause.data.settings import get_api_config, save_api_config
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
+    confirm_close_dialog,
     confirm_delete_dialog,
     show_about,
 )
@@ -41,8 +44,13 @@ from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
 from checkpause.gui.widgets.board_widget import BoardWidget
+from checkpause.gui.widgets.module_rail import ModuleRail
 from checkpause.gui.workers import AnalysisWorker, ChatWorker
 from checkpause.i18n import t
+
+MODULES = (
+    {"id": "analysis", "label_key": "nav_analysis"},
+)
 
 
 class MainWindow(QMainWindow):
@@ -64,7 +72,6 @@ class MainWindow(QMainWindow):
         self._chat_worker = None
 
         self._stack = QStackedWidget()
-        self.setCentralWidget(self._stack)
 
         self._welcome = WelcomePage()
         self._welcome.started.connect(self._on_welcome_started)
@@ -75,6 +82,15 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._main_view)
 
         self._build_menus()
+        self._rail = self._build_rail()
+
+        shell = QWidget()
+        shell_layout = QHBoxLayout(shell)
+        shell_layout.setContentsMargins(0, 0, 0, 0)
+        shell_layout.setSpacing(0)
+        shell_layout.addWidget(self._rail)
+        shell_layout.addWidget(self._stack, 1)
+        self.setCentralWidget(shell)
 
         if self.profile:
             self._enter_main()
@@ -83,7 +99,7 @@ class MainWindow(QMainWindow):
 
         self._apply_theme()
         self._apply_board_preferences()
-        self.resize(1080, 726)
+        self.resize(1164, 726)
 
     def _build_main_view(self):
         self.board = BoardWidget()
@@ -112,6 +128,20 @@ class MainWindow(QMainWindow):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([760, 520])
         return splitter
+
+    def _build_rail(self):
+        rail = ModuleRail()
+        for module in MODULES:
+            rail.add_module(module["id"], module["label_key"])
+        rail.module_selected.connect(self._on_module_selected)
+        rail.retranslate(self._language)
+        return rail
+
+    def _on_module_selected(self, module_id):
+        if module_id != "analysis":
+            return
+        if self._stack.currentWidget() is not self._main_view:
+            self._enter_main()
 
     def _build_menus(self):
         menubar = self.menuBar()
@@ -186,8 +216,9 @@ class MainWindow(QMainWindow):
         self._menu_help.addAction(self._act_about)
 
     def _enter_main(self):
-        self._language = self.profile.get("language", "zh-CN")
+        self._language = (self.profile or {}).get("language", "zh-CN")
         self._stack.setCurrentWidget(self._main_view)
+        self._rail.set_active("analysis")
         self._retranslate()
         self._refresh_stats()
 
@@ -195,6 +226,7 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(t("app_title", self._language))
         self._welcome.prepare(self._language)
         self._stack.setCurrentWidget(self._welcome)
+        self._rail.set_active(None)
 
     def _on_welcome_started(self, username, language):
         self.profile = create_profile(username, language)
@@ -239,6 +271,7 @@ class MainWindow(QMainWindow):
         self.tabs.setTabText(2, t("tab_stats", self._language))
 
         self._welcome.retranslate(self._language)
+        self._rail.retranslate(self._language)
         self.board.retranslate(self._language)
         self.analysis_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
@@ -470,6 +503,9 @@ class MainWindow(QMainWindow):
         self._show_welcome()
 
     def closeEvent(self, event):
+        if not confirm_close_dialog(self, self._language):
+            event.ignore()
+            return
         if self._analysis_worker and self._analysis_worker.isRunning():
             self._analysis_worker.requestInterruption()
             self._analysis_worker.wait(3000)

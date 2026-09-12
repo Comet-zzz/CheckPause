@@ -128,6 +128,19 @@ def confirm_delete_dialog(parent, language="zh-CN"):
     return box.clickedButton() is yes_button
 
 
+def confirm_close_dialog(parent, language="zh-CN"):
+    box = QMessageBox(parent)
+    box.setWindowTitle(t("confirm_close_title", language))
+    box.setText(t("confirm_close_text", language))
+    box.setIcon(QMessageBox.Icon.Question)
+    yes_button = box.addButton(
+        t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole
+    )
+    box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
+    box.exec()
+    return box.clickedButton() is yes_button
+
+
 def show_about(parent, language):
     dialog = QDialog(parent)
     dialog.setWindowTitle(t("about_title", language))

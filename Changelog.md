@@ -1,3 +1,60 @@
+# v1.1.0 – Module Rail and Close Confirmation
+
+> 本次更新为应用装上左侧模块侧栏：主窗口改为「侧栏 + 页面堆栈」的外壳结构，模块由注册表驱动，当前仅注册「分析工具」，后续谜题、对弈等模块可直接注册接入。同时新增关闭确认弹窗，避免误触退出打断分析或对话。
+>
+> This release adds a left module rail: the main window becomes a rail + stacked-pages shell, driven by a module registry that currently holds Analysis only, so Puzzles, Play, and others can plug in later. It also adds a close-confirmation dialog so analysis or chat is never interrupted by an accidental exit.
+
+---
+
+## 🎯 What's New
+
+### 🧭 Left module rail
+- 新增 84px 左侧模块栏（`gui/widgets/module_rail.py`），主窗口改为「侧栏 + 页面堆栈」的外壳结构。
+- 模块由注册表（`MODULES`）驱动，目前仅注册「分析工具」；后续谜题、对弈等模块注册后即可接入。
+- 欢迎页与主界面共用同一外壳；模块高亮跟随当前页面，语言切换同步刷新。
+- 浅色/深色两套侧栏配色：灰色圆角选中态、悬停反馈、右侧分隔线；窗口默认宽度相应调整。
+
+- Added an 84px left module rail (`gui/widgets/module_rail.py`); the main window is now a rail + stacked-pages shell.
+- Modules come from the `MODULES` registry, currently only Analysis; Puzzles, Play, and others can plug in later by registering.
+- The welcome page and the main view share the same shell; the active item follows the current page and refreshes on language switches.
+- Light/dark rail styling with a gray rounded selection, hover feedback, and a right border; the default window width grew to fit the rail.
+
+### 🚪 Close confirmation
+- 关闭窗口时弹出确认框：取消则窗口保持打开，确认后才退出。
+- 退出前仍会安全停止 Stockfish 分析与 AI 对话线程，不留残余进程。
+
+- Closing the window now asks for confirmation: cancel keeps it open, confirm exits.
+- On exit, the Stockfish analysis and AI chat threads are still stopped safely, leaving no processes behind.
+
+---
+
+## 🛠️ Full Changelog
+- feat(gui): add a left module rail with a registry for future modules
+- feat(gui): wrap the welcome page and the main view in a rail + stack shell
+- feat(gui): add a confirmation dialog before closing the window
+- feat(theme): style the module rail for light and dark themes
+- feat(i18n): add rail and close-confirmation strings in Chinese and English
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。现有 `profile.json`、棋子/棋盘偏好与 API 配置继续有效。
+- 入口脚本与模块路径（`run_gui.py`、`checkpause.*`）保持不变。
+
+- No breaking changes. Existing `profile.json`, piece/board preferences, and API settings keep working.
+- The entry point and module paths (`run_gui.py`, `checkpause.*`) are unchanged.
+
+---
+
+## 🙏 Special Thanks
+
+感谢对左侧导航的构思与反馈——从侧栏形态的反复讨论，到最终收敛为只保留必要模块的简洁外壳，也感谢对关闭确认等细节体验的推动。
+
+Thanks for shaping the left navigation—from early sidebar discussions to a lean shell with only the modules that matter—and for pushing the close-confirmation and other small UX details.
+
+---
+
 # v1.0.0 – Graphical Interface, Move List, Personalization, and Performance
 
 > CheckPause 的首个正式系列版本。它从一个命令行工具成长为可分发的中英文桌面应用：PyQt6 图形界面、明暗主题、短信式 AI 对话、可点击的着法列表、Lichess 风格的自绘棋盘与个性化外观、翻转棋盘与表现评级、开局谱库、可配置的 OpenAI 兼容接口，以及一键打包的 Windows exe。

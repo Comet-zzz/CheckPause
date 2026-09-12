@@ -64,6 +64,7 @@ MESSAGES = {
     "api_model_placeholder": "deepseek-flash",
     "stockfish_missing": "未找到 Stockfish 可执行文件，请确认程序目录下的 stockfish 文件夹完整。",
     "menu_help": "帮助",
+    "nav_analysis": "分析工具",
     "action_open_pgn": "打开 PGN 文件...",
     "action_change_language": "更改语言",
     "action_delete_data": "删除用户数据...",
@@ -136,6 +137,8 @@ MESSAGES = {
 
     "confirm_delete_title": "确认删除",
     "confirm_delete_text": "确认删除所有用户数据吗？此操作无法撤销！",
+    "confirm_close_title": "确认关闭",
+    "confirm_close_text": "确定要关闭 CheckPause 吗？",
     "btn_yes": "确定",
     "btn_no": "取消",
     "deleted_restart": "用户数据已删除，请重新启动程序。",
