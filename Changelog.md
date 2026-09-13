@@ -1,3 +1,50 @@
+# v1.2.2 – Quiet Engine Launch
+
+> 本次更新修复了打包版在对弈时的一个恼人问题：电脑每走一步都会闪出一个控制台窗口。原因是窗口模式下每次走子都会新建一个控制台子进程来运行 Stockfish，而父进程没有控制台，Windows 便为它弹出一个新窗口。现在引擎进程以隐藏方式启动，对弈全程干净无弹窗。
+>
+> This release fixes an annoying issue in the packaged build: a console window flashed on every computer move. In windowed mode each move spawned a new console-subsystem Stockfish process, and with no parent console Windows created a fresh console window for it. The engine now launches hidden, so play stays clean from start to finish.
+
+---
+
+## 🎯 What's Fixed
+
+### 🪟 No more console window on every engine move
+- 打包版（窗口模式）在对弈中，电脑走子不再弹出并瞬间关闭的控制台窗口。
+- 新增统一的引擎启动封装 `open_stockfish()`，在 Windows 下以 `CREATE_NO_WINDOW` 启动 Stockfish。
+- 对弈模块与「分析」模块的引擎启动都走同一封装，行为一致。
+
+- The packaged (windowed) build no longer flashes a short-lived console window when the computer moves.
+- Added a single engine launch helper, `open_stockfish()`, which starts Stockfish with `CREATE_NO_WINDOW` on Windows.
+- Both the Play module and the Analysis module now launch the engine through the same helper for consistent behavior.
+
+---
+
+## 🛠️ Full Changelog
+- fix(engine): launch Stockfish with `CREATE_NO_WINDOW` so windowed builds show no console
+- refactor(engine): add `open_stockfish()` and route all engine starts through it
+- fix(play): stop the console flash on every computer move
+- chore(version): bump the app version to 1.2.2
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
+- 仅影响打包版（`.exe`）的进程启动方式，源码运行与命令行界面不受影响。
+
+- No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
+- Only the process launch in the packaged (`.exe`) build changes; running from source and the CLI are unaffected.
+
+---
+
+## 🙏 Special Thanks
+
+感谢在对弈时发现并反馈「电脑走一步就闪一下窗口」的问题，并说明是在 `dist` 下的 exe 中复现，帮助快速定位到窗口模式子进程的控制台分配。
+
+Thanks for spotting and reporting the console flash on every computer move and confirming it reproduced in the `dist` exe, which quickly pointed to console allocation for child processes in windowed mode.
+
+---
+
 # v1.2.1 – Smooth Board Interaction
 
 > 本次更新专注对弈手感：棋子可以拖拽，合法落点跟随悬停高亮，走子平滑滑动，被吃子淡出，拖到非法格会滑回原位并保持选中。整体交互向 Lichess / chess.com 靠拢，不再有瞬移和硬回弹。
