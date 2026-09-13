@@ -514,6 +514,7 @@ class BoardWidget(QWidget):
         self._targets = set()
         self._animation = None
         self._drag_return = None
+        self._start_fen = None
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -538,17 +539,22 @@ class BoardWidget(QWidget):
         self._btn_last.clicked.connect(self.last)
         self._btn_flip.clicked.connect(self.flip)
 
-        nav_layout = QHBoxLayout()
+        self._nav = QWidget()
+        nav_layout = QHBoxLayout(self._nav)
+        nav_layout.setContentsMargins(0, 0, 0, 0)
         nav_layout.addWidget(self._btn_first)
         nav_layout.addWidget(self._btn_prev)
         nav_layout.addWidget(self._btn_next)
         nav_layout.addWidget(self._btn_last)
-        nav_layout.addWidget(self._btn_flip)
+
+        nav_row = QHBoxLayout()
+        nav_row.addWidget(self._nav, 1)
+        nav_row.addWidget(self._btn_flip)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._canvas, 1)
         layout.addWidget(self._step_label)
-        layout.addLayout(nav_layout)
+        layout.addLayout(nav_row)
 
         self.retranslate(self._language)
 
@@ -559,11 +565,31 @@ class BoardWidget(QWidget):
         moves = list(game.mainline_moves())
         if not moves:
             return False, t("pgn_no_moves", self._language)
+        self._start_fen = None
         self._moves = moves
         self._best_moves = {}
         self._index = 0
         self.render()
         return True, None
+
+    def set_start_fen(self, fen):
+        self._start_fen = fen or None
+        self._moves = []
+        self._best_moves = {}
+        self._index = 0
+        self.render()
+
+    def set_navigation_visible(self, visible):
+        self._nav.setVisible(bool(visible))
+
+    def set_hint(self, uci):
+        if uci:
+            self._best_moves[self._index] = uci
+            self._canvas.update()
+
+    def clear_hint(self):
+        if self._best_moves.pop(self._index, None) is not None:
+            self._canvas.update()
 
     def set_results(self, results):
         self._best_moves = {}
@@ -574,6 +600,7 @@ class BoardWidget(QWidget):
         self.render()
 
     def clear(self):
+        self._start_fen = None
         self._moves = []
         self._best_moves = {}
         self._index = 0
@@ -797,7 +824,13 @@ class BoardWidget(QWidget):
         self._stop_animation()
         self._selected = None
         self._targets = set()
-        self._board = chess.Board()
+        if self._start_fen:
+            try:
+                self._board = chess.Board(self._start_fen)
+            except ValueError:
+                self._board = chess.Board()
+        else:
+            self._board = chess.Board()
         for move in self._moves[: self._index]:
             self._board.push(move)
         self._last_move = self._moves[self._index - 1] if self._index > 0 else None

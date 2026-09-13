@@ -41,6 +41,7 @@ from checkpause.gui.dialogs import (
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
 from checkpause.gui.pages.play_page import PlayPage
+from checkpause.gui.pages.puzzle_page import PuzzlePage
 from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
@@ -51,6 +52,7 @@ from checkpause.i18n import t
 
 MODULES = (
     {"id": "play", "label_key": "nav_play"},
+    {"id": "puzzle", "label_key": "nav_puzzle"},
     {"id": "analysis", "label_key": "nav_analysis"},
 )
 
@@ -110,9 +112,12 @@ class MainWindow(QMainWindow):
         self.play_page = PlayPage()
         self.play_page.analysis_requested.connect(self._on_play_import)
 
+        self.puzzle_page = PuzzlePage()
+
         main_stack = QStackedWidget()
         main_stack.addWidget(self._analysis_view)
         main_stack.addWidget(self.play_page)
+        main_stack.addWidget(self.puzzle_page)
         self._main_stack = main_stack
         return main_stack
 
@@ -153,7 +158,7 @@ class MainWindow(QMainWindow):
         return rail
 
     def _on_module_selected(self, module_id):
-        if module_id not in ("analysis", "play"):
+        if module_id not in ("analysis", "play", "puzzle"):
             return
         self._module = module_id
         if self._stack.currentWidget() is not self._main_view:
@@ -164,6 +169,8 @@ class MainWindow(QMainWindow):
     def _show_module(self):
         if self._module == "play":
             self._main_stack.setCurrentWidget(self.play_page)
+        elif self._module == "puzzle":
+            self._main_stack.setCurrentWidget(self.puzzle_page)
         else:
             self._main_stack.setCurrentWidget(self._analysis_view)
         self._rail.set_active(self._module)
@@ -300,6 +307,7 @@ class MainWindow(QMainWindow):
         self.board.retranslate(self._language)
         self.analysis_page.retranslate(self._language)
         self.play_page.retranslate(self._language)
+        self.puzzle_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
         self.stats_page.retranslate(self._language)
         self._refresh_stats()
@@ -464,12 +472,15 @@ class MainWindow(QMainWindow):
         self.board.set_theme(self._theme)
         self.analysis_page.set_theme(self._theme)
         self.play_page.set_theme(self._theme)
+        self.puzzle_page.set_theme(self._theme)
 
     def _apply_board_preferences(self):
         self.board.set_piece_set(self._piece_set)
         self.board.set_board_theme(self._board_theme)
         self.play_page.set_piece_set(self._piece_set)
         self.play_page.set_board_theme(self._board_theme)
+        self.puzzle_page.set_piece_set(self._piece_set)
+        self.puzzle_page.set_board_theme(self._board_theme)
 
     def _change_theme(self, theme):
         if theme == self._theme:
@@ -537,6 +548,7 @@ class MainWindow(QMainWindow):
         self.analysis_page.set_progress(0)
         self.chat_page.clear_history()
         self.play_page.reset()
+        self.puzzle_page.reset()
         self._module = "analysis"
         self._refresh_stats()
         self._show_welcome()
@@ -552,4 +564,5 @@ class MainWindow(QMainWindow):
             self._chat_worker.terminate()
             self._chat_worker.wait(1000)
         self.play_page.shutdown()
+        self.puzzle_page.shutdown()
         super().closeEvent(event)

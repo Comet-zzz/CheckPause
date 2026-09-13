@@ -1,1 +1,2 @@
 pyinstaller
+zstandard  # tools/build_puzzles.py (regenerating the bundled sample)
