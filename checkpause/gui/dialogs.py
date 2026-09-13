@@ -206,6 +206,10 @@ def show_about(parent, language):
     pieces.setWordWrap(True)
     pieces.setStyleSheet("color: #8a8a8a;")
 
+    puzzles = QLabel(t("about_puzzles", language))
+    puzzles.setWordWrap(True)
+    puzzles.setStyleSheet("color: #8a8a8a;")
+
     buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
     buttons.button(QDialogButtonBox.StandardButton.Close).setText(
         t("about_close", language)
@@ -220,6 +224,7 @@ def show_about(parent, language):
     layout.addWidget(copyright_label)
     layout.addWidget(link)
     layout.addWidget(pieces)
+    layout.addWidget(puzzles)
     layout.addWidget(buttons)
 
     dialog.exec()

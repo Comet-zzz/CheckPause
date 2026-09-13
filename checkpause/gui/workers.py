@@ -4,6 +4,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.engine import StockfishAnalyzer, open_stockfish
+from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
 
@@ -85,6 +86,33 @@ class EngineMoveWorker(QThread):
             self.failed.emit(t("play_no_move", self.language))
             return
         self.move_ready.emit(result.move.uci())
+
+
+class PuzzleImportWorker(QThread):
+    progress = pyqtSignal(int)
+    done = pyqtSignal(dict)
+    failed = pyqtSignal(str, str)
+
+    def __init__(self, path, name=None, parent=None):
+        super().__init__(parent)
+        self.path = path
+        self.name = name
+
+    def run(self):
+        try:
+            meta = import_collection(
+                self.path, self.name, self._emit_progress
+            )
+        except PuzzleImportError as exc:
+            self.failed.emit(exc.code, exc.detail)
+            return
+        except Exception as exc:
+            self.failed.emit("read_error", str(exc))
+            return
+        self.done.emit(meta)
+
+    def _emit_progress(self, count):
+        self.progress.emit(count)
 
 
 class ChatWorker(QThread):
