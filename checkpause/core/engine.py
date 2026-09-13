@@ -1,4 +1,6 @@
 import io
+import os
+import subprocess
 import chess
 import chess.pgn
 import chess.engine
@@ -6,6 +8,16 @@ import chess.polyglot
 from checkpause.config import BOOK_MAX_PLIES, BOOK_MIN_WEIGHT, ENGINE_LIMIT
 from checkpause.i18n import t
 from checkpause.resources import get_opening_book_path, get_stockfish_path
+
+
+def _popen_args():
+    if os.name == "nt":
+        return {"creationflags": subprocess.CREATE_NO_WINDOW}
+    return {}
+
+
+def open_stockfish(path):
+    return chess.engine.SimpleEngine.popen_uci(path, **_popen_args())
 
 
 class StockfishAnalyzer:
@@ -19,7 +31,7 @@ class StockfishAnalyzer:
     def _start(self, language="zh-CN"):
         if self._engine is None:
             path = self.path or get_stockfish_path(language)
-            self._engine = chess.engine.SimpleEngine.popen_uci(path)
+            self._engine = open_stockfish(path)
         return self._engine
 
     def _open_book(self):
