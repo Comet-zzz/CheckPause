@@ -3,7 +3,7 @@ import chess.engine
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from checkpause.core.ai import ChatRequestError, chat_with_model
-from checkpause.core.engine import StockfishAnalyzer
+from checkpause.core.engine import StockfishAnalyzer, open_stockfish
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
 
@@ -56,7 +56,7 @@ class EngineMoveWorker(QThread):
     def run(self):
         try:
             path = get_stockfish_path(self.language)
-            engine = chess.engine.SimpleEngine.popen_uci(path)
+            engine = open_stockfish(path)
         except Exception as exc:
             self.failed.emit(str(exc))
             return
