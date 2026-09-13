@@ -1,19 +1,19 @@
 # v1.2.2 – Quiet Engine Launch
 
-> 本次更新修复了打包版在对弈时的一个恼人问题：电脑每走一步都会闪出一个控制台窗口。原因是窗口模式下每次走子都会新建一个控制台子进程来运行 Stockfish，而父进程没有控制台，Windows 便为它弹出一个新窗口。现在引擎进程以隐藏方式启动，对弈全程干净无弹窗。
+> 本次更新修复了窗口模式（`console=False`，无控制台）构建在对弈时的一个恼人问题：电脑每走一步都会闪出一个控制台窗口。原因是该构建自身没有控制台，而每次走子都会新建一个控制台子进程来运行 Stockfish，Windows 便为它分配一个新控制台窗口。现在引擎进程以隐藏方式启动，对弈全程干净无弹窗。
 >
-> This release fixes an annoying issue in the packaged build: a console window flashed on every computer move. In windowed mode each move spawned a new console-subsystem Stockfish process, and with no parent console Windows created a fresh console window for it. The engine now launches hidden, so play stays clean from start to finish.
+> This release fixes an annoying issue in the windowed, console-less build (`console=False`): a console window flashed on every computer move. Because that build has no console of its own, each move spawned a console-subsystem Stockfish process, and Windows allocated a fresh console window for it. The engine now launches hidden, so play stays clean from start to finish.
 
 ---
 
 ## 🎯 What's Fixed
 
 ### 🪟 No more console window on every engine move
-- 打包版（窗口模式）在对弈中，电脑走子不再弹出并瞬间关闭的控制台窗口。
+- 窗口模式（无控制台）构建在对弈中，电脑走子不再弹出并瞬间关闭的控制台窗口。
 - 新增统一的引擎启动封装 `open_stockfish()`，在 Windows 下以 `CREATE_NO_WINDOW` 启动 Stockfish。
 - 对弈模块与「分析」模块的引擎启动都走同一封装，行为一致。
 
-- The packaged (windowed) build no longer flashes a short-lived console window when the computer moves.
+- The windowed, console-less build no longer flashes a short-lived console window when the computer moves.
 - Added a single engine launch helper, `open_stockfish()`, which starts Stockfish with `CREATE_NO_WINDOW` on Windows.
 - Both the Play module and the Analysis module now launch the engine through the same helper for consistent behavior.
 
@@ -30,10 +30,10 @@
 ## ⚠️ Breaking Changes
 
 - 无破坏性变更。棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
-- 仅影响打包版（`.exe`）的进程启动方式，源码运行与命令行界面不受影响。
+- 仅改变 Windows 下引擎子进程的启动方式；从源码运行或带控制台运行时本就看不到该窗口，命令行界面同样不受影响。
 
 - No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
-- Only the process launch in the packaged (`.exe`) build changes; running from source and the CLI are unaffected.
+- Only how the engine child process is launched on Windows changes; running from source or with a console never showed the window, and the CLI is unaffected.
 
 ---
 
