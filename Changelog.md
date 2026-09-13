@@ -1,3 +1,102 @@
+# v1.3.0 – Puzzles and Importable Collections
+
+> 本次更新在「对弈」与「分析工具」之间新增「谜题」模块，用于做战术题。程序不预设题库内容，用户可以自行导入开源免费的题集，并且内置了一份取自 Lichess puzzle database（CC0 公共领域）的精选样例，开箱即可练手。解题支持走对继续、走错即时提示、对手自动应着、提示箭头与显示答案；导入的题集以本地 JSONL 保存并按偏移量惰性读取，再大的题库也不会一次性占满内存。
+>
+> This release adds a Puzzles module between Play and Analysis for working through tactics. The app ships no preset library of its own: users can import free, open-source puzzle collections themselves, and a curated sample from the Lichess puzzle database (CC0 public domain) is bundled so there is something to solve out of the box. Solving gives correct/wrong feedback, plays the opponent's replies automatically, and offers hints and a full reveal; imported collections are stored locally as JSONL and read lazily by byte offset, so even very large files never load into memory at once.
+
+---
+
+## 🎯 What's New
+
+### 🧩 Puzzle module
+- 侧栏新增「谜题」模块，位于「对弈」与「分析工具」之间，拥有独立页面与棋盘。
+- 点击己方棋子走正解：走对继续，走错即时提示并可重试，不会污染棋盘状态。
+- 对手应着自动播放，双方按题解交替行棋；支持升变选择与拖拽/点击走子。
+- 「提示」在棋盘上以箭头标出下一手，「显示答案」自动演示剩余解法，另有「重试」重开本题。
+- 「上一题 / 下一题」在题集内切换，右侧显示题号、难度与主题标签。
+- 走子动画、拖拽与棋盘翻转沿用对弈模块的统一交互；分析页仍保持只读浏览。
+
+- Added a Puzzles module to the rail, between Play and Analysis, with its own page and board.
+- Click a piece to play the solution: correct moves continue, wrong moves give instant feedback and can be retried without disturbing the board state.
+- Opponent replies play automatically, alternating solver and opponent down the line; promotion picking and drag-or-click moves both work.
+- Hint draws an arrow for the next move, Show solution walks through the rest, and Retry restarts the puzzle.
+- Previous / Next step through the collection, with the puzzle number, rating, and theme tags shown beside the board.
+- Move animation, dragging, and board flipping reuse the same interaction as the Play module; the analysis board stays read-only.
+
+### 📥 Import your own collections
+- 「导入题集...」支持 Lichess puzzle database 的 CSV 与含 FEN 的 PGN 题集，后续可扩展更多来源。
+- 兼容 Lichess 约定：FEN 是对方走子之前的局面，着法序列的第一手为对方着法，第二手起才是解法。
+- 大文件在后台线程流式解析并写入本地 JSONL，导入进度实时显示，界面不卡顿。
+- 题集按行偏移量惰性读取，数百万题的题库也不会在启动或切题时全量载入内存。
+- 题集列表显示来源文件名与题目数量，可随时删除。
+
+- Import collection... accepts Lichess puzzle database CSV files and FEN-based PGN collections, with room for more formats later.
+- Follows the Lichess convention: the FEN is the position before the opponent moves, the first move of the line is the opponent's, and the solution starts from the second move.
+- Large files are parsed on a background thread and streamed to local JSONL, with live import progress and a responsive interface.
+- Collections are read lazily by line offset, so multi-million-puzzle files never load fully into memory on startup or when changing puzzles.
+- The collection list shows the source name and puzzle count, and each collection can be deleted at any time.
+
+### 🎁 Bundled Lichess sample
+- 内置一份取自 Lichess puzzle database（CC0 公共领域）的精选样例：2000 道题，约 440 KB，难度覆盖 399–3177。
+- 通过 `tools/build_puzzles.py` 可复现该样例：HTTP Range 只下载题库开头数 MB，按难度分层抽样、过滤低质量题目，并逐题校验解法合法可解。
+- 内置题集同样可以删除；删除后会记住选择，不再自动出现，用户也可重新导入完整题库。
+
+- Bundled a curated sample from the Lichess puzzle database (CC0 public domain): 2,000 puzzles in about 440 KB, spanning ratings 399–3177.
+- The sample is reproducible via `tools/build_puzzles.py`, which downloads only the first few megabytes via an HTTP range request, samples across rating bands, filters out low-quality entries, and validates that every solution is legal and solvable.
+- The bundled collection can be deleted like any other; the choice is remembered so it does not reappear automatically, and users can import the full database whenever they want.
+
+### ♟️ Board and internals
+- `BoardWidget` 支持任意 FEN 起始局面、临时隐藏导航按钮，以及提示箭头。
+- 新增 `PuzzleSession`（纯逻辑，负责题解与对错判定）与 `PuzzleImportWorker`（后台导入线程）。
+- 中英文文案补齐；「关于」新增谜题来源与 CC0 说明。
+
+- `BoardWidget` gained arbitrary starting FENs, a toggle for the navigation row, and hint arrows.
+- Added `PuzzleSession` (pure logic for the solution and correctness checks) and `PuzzleImportWorker` (a background import thread).
+- Added Chinese and English strings, plus a puzzle source and CC0 note in About.
+
+---
+
+## 🛠️ Full Changelog
+- feat(puzzle): add the Puzzle module between Play and Analysis
+- feat(puzzle): solve puzzles with wrong-move feedback, automatic opponent replies, hints, and reveal
+- feat(puzzle): import Lichess CSV and FEN-based PGN collections
+- feat(puzzle): stream large imports to JSONL with a lazy byte-offset reader
+- feat(puzzle): bundle a curated 2,000-puzzle sample from the Lichess database (CC0)
+- feat(tools): add `tools/build_puzzles.py` to rebuild the bundled sample
+- feat(board): support arbitrary starting FENs, hint arrows, and a toggleable navigation row
+- feat(gui): register the Puzzle module in the module rail and wire theme/board/language prefs
+- feat(i18n): add Chinese and English strings for the Puzzle module
+- feat(about): credit the Lichess puzzle database (CC0)
+- refactor(board): keep a start FEN so positions can begin outside the standard game
+- chore(build): add `zstandard` to `requirements-build.txt` for regenerating the sample
+- chore(version): bump the app version to 1.3.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。`profile.json`、棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
+- 新增用户数据目录 `%APPDATA%\CheckPause\puzzles\`，仅在导入题集或删除内置题集时创建。
+- 内置题集为只读资源，删除记录写入 `puzzles\index.json`；如需恢复，删除该文件即可。
+- 打包体积约增加 0.5 MB（内置题集），`CheckPause.spec` 会随 `assets` 一并打包，无需改动。
+- 从源码重建内置题集需要 `pip install zstandard`，仅构建期使用，运行时不依赖。
+
+- No breaking changes. `profile.json`, piece/board preferences, themes, API settings, and statistics keep working.
+- A new user data folder, `%APPDATA%\CheckPause\puzzles\`, is created only when importing a collection or deleting the bundled one.
+- The bundled collection is a read-only resource; deleting it writes a marker to `puzzles\index.json`, and removing that file restores it.
+- The package grows by roughly 0.5 MB (the bundled sample); `CheckPause.spec` already ships `assets`, so no packaging change is needed.
+- Rebuilding the bundled sample from source needs `pip install zstandard`; it is build-time only and never required at runtime.
+
+---
+
+## 🙏 Special Thanks
+
+感谢提出「在对弈与分析之间加一个谜题模块」的设想，并坚持「不预设题库、由用户自行导入」的方向，也感谢在细节上要求去掉多余提示、让默认题集可删除，使这个模块保持了轻量、开放而不打扰。
+
+Thanks for proposing a Puzzle module between Play and Analysis and for insisting that no puzzle library be preset — users should bring their own. Thanks as well for trimming the redundant prompt and making the bundled collection removable, which kept this module lightweight, open, and unobtrusive.
+
+---
+
 # v1.2.2 – Quiet Engine Launch
 
 > 本次更新修复了窗口模式（`console=False`，无控制台）构建在对弈时的一个恼人问题：电脑每走一步都会闪出一个控制台窗口。原因是该构建自身没有控制台，而每次走子都会新建一个控制台子进程来运行 Stockfish，Windows 便为它分配一个新控制台窗口。现在引擎进程以隐藏方式启动，对弈全程干净无弹窗。
