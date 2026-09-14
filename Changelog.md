@@ -1,3 +1,40 @@
+# v1.3.1 – Tidier First Run
+
+> 本次更新只是小幅整理：整体流程更符合逻辑，界面也更整洁。
+>
+> A small housekeeping release: the flow is more logical and the interface tidier.
+
+---
+
+## 🎯 What's Changed
+- 对首次进入的流程与默认外观做了整理，整体更符合逻辑、更整洁。
+
+- Tidied up the first-run flow and default appearance for a more logical, cleaner experience.
+
+---
+
+## 🛠️ Full Changelog
+- refactor(gui): make the first-run flow more logical and the interface tidier
+- chore(version): bump the app version to 1.3.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+## 🙏 Special Thanks
+
+感谢对首次运行体验的反馈。
+
+Thanks for the feedback on the first-run experience.
+
+---
+
 # v1.3.0 – Puzzles and Importable Collections
 
 > 本次更新在「对弈」与「分析工具」之间新增「谜题」模块，用于做战术题。程序不预设题库内容，用户可以自行导入开源免费的题集，并且内置了一份取自 Lichess puzzle database（CC0 公共领域）的精选样例，开箱即可练手。解题支持走对继续、走错即时提示、对手自动应着、提示箭头与显示答案；导入的题集以本地 JSONL 保存并按偏移量惰性读取，再大的题库也不会一次性占满内存。
@@ -91,9 +128,9 @@
 
 ## 🙏 Special Thanks
 
-感谢提出「在对弈与分析之间加一个谜题模块」的设想，并坚持「不预设题库、由用户自行导入」的方向，也感谢在细节上要求去掉多余提示、让默认题集可删除，使这个模块保持了轻量、开放而不打扰。
+感谢对谜题模块的反馈。
 
-Thanks for proposing a Puzzle module between Play and Analysis and for insisting that no puzzle library be preset — users should bring their own. Thanks as well for trimming the redundant prompt and making the bundled collection removable, which kept this module lightweight, open, and unobtrusive.
+Thanks for the feedback on the Puzzle module.
 
 ---
 
@@ -138,9 +175,9 @@ Thanks for proposing a Puzzle module between Play and Analysis and for insisting
 
 ## 🙏 Special Thanks
 
-感谢在对弈时发现并反馈「电脑走一步就闪一下窗口」的问题，并说明是在 `dist` 下的 exe 中复现，帮助快速定位到窗口模式子进程的控制台分配。
+感谢反馈窗口模式构建下的控制台闪烁问题。
 
-Thanks for spotting and reporting the console flash on every computer move and confirming it reproduced in the `dist` exe, which quickly pointed to console allocation for child processes in windowed mode.
+Thanks for reporting the console flash in the windowed build.
 
 ---
 
@@ -197,9 +234,9 @@ Thanks for spotting and reporting the console flash on every computer move and c
 
 ## 🙏 Special Thanks
 
-感谢指出走子手感生硬，并给出「像 Lichess / chess.com 那样顺滑」的具体参照，让这次更新聚焦在拖拽、悬停与动画这些真正影响手感的细节上。
+感谢对棋盘操作手感的反馈。
 
-Thanks for calling out the stiff piece movement and pointing at Lichess and chess.com as the bar to clear — this release focused on the drag, hover, and animation details that actually change how the board feels.
+Thanks for the feedback on how the board feels.
 
 ---
 
@@ -276,9 +313,9 @@ Thanks for calling out the stiff piece movement and pointing at Lichess and ches
 
 ## 🙏 Special Thanks
 
-感谢从侧栏形态讨论之初就提出的「对弈」模块设想，以及围绕点击走子、难度分档与换边体验给出的建议，让这个外壳第一次真正住进了第二个模块。
+感谢对「对弈」模块的反馈。
 
-Thanks for proposing the Play module back when the rail was first discussed, and for the ideas around click-to-move, difficulty tiers, and switching sides — this release finally moves a second module into the shell.
+Thanks for the feedback on the Play module.
 
 ---
 
@@ -333,9 +370,9 @@ Thanks for proposing the Play module back when the rail was first discussed, and
 
 ## 🙏 Special Thanks
 
-感谢对左侧导航的构思与反馈——从侧栏形态的反复讨论，到最终收敛为只保留必要模块的简洁外壳，也感谢对关闭确认等细节体验的推动。
+感谢对左侧导航与关闭确认的反馈。
 
-Thanks for shaping the left navigation—from early sidebar discussions to a lean shell with only the modules that matter—and for pushing the close-confirmation and other small UX details.
+Thanks for the feedback on the left navigation and close confirmation.
 
 ---
 
@@ -525,9 +562,9 @@ Thanks for shaping the left navigation—from early sidebar discussions to a lea
 
 ## 🙏 Special Thanks
 
-感谢一路推动 CheckPause 从命令行走向图形界面，并提出可点击着法列表、翻转棋盘、表现评级、开局谱库、可配置 API、个性化外观与打包分发等想法，帮助这个项目逐步成为一个可以分享的桌面应用。
+感谢 1.0 开发期间的测试与反馈。
 
-Thanks for pushing CheckPause from the command line toward a graphical interface, and for suggesting the clickable move list, board flip, performance ratings, opening book, configurable API, personalization, and packaging. Every round of feedback helped turn this project into a shareable desktop app.
+Thanks for the testing and feedback during the 1.0 development.
 
 ---
 
@@ -590,9 +627,9 @@ Thanks for pushing CheckPause from the command line toward a graphical interface
 
 ## 🙏 Special Thanks
 
-感谢持续反馈 CLI 体验并帮助 CP 变得更友好。
+感谢对命令行界面体验的反馈。
 
-Thanks for helping make CP more accessible and user-friendly.
+Thanks for the feedback on the CLI experience.
 
 ---
 
@@ -673,6 +710,6 @@ Thanks for helping make CP more accessible and user-friendly.
 
 ## 🙏 Special Thanks
 
-感谢持续测试 CP、反馈响应速度问题，并帮助项目逐步变得更稳定、更易用。
+感谢测试与反馈。
 
-Thanks for continuing to test CP and reporting response-time and setup issues. Every round of feedback makes the project more reliable and easier to use.
+Thanks for the testing and feedback.
