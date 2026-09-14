@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QVBoxLayout,
 )
 
-from checkpause import AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
+from checkpause import APP_VERSION, AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
 from checkpause.i18n import t
 
 
@@ -192,6 +192,11 @@ def show_about(parent, language):
     body = QLabel(t("about_text", language).split("\n", 1)[-1])
     body.setWordWrap(True)
 
+    version = QLabel(t("about_version", language, version=APP_VERSION))
+    version_font = version.font()
+    version_font.setBold(True)
+    version.setFont(version_font)
+
     author = QLabel(t("about_author", language, author=AUTHOR))
     copyright_label = QLabel(
         t("about_copyright", language, year=COPYRIGHT_YEAR, author=AUTHOR)
@@ -218,6 +223,7 @@ def show_about(parent, language):
 
     layout = QVBoxLayout(dialog)
     layout.addWidget(title)
+    layout.addWidget(version)
     layout.addWidget(body)
     layout.addSpacing(8)
     layout.addWidget(author)
