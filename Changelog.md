@@ -120,15 +120,6 @@
 - 无破坏性变更。
 
 - No breaking changes.
-
----
-
-## 🙏 Special Thanks
-
-感谢对首次运行体验的反馈。
-
-Thanks for the feedback on the first-run experience.
-
 ---
 
 # v1.3.0 – Puzzles and Importable Collections
@@ -219,15 +210,6 @@ Thanks for the feedback on the first-run experience.
 - The bundled collection is a read-only resource; deleting it writes a marker to `puzzles\index.json`, and removing that file restores it.
 - The package grows by roughly 0.5 MB (the bundled sample); `CheckPause.spec` already ships `assets`, so no packaging change is needed.
 - Rebuilding the bundled sample from source needs `pip install zstandard`; it is build-time only and never required at runtime.
-
----
-
-## 🙏 Special Thanks
-
-感谢对谜题模块的反馈。
-
-Thanks for the feedback on the Puzzle module.
-
 ---
 
 # v1.2.2 – Quiet Engine Launch
@@ -266,15 +248,6 @@ Thanks for the feedback on the Puzzle module.
 
 - No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
 - Only how the engine child process is launched on Windows changes; running from source or with a console never showed the window, and the CLI is unaffected.
-
----
-
-## 🙏 Special Thanks
-
-感谢反馈窗口模式构建下的控制台闪烁问题。
-
-Thanks for reporting the console flash in the windowed build.
-
 ---
 
 # v1.2.1 – Smooth Board Interaction
@@ -325,15 +298,6 @@ Thanks for reporting the console flash in the windowed build.
 
 - No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
 - The analysis board stays read-only; dragging and animations only run in the Play module.
-
----
-
-## 🙏 Special Thanks
-
-感谢对棋盘操作手感的反馈。
-
-Thanks for the feedback on how the board feels.
-
 ---
 
 # v1.2.0 – Play Against the Computer
@@ -404,15 +368,6 @@ Thanks for the feedback on how the board feels.
 
 - No breaking changes. Existing `profile.json`, piece/board preferences, API settings, and statistics keep working.
 - Play uses the Stockfish binary bundled with the app; no extra installation is needed.
-
----
-
-## 🙏 Special Thanks
-
-感谢对「对弈」模块的反馈。
-
-Thanks for the feedback on the Play module.
-
 ---
 
 # v1.1.0 – Module Rail and Close Confirmation
@@ -461,15 +416,6 @@ Thanks for the feedback on the Play module.
 
 - No breaking changes. Existing `profile.json`, piece/board preferences, and API settings keep working.
 - The entry point and module paths (`run_gui.py`, `checkpause.*`) are unchanged.
-
----
-
-## 🙏 Special Thanks
-
-感谢对左侧导航与关闭确认的反馈。
-
-Thanks for the feedback on the left navigation and close confirmation.
-
 ---
 
 # v1.0.0 – Graphical Interface, Move List, Personalization, and Performance
@@ -490,7 +436,6 @@ Thanks for the feedback on the left navigation and close confirmation.
 - Added the `run_gui.py` entry and reorganised the code into the `checkpause` package; the CLI stays available under `cli/`.
 - Board on the left, with Import / Analysis / Statistics tabs; the menu bar shares the same button styling as the tabs.
 - Open PGN files, watch an analysis progress bar, and review results; paste a PGN straight into the Import tab without the redundant "PGN game" heading.
-
 
 ### 🧵 Background workers
 - `StockfishAnalyzer` 改为可复用类，支持进度、逐步和停止回调。
@@ -653,15 +598,6 @@ Thanks for the feedback on the left navigation and close confirmation.
 - History is still stored as numeric accuracy; the stats summary keeps accuracy numbers and the table shows a centered Performance column.
 - Ship the whole `dist\CheckPause` folder; each user must provide their own API key.
 - Piece sets keep their own licenses (GPLv2+, Apache-2.0, MIT, CC BY, CC0); keep the attributions when redistributing.
-
----
-
-## 🙏 Special Thanks
-
-感谢 1.0 开发期间的测试与反馈。
-
-Thanks for the testing and feedback during the 1.0 development.
-
 ---
 
 # v0.3.1 – Bilingual CLI and Persistent Language Preferences
@@ -718,15 +654,6 @@ Thanks for the testing and feedback during the 1.0 development.
 
 - No breaking changes.
 - Existing `profile.json` files remain compatible and default to Chinese when no language is configured.
-
----
-
-## 🙏 Special Thanks
-
-感谢对命令行界面体验的反馈。
-
-Thanks for the feedback on the CLI experience.
-
 ---
 
 # v0.3 – Reliable AI, Easier Setup, Cleaner Architecture
@@ -801,11 +728,3 @@ Thanks for the feedback on the CLI experience.
 - PyCharm should use the project virtual environment:
   `D:\PycharmProjects\CheckPause-Alpha\.venv\Scripts\python.exe`
 - A valid `DEEPSEEK_API_KEY` is still required in `.env`.
-
----
-
-## 🙏 Special Thanks
-
-感谢测试与反馈。
-
-Thanks for the testing and feedback.
