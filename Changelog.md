@@ -656,7 +656,7 @@
 - Existing `profile.json` files remain compatible and default to Chinese when no language is configured.
 ---
 
-# v0.3 – Reliable AI, Easier Setup, Cleaner Architecture
+# v0.3.0 – Reliable AI, Easier Setup, Cleaner Architecture
 
 > 本次更新聚焦于 **稳定性**、**配置体验** 和 **代码结构**。CP 现在使用最新可用的 DeepSeek Flash 模型，并能更好地处理网络、API 和 Stockfish 配置问题。
 >
