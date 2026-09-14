@@ -19,7 +19,6 @@ from checkpause.data.puzzles import (
     delete_collection,
     list_collections,
 )
-from checkpause.gui.dialogs import promotion_dialog
 from checkpause.gui.widgets.board_widget import BoardWidget
 from checkpause.gui.workers import PuzzleImportWorker
 from checkpause.i18n import t
@@ -235,7 +234,9 @@ class PuzzlePage(QWidget):
             and piece.piece_type == chess.PAWN
             and chess.square_rank(to_square) in (0, 7)
         ):
-            promotion = promotion_dialog(self, self._language)
+            promotion = self.board.promotion_choice(
+                to_square, piece.color
+            )
             if promotion is None:
                 self.board.clear_selection()
                 return
