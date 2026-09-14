@@ -1,3 +1,54 @@
+# v1.3.3 – Pause, Endgames, and a Cleaner Promotion
+
+> 本次更新让对弈更可控：计时对局可以暂停，开局下方新增可自选的常见残局，时钟在你走出第一步前不会开始，升变改用 Lichess 风格的棋盘内联弹窗。
+>
+> This release makes Play more controllable: timed games can be paused, a set of common endgames joins the pickers, the clock waits for your first move, and promotion now uses an inline, Lichess-style picker.
+
+---
+
+## 🎯 What's New
+
+### ⏸️ Pause a game
+- 计时对局的两个时钟之间新增「暂停 / 继续」：暂停时停表并锁定走子，继续后恢复计时；未启用计时时不会显示。
+
+- A Pause / Resume button now sits between the two clocks in timed games: it stops the clock and locks the board, resumes cleanly, and stays hidden when no clock is running.
+
+### ♟️ Endgame practice
+- 「开局」下方新增「残局」，内置后对单王、单车对单王、双车对单王、双象对单王、兵升变、王兵对王、后对车、后对兵升变八个常见残局，选中即从该局面开始对弈，并与开局互斥。
+
+- Added an Endgame picker below Opening with eight common positions (queen, rook, two rooks, two bishops, pawn promotion, king and pawn, queen vs rook, queen vs pawn); picking one starts from that position and clears any opening line.
+
+### ⏱️ Clock waits for the first move
+- 尚未走子时双方时钟不会开始计时，走出第一手后才开始走表。
+
+- The clock no longer starts before your first move; it begins once a move is played.
+
+### ♟️ Inline promotion
+- 升变改为锚定升变格的棋盘内联弹窗，按当前棋子集与棋盘配色显示后、车、象、马，悬停高亮，点击选择，Esc 或点击外部取消。
+
+- Promotion is now an inline popup anchored to the promoting square, showing queen, rook, bishop, and knight in the current piece set and board colors, with hover highlight, click to pick, and Esc or click-away to cancel.
+
+---
+
+## 🛠️ Full Changelog
+- feat(play): add a pause/resume control for timed games
+- feat(play): add a selectable set of common endgames
+- fix(play): keep the clock stopped until the first move
+- feat(board): render an inline Lichess-style promotion picker
+- fix(board): honour the PGN start FEN for positions and imports
+- test: cover the bundled endgame positions
+- chore(version): bump the app version to 1.3.3
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
 # v1.3.2 – Clocks, Openings, and a Version Label
 
 > 本次更新让「对弈」更接近真实棋局：新增可选的计时模式与开局选择，同时「关于」对话框会显示当前版本号。

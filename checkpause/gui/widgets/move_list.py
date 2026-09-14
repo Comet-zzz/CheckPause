@@ -47,7 +47,7 @@ class MoveListWidget(QWidget):
         game = chess.pgn.read_game(io.StringIO(pgn_text))
         if game is None:
             return False
-        board = chess.Board()
+        board = game.board()
         sans = []
         for move in game.mainline_moves():
             sans.append(board.san(move))
