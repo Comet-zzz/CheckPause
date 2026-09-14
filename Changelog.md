@@ -1,3 +1,48 @@
+# v1.3.2 – Clocks, Openings, and a Version Label
+
+> 本次更新让「对弈」更接近真实棋局：新增可选的计时模式与开局选择，同时「关于」对话框会显示当前版本号。
+>
+> This release makes Play feel like a real game: optional time controls and opening selection, plus the current version shown in About.
+
+---
+
+## 🎯 What's New
+
+### ⏱️ Time controls
+- 「对弈」新增「计时」选项，内置无限制、1+0、3+0、3+2、5+0、5+3、10+0、10+5、15+10、30+0 等常见模式。
+- 棋盘上方显示双方剩余时间，走子后按模式加秒，超时即判负；离开对弈页面时自动暂停。
+
+- Play now offers a Clock option with common modes: Unlimited, 1+0, 3+0, 3+2, 5+0, 5+3, 10+0, 10+5, 15+10, and 30+0.
+- Both players' remaining time is shown above the board, increments are added after each move, running out of time loses the game, and the clock pauses while you are away from Play.
+
+### 📖 Opening selection
+- 「对弈」新增「开局」选项，可直接选一个开局并从该局面的终局开始对弈，开局着法会出现在着法列表中。
+
+- Play now offers an Opening option: pick an opening and start from its final position, with the opening moves listed in the move list.
+
+### ℹ️ Version in About
+- 「帮助 → 关于」现在会显示当前版本号，中英文界面均已适配。
+
+- Help → About now shows the current version number in both Chinese and English.
+
+---
+
+## 🛠️ Full Changelog
+- feat(play): add selectable time controls with a running clock
+- feat(play): allow starting a game from a chosen opening
+- feat(about): show the current app version
+- chore(version): bump the app version to 1.3.2
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
 # v1.3.1 – Tidier First Run
 
 > 本次更新只是小幅整理：整体流程更符合逻辑，界面也更整洁。

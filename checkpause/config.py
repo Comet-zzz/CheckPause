@@ -22,6 +22,20 @@ ENGINE_PLAY_LEVELS = (
 )
 DEFAULT_PLAY_LEVEL = "medium"
 
+PLAY_TIME_CONTROLS = (
+    {"id": "unlimited", "base": None, "increment": 0},
+    {"id": "bullet_1_0", "base": 60, "increment": 0},
+    {"id": "blitz_3_0", "base": 180, "increment": 0},
+    {"id": "blitz_3_2", "base": 180, "increment": 2},
+    {"id": "blitz_5_0", "base": 300, "increment": 0},
+    {"id": "blitz_5_3", "base": 300, "increment": 3},
+    {"id": "rapid_10_0", "base": 600, "increment": 0},
+    {"id": "rapid_10_5", "base": 600, "increment": 5},
+    {"id": "rapid_15_10", "base": 900, "increment": 10},
+    {"id": "classical_30_0", "base": 1800, "increment": 0},
+)
+DEFAULT_PLAY_TIME = "unlimited"
+
 SYSTEM_PROMPT = "Please answer user's questions based on the provided PGN game and Stockfish analysis data."
 
 USER_PROMPT_TEMPLATE = """This is the PGN game and Stockfish analysis data:

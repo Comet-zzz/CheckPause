@@ -20,8 +20,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
   AI explanations: streamed answers based on engine data, with follow-up questions like a real coach; works with DeepSeek, OpenAI, OpenRouter, and local models.
 - **可点击着法列表**：点击任意着法跳转局面并高亮当前步，分析过程中高亮随进度移动；支持翻转棋盘与引擎最佳着法箭头。  
   Clickable move list: jump to any position and highlight the current ply; the board also shows engine best-move arrows and can be flipped.
-- **人机对弈**：侧栏「对弈」模块可直接与 Stockfish 下棋，点击走子、执白/执黑、五档难度、悔棋、认输、升变选择与棋步回看，并可一键把整盘棋送入分析。  
-  Play against the computer: the Play module takes on Stockfish with click-to-move, White/Black, five difficulty levels, undo, resign, promotion picking, and move review — plus one-click send to analysis.
+- **人机对弈**：侧栏「对弈」模块可直接与 Stockfish 下棋，点击走子、执白/执黑、五档难度、多种计时模式（1+0 到 30+0，含加秒与无限制）、可选开局、悔棋、认输、升变选择与棋步回看，并可一键把整盘棋送入分析。  
+  Play against the computer: the Play module takes on Stockfish with click-to-move, White/Black, five difficulty levels, common time controls (1+0 through 30+0, with increments or unlimited), selectable openings, undo, resign, promotion picking, and move review — plus one-click send to analysis.
 - **谜题训练**：在「对弈」与「分析」之间新增谜题模块，内置一份 Lichess 精选样例可直接练手，也可导入自己的开源题集（Lichess CSV、含 FEN 的 PGN）；支持走对继续、走错提示、提示箭头、显示答案与难度/主题展示，导入大题库时按需惰性读取。  
   Puzzle training: a Puzzles module between Play and Analysis ships with a Lichess sample and accepts your own open collections (Lichess CSV, FEN-based PGN), with correct/wrong feedback, hints, reveal, and rating/theme display; large collections are read lazily.
 - **表现评级与成长档案**：五档评级（卓越 / 精准 / 稳健 / 平均 / 欠考虑），统计页记录每盘棋的准确度与历史趋势。  
@@ -37,8 +37,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows 用户 / Windows users
 
-1. 从文末「下载」获取 `CheckPause-v1.3.1-windows-x64.zip`；  
-   Get `CheckPause-v1.3.1-windows-x64.zip` from the Download section at the end of this file.
+1. 从文末「下载」获取 `CheckPause-v1.3.2-windows-x64.zip`；  
+   Get `CheckPause-v1.3.2-windows-x64.zip` from the Download section at the end of this file.
 2. 解压到任意目录（请解压整个文件夹，Stockfish、开局库和棋子资源都在里面）；  
    Unzip the whole folder — Stockfish, the opening book, and piece assets are bundled inside.
 3. 双击 `CheckPause.exe` 启动，首次使用会要求设置用户名和界面语言；  
@@ -147,10 +147,10 @@ python -m unittest discover -s tests -v   # 单元测试
 
 ## ⬇️ 下载 / Download
 
-**最新版 / Latest: CheckPause v1.3.1（Windows x64）**
+**最新版 / Latest: CheckPause v1.3.2（Windows x64）**
 
-- 📦 [CheckPause-v1.3.1-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.3.1/CheckPause-v1.3.1-windows-x64.zip)（123.8 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`4FFBABB93AC928BD2F0D05059A3DD60DB31AE51E61EA832E75FD07F1AC190008`
+- 📦 [CheckPause-v1.3.2-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.3.2/CheckPause-v1.3.2-windows-x64.zip)（123.8 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`335DCCD303200B9F11CD1221BB34E6E2A684FED9A89A75779D54A7982D6ABD08`
 - 解压后双击 `CheckPause.exe` 即可运行；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
   Unzip and run `CheckPause.exe`. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
