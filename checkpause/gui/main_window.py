@@ -247,8 +247,13 @@ class MainWindow(QMainWindow):
         )
         self._menu_help.addAction(self._act_about)
 
+    def _set_chrome_visible(self, visible):
+        self.menuBar().setVisible(visible)
+        self._rail.setVisible(visible)
+
     def _enter_main(self):
         self._language = (self.profile or {}).get("language", "zh-CN")
+        self._set_chrome_visible(True)
         self._stack.setCurrentWidget(self._main_view)
         self._show_module()
         self._retranslate()
@@ -256,6 +261,7 @@ class MainWindow(QMainWindow):
 
     def _show_welcome(self):
         self.setWindowTitle(t("app_title", self._language))
+        self._set_chrome_visible(False)
         self._welcome.prepare(self._language)
         self._stack.setCurrentWidget(self._welcome)
         self._rail.set_active(None)
