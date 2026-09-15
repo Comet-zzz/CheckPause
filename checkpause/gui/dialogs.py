@@ -1,4 +1,5 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -197,3 +198,33 @@ def show_about(parent, language):
     layout.addWidget(buttons)
 
     dialog.exec()
+
+
+def show_update_dialog(parent, language, info):
+    """Offer a link to a newer release. Returns True when the user accepted."""
+    box = QMessageBox(parent)
+    box.setWindowTitle(t("update_title", language))
+    box.setIcon(QMessageBox.Icon.Information)
+    box.setText(
+        t(
+            "update_available",
+            language,
+            version=info.version,
+            current=APP_VERSION,
+        )
+    )
+    if info.notes:
+        box.setInformativeText(info.notes)
+
+    download = box.addButton(
+        t("update_download", language), QMessageBox.ButtonRole.AcceptRole
+    )
+    box.addButton(
+        t("update_later", language), QMessageBox.ButtonRole.RejectRole
+    )
+    box.exec()
+
+    if box.clickedButton() is not download:
+        return False
+    QDesktopServices.openUrl(QUrl(info.url))
+    return True

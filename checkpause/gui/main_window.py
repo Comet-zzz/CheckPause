@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import Qt, QTimer
 from PyQt6.QtGui import QAction, QActionGroup
 from PyQt6.QtWidgets import (
     QApplication,
@@ -30,13 +30,19 @@ from checkpause.data.profile import (
     set_theme,
     update_profile,
 )
-from checkpause.data.settings import get_api_config, save_api_config
+from checkpause.data.settings import (
+    get_api_config,
+    get_skipped_update,
+    save_api_config,
+    set_skipped_update,
+)
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
     confirm_close_dialog,
     confirm_delete_dialog,
     show_about,
+    show_update_dialog,
 )
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
@@ -47,7 +53,7 @@ from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.module_rail import ModuleRail
-from checkpause.gui.workers import AnalysisWorker, ChatWorker
+from checkpause.gui.workers import AnalysisWorker, ChatWorker, UpdateCheckWorker
 from checkpause.i18n import t
 
 MODULES = (
@@ -74,6 +80,7 @@ class MainWindow(QMainWindow):
         self._current_pgn = ""
         self._analysis_worker = None
         self._chat_worker = None
+        self._update_worker = None
         self._module = "analysis"
 
         self._stack = QStackedWidget()
@@ -106,6 +113,21 @@ class MainWindow(QMainWindow):
         self._apply_theme()
         self._apply_board_preferences()
         self.resize(1164, 726)
+
+        # Delayed so the window is on screen before any prompt can appear.
+        QTimer.singleShot(2500, self._check_for_update)
+
+    def _check_for_update(self):
+        worker = UpdateCheckWorker(self)
+        worker.found.connect(self._on_update_found)
+        self._update_worker = worker
+        worker.start()
+
+    def _on_update_found(self, info):
+        if info.version == get_skipped_update():
+            return
+        if not show_update_dialog(self, self._language, info):
+            set_skipped_update(info.version)
 
     def _build_main_view(self):
         self._analysis_view = self._build_analysis_view()

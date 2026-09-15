@@ -79,6 +79,11 @@ MESSAGES = {
     "about_puzzles": "内置谜题精选自 Lichess puzzle database（CC0 公共领域），仅包含少量样例，用户可自行导入更多题集。",
     "about_close": "关闭",
 
+    "update_title": "发现新版本",
+    "update_available": "发现新版本 {version}，你当前使用的是 {current}。",
+    "update_download": "前往下载",
+    "update_later": "稍后",
+
     "welcome_title": "欢迎使用 CheckPause",
     "welcome_intro": "首次使用，请设置你的用户名和界面语言",
     "welcome_back_title": "欢迎回来，{username}",

@@ -79,6 +79,11 @@ MESSAGES = {
     "about_close": "Close",
     "about_puzzles": "The bundled puzzle sample is curated from the Lichess puzzle database (CC0 public domain); only a small selection is included, and users can import more collections.",
 
+    "update_title": "Update available",
+    "update_available": "CheckPause {version} is available; you are running {current}.",
+    "update_download": "Download",
+    "update_later": "Later",
+
     "welcome_title": "Welcome to CheckPause",
     "welcome_intro": "First-time setup. Please set your username and interface language",
     "welcome_back_title": "Welcome back, {username}",
