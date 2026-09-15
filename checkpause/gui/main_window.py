@@ -88,6 +88,7 @@ class MainWindow(QMainWindow):
 
         self._build_menus()
         self._rail = self._build_rail()
+        self._sync_side_panels()
 
         shell = QWidget()
         shell_layout = QHBoxLayout(shell)
@@ -156,6 +157,12 @@ class MainWindow(QMainWindow):
         rail.module_selected.connect(self._on_module_selected)
         rail.retranslate(self._language)
         return rail
+
+    def _sync_side_panels(self):
+        panels = (self.tabs, self.play_page.panel, self.puzzle_page.panel)
+        target = max(panel.minimumSizeHint().width() for panel in panels)
+        for panel in panels:
+            panel.setMinimumWidth(target)
 
     def _on_module_selected(self, module_id):
         if module_id not in ("analysis", "play", "puzzle"):
@@ -316,6 +323,7 @@ class MainWindow(QMainWindow):
         self.puzzle_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
         self.stats_page.retranslate(self._language)
+        self._sync_side_panels()
         self._refresh_stats()
 
     def _refresh_stats(self):

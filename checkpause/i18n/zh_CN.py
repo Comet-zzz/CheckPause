@@ -171,7 +171,7 @@ MESSAGES = {
     "play_new_game": "新对局",
     "play_undo": "悔棋",
     "play_resign": "认输",
-    "play_import": "导入分析",
+    "play_import": "导入分析工具",
     "play_result_win": "你赢了！",
     "play_result_lose": "电脑获胜",
     "play_result_draw": "和棋",
