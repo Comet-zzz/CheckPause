@@ -1,3 +1,57 @@
+# v1.5.1 – Rating Slider
+
+> 对弈难度从五档下拉框换成了一条 100–3000 的等级分滑条，拖到哪就是哪：1320 分及以上由 Stockfish 官方的 Elo 限制器标定，更低分段用 Skill Level 与节点上限近似。难度与计时对调了位置，难度独享一整行；引擎思考量也从「秒数」改成「节点数」，同一档位不再因电脑快慢而变强变弱。
+>
+> Play difficulty becomes a 100–3000 rating slider instead of a five-item dropdown: at 1320 and above it is calibrated by Stockfish's own Elo limiter, while lower ratings are approximated with Skill Level and a node cap. Level and Clock traded places, Level now gets a full row of its own, and search effort is measured in nodes instead of seconds so a level no longer drifts with your CPU speed.
+
+---
+
+## 🎯 What's Changed
+
+### 🎚️ Rating slider
+- 难度改为独占一行的滑条，范围 100–3000、步长 50，右侧实时显示当前分数，悬停提示对应档位名（入门 / 简单 / 中等 / 困难 / 大师）；计时上移到「我方」右侧，与难度对调位置。
+
+- Level is now a full-width slider spanning 100–3000 in steps of 50, showing the current rating beside it with a tooltip naming the tier (Beginner / Easy / Medium / Hard / Master). Clock moved up beside Play as, trading places with Level.
+
+### 🎯 Calibrated strength
+- 1320 分及以上直接使用 Stockfish 的 `UCI_LimitStrength` + `UCI_Elo`，是引擎自报的真实等级分；1320 以下用 `Skill Level` 加节点上限近似，界面提示里明确标注为近似值。
+
+- Ratings at 1320 and above use Stockfish's `UCI_LimitStrength` + `UCI_Elo`, the engine's own calibrated rating. Below 1320 the level is approximated with `Skill Level` plus a node cap, and the tooltip says so outright.
+
+### 🖥️ Same strength on every machine
+- 引擎思考量由「秒数」改为「节点数」：快机只是想得更快，不会因此更深，同一档位在任何电脑上都是同一个对手。
+
+- Search effort is now bounded by nodes rather than seconds: a faster machine only thinks faster, not deeper, so a given rating is the same opponent everywhere.
+
+### 🛡️ Safe fallback
+- 启动时读取引擎自报的 `UCI_Elo` 上下限并据此钳制映射；若引擎根本不提供该选项，则全程改用 Skill Level 近似，不会出现「显示 800 分却按满强度走子」。
+
+- The engine's own `UCI_Elo` bounds are read on startup and used to clamp the mapping. Engines without that option fall back to the Skill Level approximation instead of quietly playing at full strength under a low rating.
+
+---
+
+## 🛠️ Full Changelog
+- feat(play): replace the five-item level dropdown with a 100-3000 rating slider
+- feat(play): drive ratings of 1320+ through UCI_LimitStrength and UCI_Elo
+- feat(play): approximate lower ratings with Skill Level and a node cap
+- feat(play): bound engine search by nodes so a level is machine-independent
+- feat(play): probe the engine's UCI_Elo bounds and fall back without it
+- feat(play): swap the Level and Clock pickers and give Level its own row
+- style(theme): style horizontal sliders for both light and dark themes
+- test(play): cover the rating-to-engine mapping
+- docs: describe the rating slider in the README
+- chore(version): bump the app version to 1.5.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。对弈难度不再是五个预设档位，但此前也没有持久化过档位选择，滑条默认 1500 分，与原「中等」档一致。
+
+- No breaking changes. Play difficulty is no longer five named presets, but the choice was never persisted before; the slider defaults to 1500, matching the old Medium level.
+
+---
+
 # v1.5.0 – One-Click Installer
 
 > 本次更新改变了分发方式：不再需要解压文件夹，直接运行一个安装包即可完成安装，自动创建桌面与开始菜单快捷方式，安装界面为简体中文，并且全程不需要管理员权限。软件现在还会在后台检查更新，有新版本时主动提示。
