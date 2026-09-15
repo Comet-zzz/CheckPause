@@ -1,3 +1,60 @@
+# v1.5.0 – One-Click Installer
+
+> 本次更新改变了分发方式：不再需要解压文件夹，直接运行一个安装包即可完成安装，自动创建桌面与开始菜单快捷方式，安装界面为简体中文，并且全程不需要管理员权限。
+>
+> This release changes how you get CheckPause: no more unzipping a folder — run a single installer instead. It sets up desktop and Start Menu shortcuts for you, shows a Simplified Chinese interface, and never asks for administrator rights.
+
+---
+
+## 🎯 What's New
+
+### 📦 Single-file installer
+- 发布物从「一个需要解压的文件夹」变成单个 `CheckPause_Setup_<版本>.exe`：双击、下一步、完成，自动创建桌面快捷方式与开始菜单项，并在「应用和功能」中注册卸载入口。
+
+- The release is now a single `CheckPause_Setup_<version>.exe` instead of a folder you have to unzip: double-click, Next, Finish. It creates desktop and Start Menu shortcuts and registers an uninstall entry in Apps & features.
+
+### 🇨🇳 Chinese installer interface
+- 安装界面使用 Inno Setup 官方简体中文语言包，中文系统的用户会自动预选中文，同时保留英文界面。
+
+- The installer uses Inno Setup's official Simplified Chinese language file and preselects Chinese on Chinese systems, with English still available.
+
+### 🔓 No administrator rights
+- 安装到当前用户目录，全程不弹出 UAC 提权窗口，非管理员账户也能正常安装。
+
+- Installs into the current user's directory and never shows a UAC elevation prompt, so non-administrator accounts can install it too.
+
+### 🚧 Installs only where it can run
+- Windows 10 以下的系统会在安装前直接拒绝并给出明确提示，而不是装完之后启动崩溃（Qt6 需要 Windows 10 或更高版本）。
+
+- On systems older than Windows 10 the installer refuses up front with a clear message, instead of installing something that then crashes on launch (Qt6 requires Windows 10 or later).
+
+### ⚙️ One command builds both
+- `.\build_exe.ps1` 现在会依次完成 PyInstaller 打包与安装包编译，版本号自动读取 `checkpause/__init__.py`，不再需要手工同步；便携版仍照常生成。
+
+- `.\build_exe.ps1` now runs PyInstaller and the installer compiler in sequence, reading the version from `checkpause/__init__.py` so nothing has to be kept in sync by hand; the portable build is still produced as before.
+
+---
+
+## 🛠️ Full Changelog
+- feat(packaging): add an Inno Setup script producing a single-file installer
+- feat(packaging): ship the official Simplified Chinese installer language file
+- feat(packaging): install per-user so no UAC prompt is required
+- build: emit both the portable folder and the installer from build_exe.ps1
+- build: read the release version from APP_VERSION instead of hardcoding it
+- docs: document the packaging outputs and Inno Setup requirement
+- chore(gitignore): ignore Inno Setup output and further local caches
+- chore(version): bump the app version to 1.5.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 分发方式变更：发布物由 `CheckPause-v1.4.x-windows-x64.zip` 变为 `CheckPause_Setup_1.5.0.exe`。老用户手里已解压的文件夹仍可继续使用，但今后只提供安装包。
+
+- Distribution changed: the release artifact is now `CheckPause_Setup_1.5.0.exe` instead of `CheckPause-v1.4.x-windows-x64.zip`. Folders already unzipped by existing users keep working, but only the installer will be published from now on.
+
+---
+
 # v1.4.1 – Layout Polish
 
 > 本次更新优化了界面布局：对弈、谜题与分析工具下的棋盘与侧栏尺寸保持统一，切换模块时界面不再跳动。

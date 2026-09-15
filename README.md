@@ -37,12 +37,12 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows 用户 / Windows users
 
-1. 从文末「下载」获取 `CheckPause-v1.4.1-windows-x64.zip`；  
-   Get `CheckPause-v1.4.1-windows-x64.zip` from the Download section at the end of this file.
-2. 解压到任意目录（请解压整个文件夹，Stockfish、开局库和棋子资源都在里面）；  
-   Unzip the whole folder — Stockfish, the opening book, and piece assets are bundled inside.
-3. 双击 `CheckPause.exe` 启动，首次使用会要求设置用户名和界面语言；  
-   Run `CheckPause.exe`; first launch asks for a username and interface language.
+1. 从文末「下载」获取 `CheckPause_Setup_1.5.0.exe`；  
+   Get `CheckPause_Setup_1.5.0.exe` from the Download section at the end of this file.
+2. 双击运行安装包，按提示完成安装（无需管理员权限，可勾选创建桌面快捷方式）；  
+   Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
+3. 从桌面或开始菜单启动 CheckPause，首次使用会要求设置用户名和界面语言；  
+   Launch CheckPause from the desktop or Start Menu; first launch asks for a username and interface language.
 4. 打开「设置 → API 设置...」填写 API Key（默认 DeepSeek，可改成任意 OpenAI 兼容接口）；  
    Open Settings → API settings... and enter an API key (DeepSeek by default; any OpenAI-compatible endpoint works).
 5. 在「导入」页粘贴 PGN 或打开文件，点击「开始分析」，完成后切到「分析」页向 AI 提问。  
@@ -126,13 +126,24 @@ The GUI and CLI share the `checkpause` core logic and never depend on each other
 ## 🧪 测试与打包 / Tests and packaging
 
 ```powershell
-python -m unittest discover -s tests -v   # 单元测试
-.\build_exe.ps1                            # 打包为 dist\CheckPause\CheckPause.exe
+python -m unittest discover -s tests -v   # 单元测试 / unit tests
+.\build_exe.ps1                            # 便携目录 + 单文件安装包
 ```
 
-`CheckPause.spec` 会把 Stockfish、开局谱库与棋子资源一并打进发布目录。
+打包需要 [Inno Setup 6.3+](https://jrsoftware.org/isdl.php)：`winget install JRSoftware.InnoSetup`
 
-`CheckPause.spec` bundles Stockfish, the opening book, and piece assets into the distribution folder.
+若提示"禁止运行脚本"，改用：`powershell -ExecutionPolicy Bypass -File .\build_exe.ps1`
+
+`CheckPause.spec` 会把 Stockfish、开局谱库与棋子资源一并打进 `dist\CheckPause\`，`installer\CheckPause.iss` 再把整个目录编译成一个安装包。版本号自动读取 `checkpause\__init__.py` 中的 `APP_VERSION`。
+
+产出：
+
+| 产物 | 用途 |
+| --- | --- |
+| `dist\CheckPause_Setup_<版本>.exe` | **安装包，发给用户的那个文件** |
+| `dist\CheckPause\CheckPause.exe` | 便携版（安装包的中间产物，需连同整个文件夹一起分发） |
+
+`CheckPause.spec` bundles Stockfish, the opening book, and piece assets into `dist\CheckPause\`; `installer\CheckPause.iss` then compiles that folder into a single-file installer placed in `dist\`. The version is read from `APP_VERSION` in `checkpause\__init__.py`.
 
 ---
 
@@ -142,15 +153,17 @@ python -m unittest discover -s tests -v   # 单元测试
   Pieces come from Lichess open-source piece sets, each owned by its author under GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 licenses.
 - 引擎为 [Stockfish](https://stockfishchess.org/)（GPLv3），开局库由 `tools/build_openings.py` 从公开开局线路编译。  
   Engine: [Stockfish](https://stockfishchess.org/) (GPLv3); the opening book is compiled from public opening lines by `tools/build_openings.py`.
+- 安装包由 [Inno Setup](https://jrsoftware.org/isinfo.php) 生成，并使用其官方简体中文语言包（`installer/languages/ChineseSimplified.isl`，维护者 Zhenghan Yang）。  
+  The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php) and uses its official Simplified Chinese language file (`installer/languages/ChineseSimplified.isl`, maintained by Zhenghan Yang).
 
 ---
 
 ## ⬇️ 下载 / Download
 
-**最新版 / Latest: CheckPause v1.4.1（Windows x64）**
+**最新版 / Latest: CheckPause v1.5.0（Windows x64）**
 
-- 📦 [CheckPause-v1.4.1-windows-x64.zip](https://github.com/Comet-zzz/CheckPause/releases/download/v1.4.1/CheckPause-v1.4.1-windows-x64.zip)（123.8 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`A843E523BE4011941B50A668ED521BCB06EFCEA5C4FDABC01367EF1657D31C3F`
-- 解压后双击 `CheckPause.exe` 即可运行；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
-  Unzip and run `CheckPause.exe`. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
+- 📦 [CheckPause_Setup_1.5.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.0/CheckPause_Setup_1.5.0.exe)（107.6 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`14B4D75431E88EF14A812848ABE57E886425875D806FA30F756EEC9F3A574E06`
+- 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
+  Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
