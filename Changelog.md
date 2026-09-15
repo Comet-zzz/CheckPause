@@ -1,3 +1,38 @@
+# v1.4.0 – Puzzle Progress and Quick Jump
+
+> 谜题页焕新：已解开的谜题会被记住，重开自动继续，并可直接跳到任意一题。
+
+> The Puzzle page gets a refresh: solved puzzles are remembered, you resume automatically, and you can jump to any puzzle.
+
+---
+
+## 🎯 What's New
+
+### ✅ Progress memory
+- 已解开的谜题会被记录，重新打开自动从下一道未解题开始；顶部始终显示已完成题数。
+
+- Solved puzzles are recorded, reopening resumes at the next unsolved one, and the completed count stays visible at the top.
+
+### 🔀 Jump to any puzzle
+- 「上一题 / 下一题」之间新增跳转框：输入题号回车或点「跳转」即可直达，分母固定为题目总数。
+
+- A jump box between Previous and Next: type a number and press Enter or click Go, with the total fixed as the denominator.
+
+### 🧹 Cleaner puzzle panel
+- 题目信息改到所选题目集下方显示；未选择题集时隐藏相关控件，面板更清爽。
+
+- Puzzle details now show under the selected collection, and related controls are hidden until a collection is chosen.
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
 # v1.3.3 – Pause, Endgames, and a Cleaner Promotion
 
 > 本次更新让对弈更可控：计时对局可以暂停，开局下方新增可自选的常见残局，时钟在你走出第一步前不会开始，升变改用 Lichess 风格的棋盘内联弹窗。

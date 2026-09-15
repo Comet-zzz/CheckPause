@@ -13,6 +13,7 @@ from checkpause.resources import resource_path
 
 PUZZLE_DIR = os.path.join(DATA_DIR, "puzzles")
 INDEX_NAME = "index.json"
+PROGRESS_NAME = "progress.json"
 
 BUILTIN_PATH_PARTS = ("assets", "puzzles", "lichess_sample.jsonl")
 BUILTIN_ID = "builtin-lichess-sample"
@@ -55,6 +56,68 @@ def save_index(entries, base_dir=None):
     base = base_dir or puzzle_dir()
     with open(_index_path(base), "w", encoding="utf-8") as handle:
         json.dump(entries, handle, ensure_ascii=False, indent=2)
+
+
+def _progress_path(base_dir):
+    return os.path.join(base_dir, PROGRESS_NAME)
+
+
+def load_progress(base_dir=None):
+    base = base_dir or PUZZLE_DIR
+    path = _progress_path(base)
+    if not os.path.isfile(path):
+        return {}
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            data = json.load(handle)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def save_progress(progress, base_dir=None):
+    base = base_dir or puzzle_dir()
+    with open(_progress_path(base), "w", encoding="utf-8") as handle:
+        json.dump(progress, handle, ensure_ascii=False, indent=2)
+
+
+def solved_indices(collection_id, base_dir=None):
+    raw = load_progress(base_dir).get(collection_id)
+    if not isinstance(raw, list):
+        return set()
+    result = set()
+    for value in raw:
+        try:
+            result.add(int(value))
+        except (TypeError, ValueError):
+            continue
+    return result
+
+
+def mark_solved(collection_id, index, base_dir=None):
+    if not collection_id:
+        return
+    progress = load_progress(base_dir)
+    raw = progress.get(collection_id)
+    values = set()
+    if isinstance(raw, list):
+        for value in raw:
+            try:
+                values.add(int(value))
+            except (TypeError, ValueError):
+                continue
+    values.add(int(index))
+    progress[collection_id] = sorted(values)
+    save_progress(progress, base_dir)
+
+
+def clear_progress(collection_id, base_dir=None):
+    progress = load_progress(base_dir)
+    if collection_id in progress:
+        del progress[collection_id]
+        save_progress(progress, base_dir)
+        return True
+    return False
 
 
 def list_collections(base_dir=None):
@@ -219,10 +282,12 @@ def delete_collection(collection_id, base_dir=None):
     if collection_id == BUILTIN_ID:
         keep.append({"id": BUILTIN_ID, "builtin": True, "hidden": True})
         save_index(keep, base)
+        clear_progress(collection_id, base)
         return True
     if removed is None:
         return False
     save_index(keep, base)
+    clear_progress(collection_id, base)
     _remove_quietly(removed.get("file"))
     return True
 

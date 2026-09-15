@@ -214,6 +214,8 @@ MESSAGES = {
     "puzzle_delete": "删除题集",
     "puzzle_prev": "上一题",
     "puzzle_next": "下一题",
+    "puzzle_jump": "跳转",
+    "puzzle_jump_tip": "输入题号后点击跳转",
     "puzzle_hint": "提示",
     "puzzle_solution": "显示答案",
     "puzzle_retry": "重试",
@@ -232,7 +234,7 @@ MESSAGES = {
     "puzzle_import_error_read_error": "读取文件失败：{error}",
     "puzzle_delete_title": "删除题集",
     "puzzle_delete_text": "确定要删除题集「{name}」吗？",
-    "puzzle_info": "{name} · 第 {index}/{total} 题",
+    "puzzle_info": "{name} · 已完成 {solved}/{total} 题",
     "puzzle_rating": "难度：{rating}",
     "puzzle_themes": "主题：{themes}",
 }

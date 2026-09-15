@@ -214,6 +214,8 @@ MESSAGES = {
     "puzzle_delete": "Delete",
     "puzzle_prev": "Previous",
     "puzzle_next": "Next",
+    "puzzle_jump": "Go",
+    "puzzle_jump_tip": "Type a puzzle number and click Go",
     "puzzle_hint": "Hint",
     "puzzle_solution": "Show solution",
     "puzzle_retry": "Retry",
@@ -232,7 +234,7 @@ MESSAGES = {
     "puzzle_import_error_read_error": "Failed to read the file: {error}",
     "puzzle_delete_title": "Delete collection",
     "puzzle_delete_text": "Delete the collection \"{name}\"?",
-    "puzzle_info": "{name} · Puzzle {index}/{total}",
+    "puzzle_info": "{name} · Solved {solved}/{total}",
     "puzzle_rating": "Rating: {rating}",
     "puzzle_themes": "Themes: {themes}",
 }

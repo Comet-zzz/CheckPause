@@ -23,7 +23,8 @@ from checkpause.config import (
 )
 from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
-from checkpause.gui.widgets.board_widget import BoardWidget
+from checkpause.core.play_session import PlaySession
+from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import EngineMoveWorker
 from checkpause.i18n import t
@@ -37,24 +38,15 @@ class PlayPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
-        self._human_color = chess.WHITE
         self._level_id = DEFAULT_PLAY_LEVEL
         self._time_id = DEFAULT_PLAY_TIME
         self._opening_index = 0
         self._endgame_index = 0
         self._openings = load_openings()
         self._endgames = load_endgames()
-        self._game = chess.Board()
-        self._moves = []
-        self._start_fen = None
-        self._opening_ply = 0
-        self._game_over = False
-        self._result_kind = None
-        self._paused = False
+        self._session = PlaySession()
         self._engine_worker = None
         self._engine_error = None
-        self._clock_remaining = None
-        self._clock_last = None
         self._clock_active = "unset"
 
         self._clock_timer = QTimer(self)
@@ -166,47 +158,38 @@ class PlayPage(QWidget):
     def _new_game(self):
         self._stop_engine_worker()
         self._engine_error = None
-        self._moves = []
         endgame = self._selected_endgame()
-        if endgame is not None:
-            self._game = chess.Board(endgame["fen"])
-            self._start_fen = endgame["fen"]
-        else:
-            self._game = chess.Board()
-            self._start_fen = None
-            opening = self._selected_opening()
-            if opening is not None:
-                for move in opening["moves"]:
-                    if move not in self._game.legal_moves:
-                        break
-                    self._game.push(move)
-                    self._moves.append(move)
-        self._opening_ply = len(self._moves)
-        self._game_over = False
-        self._result_kind = None
-        self._paused = False
-        self._reset_clock()
-        self.board.set_start_fen(self._start_fen)
+        opening = None if endgame is not None else self._selected_opening()
+        self._session.new_game(
+            human_color=self._session.human_color,
+            start_fen=endgame["fen"] if endgame is not None else None,
+            opening_moves=opening["moves"] if opening is not None else (),
+            time_control=self._time_control(),
+            now=time.monotonic(),
+        )
+        self.board.set_start_fen(self._session.start_fen)
         self.board.set_paused(False)
-        self.board.set_interactive(True, self._human_color)
+        self.board.set_interactive(True, self._session.human_color)
         self._sync_views()
         self._render_result()
         self._update_pause_button()
         self._update_buttons()
-        if self._game.turn != self._human_color:
+        self._sync_clock_timer()
+        if self._session.board.turn != self._session.human_color:
             self._start_engine()
 
     def _sync_views(self, animate=False):
+        moves = self._session.moves
         self.board.clear_selection()
-        self.board.set_moves(self._moves, animate=animate)
-        if self._moves:
+        self.board.set_moves(moves, animate=animate)
+        if moves:
             self._move_list.set_moves(self._pgn())
-            self._move_list.set_current_ply(len(self._moves))
+            self._move_list.set_current_ply(len(moves))
         else:
             self._move_list.clear()
 
     def _pgn(self):
-        return str(chess.pgn.Game.from_board(self._game))
+        return str(chess.pgn.Game.from_board(self._session.board))
 
     def _level(self):
         for level in ENGINE_PLAY_LEVELS:
@@ -230,82 +213,39 @@ class PlayPage(QWidget):
             return self._endgames[self._endgame_index - 1]
         return None
 
-    def _clock_should_run(self):
-        return (
-            self._clock_remaining is not None
-            and not self._game_over
-            and not self._paused
-            and bool(self._moves)
-        )
-
-    def _ensure_clock_running(self):
-        if self._clock_should_run() and not self._clock_timer.isActive():
-            self._clock_last = time.monotonic()
+    def _sync_clock_timer(self):
+        if not self._session.clock_should_run():
+            self._clock_timer.stop()
+            return
+        if not self._clock_timer.isActive():
+            self._session.start_clock(time.monotonic())
             self._clock_timer.start()
 
     def _reset_clock(self):
-        base = self._time_control().get("base")
-        if base is None:
-            self._clock_remaining = None
-            self._clock_timer.stop()
-        else:
-            self._clock_remaining = {
-                chess.WHITE: float(base),
-                chess.BLACK: float(base),
-            }
-            self._clock_last = time.monotonic()
-            if self._clock_should_run():
-                self._clock_timer.start()
+        self._session.set_time_control(self._time_control())
+        self._session.reset_clock(time.monotonic())
+        self._sync_clock_timer()
         self._update_clock_labels()
 
     def _on_clock_tick(self):
-        if self._clock_remaining is None or self._game_over:
-            return
-        now = time.monotonic()
-        elapsed = now - (self._clock_last or now)
-        self._clock_last = now
-        turn = self._game.turn
-        self._clock_remaining[turn] = max(
-            0.0, self._clock_remaining[turn] - elapsed
-        )
+        flagged = self._session.tick(time.monotonic())
+        if flagged is not None:
+            self._session.timeout(flagged)
+            self._clock_timer.stop()
+            self.board.clear_selection()
+            self._render_result()
+            self._update_buttons()
         self._update_clock_labels()
-        if self._clock_remaining[turn] <= 0:
-            self._on_timeout(turn)
-
-    def _apply_increment(self, color):
-        if self._clock_remaining is None:
-            return
-        self._clock_remaining[color] += self._time_control().get(
-            "increment", 0
-        )
-        self._update_clock_labels()
-
-    def _on_timeout(self, color):
-        self._game_over = True
-        self._clock_timer.stop()
-        self._result_kind = (
-            "timeout_lose" if color == self._human_color else "timeout_win"
-        )
-        self.board.clear_selection()
-        self._render_result()
-        self._update_buttons()
-
-    def _format_clock(self, seconds):
-        seconds = max(0.0, seconds)
-        if seconds < 10:
-            return f"{seconds:.1f}"
-        minutes, secs = divmod(int(seconds), 60)
-        return f"{minutes}:{secs:02d}"
 
     def _update_clock_labels(self):
-        enabled = self._clock_remaining is not None
-        self._clock_row.setVisible(enabled)
-        if not enabled:
+        session = self._session
+        self._clock_row.setVisible(session.clock_enabled)
+        if not session.clock_enabled:
             return
         active = (
             None
-            if self._game_over or self._paused or not self._moves
-            else self._game.turn
+            if session.game_over or session.paused or not session.moves
+            else session.board.turn
         )
         active_changed = active != self._clock_active
         self._clock_active = active
@@ -320,7 +260,7 @@ class PlayPage(QWidget):
             )
             label.setText(
                 f"{t(key, self._language)} "
-                f"{self._format_clock(self._clock_remaining[color])}"
+                f"{PlaySession.format_clock(session.clock_remaining[color])}"
             )
             if active_changed:
                 label.setStyleSheet(
@@ -330,22 +270,22 @@ class PlayPage(QWidget):
                 )
 
     def _toggle_pause(self):
-        if self._game_over:
-            return
-        self._paused = not self._paused
-        if self._paused:
+        self._session.toggle_pause()
+        if self._session.paused:
             self._clock_timer.stop()
         else:
-            self._ensure_clock_running()
-        self.board.set_paused(self._paused)
+            self._sync_clock_timer()
+        self.board.set_paused(self._session.paused)
         self._update_pause_button()
         self._update_clock_labels()
         self._update_buttons()
 
     def _update_pause_button(self):
-        key = "play_resume" if self._paused else "play_pause"
+        key = "play_resume" if self._session.paused else "play_pause"
         tooltip_key = (
-            "play_resume_tooltip" if self._paused else "play_pause_tooltip"
+            "play_resume_tooltip"
+            if self._session.paused
+            else "play_pause_tooltip"
         )
         self._btn_pause.setText(t(key, self._language))
         self._btn_pause.setToolTip(t(tooltip_key, self._language))
@@ -380,9 +320,9 @@ class PlayPage(QWidget):
 
     def _on_side_changed(self, _index):
         color = self._side_combo.currentData()
-        if color is None or color == self._human_color:
+        if color is None or color == self._session.human_color:
             return
-        self._human_color = color
+        self._session.human_color = color
         self._new_game()
 
     def _on_level_changed(self, _index):
@@ -391,13 +331,18 @@ class PlayPage(QWidget):
             self._level_id = level_id
 
     def _on_move_requested(self, from_square, to_square):
-        if self._paused or self._game_over or self._engine_worker is not None:
+        session = self._session
+        if (
+            session.paused
+            or session.game_over
+            or self._engine_worker is not None
+        ):
             return
-        if self._game.turn != self._human_color:
+        if session.board.turn != session.human_color:
             return
 
         move = chess.Move(from_square, to_square)
-        piece = self._game.piece_at(from_square)
+        piece = session.board.piece_at(from_square)
         if (
             piece is not None
             and piece.piece_type == chess.PAWN
@@ -411,20 +356,18 @@ class PlayPage(QWidget):
                 return
             move = chess.Move(from_square, to_square, promotion=promotion)
 
-        if move not in self._game.legal_moves:
+        if move not in session.board.legal_moves:
             self.board.clear_selection()
             return
         self._push_move(move)
 
     def _push_move(self, move):
-        self._game.push(move)
-        self._moves.append(move)
-        self._apply_increment(self._human_color)
-        self._ensure_clock_running()
+        self._session.push(move)
+        self._sync_clock_timer()
         self._sync_views(animate=True)
         if self._finish_if_over():
             return
-        if self._game.turn != self._human_color:
+        if self._session.board.turn != self._session.human_color:
             self._start_engine()
         else:
             self._update_buttons()
@@ -432,7 +375,7 @@ class PlayPage(QWidget):
     def _start_engine(self):
         self._engine_error = None
         worker = EngineMoveWorker(
-            self._game.fen(), self._level(), self._language, self
+            self._session.board.fen(), self._level(), self._language, self
         )
         worker.move_ready.connect(self._on_engine_move)
         worker.failed.connect(self._on_engine_failed)
@@ -444,18 +387,16 @@ class PlayPage(QWidget):
     def _on_engine_move(self, uci):
         if self.sender() is not self._engine_worker:
             return
-        if self._game_over:
+        if self._session.game_over:
             return
         try:
             move = chess.Move.from_uci(uci)
         except ValueError:
             return
-        if move not in self._game.legal_moves:
+        if move not in self._session.board.legal_moves:
             return
-        self._game.push(move)
-        self._moves.append(move)
-        self._apply_increment(not self._human_color)
-        self._ensure_clock_running()
+        self._session.push(move)
+        self._sync_clock_timer()
         self._sync_views(animate=True)
         if self._finish_if_over():
             return
@@ -481,16 +422,8 @@ class PlayPage(QWidget):
         self._update_buttons()
 
     def _finish_if_over(self):
-        if not self._game.is_game_over():
+        if not self._session.finish_if_over():
             return False
-        self._game_over = True
-        outcome = self._game.outcome()
-        if outcome is None or outcome.winner is None:
-            self._result_kind = "draw"
-        elif outcome.winner == self._human_color:
-            self._result_kind = "win"
-        else:
-            self._result_kind = "lose"
         self._clock_timer.stop()
         self._update_clock_labels()
         self.board.clear_selection()
@@ -499,38 +432,28 @@ class PlayPage(QWidget):
         return True
 
     def _undo(self):
+        session = self._session
         if (
             self._engine_worker is not None
-            or self._game_over
-            or self._paused
+            or session.game_over
+            or session.paused
         ):
             return
-        if len(self._moves) <= self._opening_ply:
+        if not session.undo():
             return
-        self._game.pop()
-        self._moves.pop()
-        if (
-            len(self._moves) > self._opening_ply
-            and self._game.turn != self._human_color
-        ):
-            self._game.pop()
-            self._moves.pop()
-        self._result_kind = None
         self._engine_error = None
         self._sync_views()
-        if not self._clock_should_run():
-            self._clock_timer.stop()
+        self._sync_clock_timer()
         self._update_clock_labels()
         self._render_result()
         self._update_buttons()
-        if self._game.turn != self._human_color:
+        if session.board.turn != session.human_color:
             self._start_engine()
 
     def _resign(self):
-        if self._game_over:
+        if self._session.game_over:
             return
-        self._game_over = True
-        self._result_kind = "resign"
+        self._session.resign()
         self._clock_timer.stop()
         self._update_clock_labels()
         self.board.clear_selection()
@@ -538,31 +461,37 @@ class PlayPage(QWidget):
         self._update_buttons()
 
     def _import_to_analysis(self):
-        if self._moves:
+        if self._session.moves:
             self.analysis_requested.emit(self._pgn())
 
     def _render_result(self):
-        if self._result_kind is None:
+        if self._session.result_kind is None:
             self._result_label.clear()
         else:
             self._result_label.setText(
-                t("play_result_" + self._result_kind, self._language)
+                t(
+                    "play_result_" + self._session.result_kind,
+                    self._language,
+                )
             )
 
     def _update_buttons(self):
+        session = self._session
         thinking = (
             self._engine_worker is not None
             and self._engine_worker.isRunning()
         )
         self._btn_undo.setEnabled(
-            len(self._moves) > self._opening_ply
+            session.can_undo()
             and not thinking
-            and not self._game_over
-            and not self._paused
+            and not session.game_over
+            and not session.paused
         )
-        self._btn_resign.setEnabled(not self._game_over)
-        self._btn_pause.setEnabled(not self._game_over and not thinking)
-        self._btn_import.setEnabled(bool(self._moves))
+        self._btn_resign.setEnabled(not session.game_over)
+        self._btn_pause.setEnabled(
+            not session.game_over and not thinking
+        )
+        self._btn_import.setEnabled(bool(session.moves))
 
     def set_theme(self, theme):
         self.board.set_theme(theme)
@@ -575,7 +504,7 @@ class PlayPage(QWidget):
         self.board.set_board_theme(name)
 
     def reset(self):
-        self._human_color = chess.WHITE
+        self._session.human_color = chess.WHITE
         self._level_id = DEFAULT_PLAY_LEVEL
         self._time_id = DEFAULT_PLAY_TIME
         self._opening_index = 0
@@ -613,7 +542,7 @@ class PlayPage(QWidget):
 
     def showEvent(self, event):
         super().showEvent(event)
-        self._ensure_clock_running()
+        self._sync_clock_timer()
 
     def hideEvent(self, event):
         self._clock_timer.stop()
@@ -627,7 +556,7 @@ class PlayPage(QWidget):
         self._side_combo.clear()
         self._side_combo.addItem(t("play_side_white", language), chess.WHITE)
         self._side_combo.addItem(t("play_side_black", language), chess.BLACK)
-        side_index = self._side_combo.findData(self._human_color)
+        side_index = self._side_combo.findData(self._session.human_color)
         self._side_combo.setCurrentIndex(max(0, side_index))
         self._side_combo.blockSignals(False)
 
