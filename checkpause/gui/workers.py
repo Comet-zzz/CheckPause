@@ -4,6 +4,7 @@ from PyQt6.QtCore import QThread, pyqtSignal
 
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.engine import StockfishAnalyzer, open_stockfish
+from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
@@ -138,3 +139,17 @@ class ChatWorker(QThread):
             self.failed.emit(str(exc))
             return
         self.done.emit(full_reply)
+
+
+class UpdateCheckWorker(QThread):
+    """Quietly looks for a newer release; emits only when one exists."""
+
+    found = pyqtSignal(object)
+
+    def run(self):
+        try:
+            info = check_for_update()
+        except Exception:
+            return
+        if info is not None:
+            self.found.emit(info)

@@ -65,3 +65,13 @@ def set_stockfish_path(path):
     settings = load_settings()
     settings["stockfish_path"] = (path or "").strip()
     return save_settings(settings)
+
+
+def get_skipped_update():
+    return (load_settings().get("skipped_update") or "").strip()
+
+
+def set_skipped_update(version):
+    settings = load_settings()
+    settings["skipped_update"] = (version or "").strip()
+    return save_settings(settings)
