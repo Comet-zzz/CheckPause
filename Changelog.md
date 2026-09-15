@@ -1,8 +1,8 @@
 # v1.5.0 – One-Click Installer
 
-> 本次更新改变了分发方式：不再需要解压文件夹，直接运行一个安装包即可完成安装，自动创建桌面与开始菜单快捷方式，安装界面为简体中文，并且全程不需要管理员权限。
+> 本次更新改变了分发方式：不再需要解压文件夹，直接运行一个安装包即可完成安装，自动创建桌面与开始菜单快捷方式，安装界面为简体中文，并且全程不需要管理员权限。软件现在还会在后台检查更新，有新版本时主动提示。
 >
-> This release changes how you get CheckPause: no more unzipping a folder — run a single installer instead. It sets up desktop and Start Menu shortcuts for you, shows a Simplified Chinese interface, and never asks for administrator rights.
+> This release changes how you get CheckPause: no more unzipping a folder — run a single installer instead. It sets up desktop and Start Menu shortcuts for you, shows a Simplified Chinese interface, and never asks for administrator rights. CheckPause now also looks for new releases in the background and tells you when one is available.
 
 ---
 
@@ -33,12 +33,19 @@
 
 - `.\build_exe.ps1` now runs PyInstaller and the installer compiler in sequence, reading the version from `checkpause/__init__.py` so nothing has to be kept in sync by hand; the portable build is still produced as before.
 
+### 🔔 Update notifications
+- 启动后会在后台静默检查是否有新版本，有则提示并提供下载入口；检查过程不阻塞界面，处于离线状态或已是最新版时完全不打扰用户。对某个版本选择「稍后」后，不会再就同一版本重复提示。
+
+- CheckPause now looks for a newer release quietly in the background and offers a download link when one is found. The check never blocks the UI, stays silent when offline or already up to date, and a version dismissed with "Later" is not asked about again.
+
 ---
 
 ## 🛠️ Full Changelog
 - feat(packaging): add an Inno Setup script producing a single-file installer
 - feat(packaging): ship the official Simplified Chinese installer language file
 - feat(packaging): install per-user so no UAC prompt is required
+- feat(update): notify the user when a newer release is available
+- feat(update): read a version manifest from a CDN mirror with a fallback source
 - build: emit both the portable folder and the installer from build_exe.ps1
 - build: read the release version from APP_VERSION instead of hardcoding it
 - docs: document the packaging outputs and Inno Setup requirement

@@ -145,6 +145,17 @@ python -m unittest discover -s tests -v   # 单元测试 / unit tests
 
 `CheckPause.spec` bundles Stockfish, the opening book, and piece assets into `dist\CheckPause\`; `installer\CheckPause.iss` then compiles that folder into a single-file installer placed in `dist\`. The version is read from `APP_VERSION` in `checkpause\__init__.py`.
 
+### 发布新版本 / Releasing an update
+
+1. 修改 `checkpause/__init__.py` 的 `APP_VERSION` 与 `version_info.txt`，并在 `Changelog.md` 顶部新增一节；
+2. 运行 `.\build_exe.ps1`，得到 `dist\CheckPause_Setup_<版本>.exe`；
+3. 在 GitHub 上创建 Release 并上传该安装包；
+4. **更新仓库根目录的 `version.json`**，把 `latest` 与 `url` 指向新版本。
+
+客户端启动约 2.5 秒后会读取 `version.json`（依次尝试 jsDelivr 与 raw.githubusercontent），发现更高版本就提示用户。**第 4 步忘了做，老用户就收不到更新提示**——安装包已经传上去但没人知道。
+
+Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then raw.githubusercontent) and prompt when a higher version is listed. Step 4 is what actually reaches existing users: without it the new installer exists but nobody is told about it.
+
 ---
 
 ## 🙏 致谢 / Credits
@@ -163,7 +174,7 @@ python -m unittest discover -s tests -v   # 单元测试 / unit tests
 **最新版 / Latest: CheckPause v1.5.0（Windows x64）**
 
 - 📦 [CheckPause_Setup_1.5.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.0/CheckPause_Setup_1.5.0.exe)（107.6 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`14B4D75431E88EF14A812848ABE57E886425875D806FA30F756EEC9F3A574E06`
+- SHA-256：`BCC61547E45D00ADCA147137A6A16CE2B3D891C239367D78C9C828ADE9775D6B`
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
   Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
