@@ -20,8 +20,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
   AI explanations: streamed answers based on engine data, with follow-up questions like a real coach; works with DeepSeek, OpenAI, OpenRouter, and local models.
 - **可点击着法列表**：点击任意着法跳转局面并高亮当前步，分析过程中高亮随进度移动；支持翻转棋盘与引擎最佳着法箭头。  
   Clickable move list: jump to any position and highlight the current ply; the board also shows engine best-move arrows and can be flipped.
-- **人机对弈**：侧栏「对弈」模块可直接与 Stockfish 下棋，点击走子、执白/执黑、五档难度、多种计时模式（1+0 到 30+0，含加秒与无限制）、可选开局、悔棋、认输、升变选择与棋步回看，并可一键把整盘棋送入分析。  
-  Play against the computer: the Play module takes on Stockfish with click-to-move, White/Black, five difficulty levels, common time controls (1+0 through 30+0, with increments or unlimited), selectable openings, undo, resign, promotion picking, and move review — plus one-click send to analysis.
+- **人机对弈**：侧栏「对弈」模块可直接与 Stockfish 下棋，点击走子、执白/执黑、100–3000 分难度滑条（1320 分以上由引擎 Elo 限制器标定）、多种计时模式（1+0 到 30+0，含加秒与无限制）、可选开局与残局、悔棋、认输、升变选择与棋步回看，并可一键把整盘棋送入分析。  
+  Play against the computer: the Play module takes on Stockfish with click-to-move, White/Black, a 100–3000 rating slider (1320 and above calibrated by the engine's Elo limiter), common time controls (1+0 through 30+0, with increments or unlimited), selectable openings and endgames, undo, resign, promotion picking, and move review — plus one-click send to analysis.
 - **谜题训练**：在「对弈」与「分析」之间新增谜题模块，内置一份 Lichess 精选样例可直接练手，也可导入自己的开源题集（Lichess CSV、含 FEN 的 PGN）；支持走对继续、走错提示、提示箭头、显示答案与难度/主题展示，导入大题库时按需惰性读取。  
   Puzzle training: a Puzzles module between Play and Analysis ships with a Lichess sample and accepts your own open collections (Lichess CSV, FEN-based PGN), with correct/wrong feedback, hints, reveal, and rating/theme display; large collections are read lazily.
 - **表现评级与成长档案**：五档评级（卓越 / 精准 / 稳健 / 平均 / 欠考虑），统计页记录每盘棋的准确度与历史趋势。  
