@@ -144,6 +144,7 @@ MESSAGES = {
     "play_level_medium": "中等",
     "play_level_hard": "困难",
     "play_level_master": "大师",
+    "play_level_hint": "{tier} · {rating} 分（拖动滑条调整，低分段为近似强度）",
     "play_time_label": "计时",
     "play_time_unlimited": "无限制",
     "play_time_bullet_1_0": "1+0 子弹",
