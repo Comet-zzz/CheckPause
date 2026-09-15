@@ -37,8 +37,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows 用户 / Windows users
 
-1. 从文末「下载」获取 `CheckPause_Setup_1.5.0.exe`；  
-   Get `CheckPause_Setup_1.5.0.exe` from the Download section at the end of this file.
+1. 从文末「下载」获取 `CheckPause_Setup_1.5.1.exe`；  
+   Get `CheckPause_Setup_1.5.1.exe` from the Download section at the end of this file.
 2. 双击运行安装包，按提示完成安装（无需管理员权限，可勾选创建桌面快捷方式）；  
    Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
 3. 从桌面或开始菜单启动 CheckPause，首次使用会要求设置用户名和界面语言；  
@@ -171,10 +171,10 @@ Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then
 
 ## ⬇️ 下载 / Download
 
-**最新版 / Latest: CheckPause v1.5.0（Windows x64）**
+**最新版 / Latest: CheckPause v1.5.1（Windows x64）**
 
-- 📦 [CheckPause_Setup_1.5.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.0/CheckPause_Setup_1.5.0.exe)（107.6 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`BCC61547E45D00ADCA147137A6A16CE2B3D891C239367D78C9C828ADE9775D6B`
+- 📦 [CheckPause_Setup_1.5.1.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe)（107.6 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`5351A037CD0537E789D8A69586E38209A67D7E9F14C29A6FBA56FC0C9D7A47D7`
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。  
   Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - 全部版本 / All releases：https://github.com/Comet-zzz/CheckPause/releases
