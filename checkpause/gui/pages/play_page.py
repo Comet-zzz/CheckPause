@@ -10,16 +10,21 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMessageBox,
     QPushButton,
+    QSlider,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
 from checkpause.config import (
-    DEFAULT_PLAY_LEVEL,
     DEFAULT_PLAY_TIME,
-    ENGINE_PLAY_LEVELS,
+    PLAY_RATING_DEFAULT,
+    PLAY_RATING_MAX,
+    PLAY_RATING_MIN,
+    PLAY_RATING_STEP,
     PLAY_TIME_CONTROLS,
+    clamp_play_rating,
+    play_rating_tier,
 )
 from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
@@ -38,7 +43,7 @@ class PlayPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
-        self._level_id = DEFAULT_PLAY_LEVEL
+        self._level_rating = PLAY_RATING_DEFAULT
         self._time_id = DEFAULT_PLAY_TIME
         self._opening_index = 0
         self._endgame_index = 0
@@ -99,8 +104,17 @@ class PlayPage(QWidget):
         self._side_combo.currentIndexChanged.connect(self._on_side_changed)
 
         self._level_label = QLabel()
-        self._level_combo = QComboBox()
-        self._level_combo.currentIndexChanged.connect(self._on_level_changed)
+        self._level_slider = QSlider(Qt.Orientation.Horizontal)
+        self._level_slider.setRange(PLAY_RATING_MIN, PLAY_RATING_MAX)
+        self._level_slider.setSingleStep(PLAY_RATING_STEP)
+        self._level_slider.setPageStep(PLAY_RATING_STEP * 2)
+        self._level_slider.setValue(self._level_rating)
+        self._level_slider.valueChanged.connect(self._on_level_changed)
+        self._level_value = QLabel()
+        self._level_value.setAlignment(
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+        )
+        self._level_value.setMinimumWidth(44)
 
         self._time_label = QLabel()
         self._time_combo = QComboBox()
@@ -130,10 +144,11 @@ class PlayPage(QWidget):
         controls = QGridLayout()
         controls.addWidget(self._side_label, 0, 0)
         controls.addWidget(self._side_combo, 0, 1)
-        controls.addWidget(self._level_label, 0, 2)
-        controls.addWidget(self._level_combo, 0, 3)
-        controls.addWidget(self._time_label, 1, 0)
-        controls.addWidget(self._time_combo, 1, 1)
+        controls.addWidget(self._time_label, 0, 2)
+        controls.addWidget(self._time_combo, 0, 3)
+        controls.addWidget(self._level_label, 1, 0)
+        controls.addWidget(self._level_slider, 1, 1, 1, 2)
+        controls.addWidget(self._level_value, 1, 3)
         controls.addWidget(self._opening_label, 2, 0)
         controls.addWidget(self._opening_combo, 2, 1, 1, 3)
         controls.addWidget(self._endgame_label, 3, 0)
@@ -191,12 +206,6 @@ class PlayPage(QWidget):
 
     def _pgn(self):
         return str(chess.pgn.Game.from_board(self._session.board))
-
-    def _level(self):
-        for level in ENGINE_PLAY_LEVELS:
-            if level["id"] == self._level_id:
-                return level
-        return ENGINE_PLAY_LEVELS[0]
 
     def _time_control(self):
         for control in PLAY_TIME_CONTROLS:
@@ -326,10 +335,31 @@ class PlayPage(QWidget):
         self._session.human_color = color
         self._new_game()
 
-    def _on_level_changed(self, _index):
-        level_id = self._level_combo.currentData()
-        if level_id:
-            self._level_id = level_id
+    def _on_level_changed(self, value):
+        rating = clamp_play_rating(
+            int(round(value / PLAY_RATING_STEP)) * PLAY_RATING_STEP
+        )
+        if rating != value:
+            self._level_slider.blockSignals(True)
+            self._level_slider.setValue(rating)
+            self._level_slider.blockSignals(False)
+        self._level_rating = rating
+        self._update_level_display()
+
+    def _update_level_display(self):
+        self._level_value.setText(str(self._level_rating))
+        tier = t(
+            "play_level_" + play_rating_tier(self._level_rating),
+            self._language,
+        )
+        self._level_slider.setToolTip(
+            t(
+                "play_level_hint",
+                self._language,
+                tier=tier,
+                rating=self._level_rating,
+            )
+        )
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
@@ -376,7 +406,10 @@ class PlayPage(QWidget):
     def _start_engine(self):
         self._engine_error = None
         worker = EngineMoveWorker(
-            self._session.board.fen(), self._level(), self._language, self
+            self._session.board.fen(),
+            self._level_rating,
+            self._language,
+            self,
         )
         worker.move_ready.connect(self._on_engine_move)
         worker.failed.connect(self._on_engine_failed)
@@ -508,7 +541,7 @@ class PlayPage(QWidget):
 
     def reset(self):
         self._session.human_color = chess.WHITE
-        self._level_id = DEFAULT_PLAY_LEVEL
+        self._level_rating = PLAY_RATING_DEFAULT
         self._time_id = DEFAULT_PLAY_TIME
         self._opening_index = 0
         self._endgame_index = 0
@@ -516,10 +549,10 @@ class PlayPage(QWidget):
         side_index = self._side_combo.findData(chess.WHITE)
         self._side_combo.setCurrentIndex(max(0, side_index))
         self._side_combo.blockSignals(False)
-        self._level_combo.blockSignals(True)
-        level_index = self._level_combo.findData(DEFAULT_PLAY_LEVEL)
-        self._level_combo.setCurrentIndex(max(0, level_index))
-        self._level_combo.blockSignals(False)
+        self._level_slider.blockSignals(True)
+        self._level_slider.setValue(PLAY_RATING_DEFAULT)
+        self._level_slider.blockSignals(False)
+        self._update_level_display()
         self._time_combo.blockSignals(True)
         time_index = self._time_combo.findData(DEFAULT_PLAY_TIME)
         self._time_combo.setCurrentIndex(max(0, time_index))
@@ -563,15 +596,9 @@ class PlayPage(QWidget):
         self._side_combo.setCurrentIndex(max(0, side_index))
         self._side_combo.blockSignals(False)
 
-        self._level_combo.blockSignals(True)
-        self._level_combo.clear()
-        for level in ENGINE_PLAY_LEVELS:
-            self._level_combo.addItem(
-                t("play_level_" + level["id"], language), level["id"]
-            )
-        level_index = self._level_combo.findData(self._level_id)
-        self._level_combo.setCurrentIndex(max(0, level_index))
-        self._level_combo.blockSignals(False)
+        self._level_slider.blockSignals(True)
+        self._level_slider.setValue(self._level_rating)
+        self._level_slider.blockSignals(False)
 
         self._time_combo.blockSignals(True)
         self._time_combo.clear()
@@ -625,5 +652,6 @@ class PlayPage(QWidget):
 
         self._render_result()
         self._update_pause_button()
+        self._update_level_display()
         self._update_clock_labels()
         self._update_buttons()

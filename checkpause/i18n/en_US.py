@@ -144,6 +144,7 @@ MESSAGES = {
     "play_level_medium": "Medium",
     "play_level_hard": "Hard",
     "play_level_master": "Master",
+    "play_level_hint": "{tier} · {rating} (drag to adjust; lower ratings are approximate)",
     "play_time_label": "Clock",
     "play_time_unlimited": "Unlimited",
     "play_time_bullet_1_0": "1+0 Bullet",

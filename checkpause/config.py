@@ -13,14 +13,77 @@ BOOK_MIN_WEIGHT = 1
 
 ENGINE_LIMIT = chess.engine.Limit(depth=18, time=2.0)
 
-ENGINE_PLAY_LEVELS = (
-    {"id": "beginner", "skill": 0, "depth": 1, "time": 0.05},
-    {"id": "easy", "skill": 4, "depth": 2, "time": 0.1},
-    {"id": "medium", "skill": 8, "depth": 5, "time": 0.3},
-    {"id": "hard", "skill": 14, "depth": 9, "time": 0.8},
-    {"id": "master", "skill": 20, "depth": 14, "time": 1.5},
+PLAY_RATING_MIN = 100
+PLAY_RATING_MAX = 3000
+PLAY_RATING_DEFAULT = 1500
+PLAY_RATING_STEP = 50
+
+# Stockfish cannot limit its own strength through UCI_Elo below roughly this
+# rating, so anything weaker is only an approximation built from Skill Level
+# plus a node cap. Probe the engine for the real floor before trusting this.
+PLAY_ELO_FLOOR = 1320
+
+# Node budgets instead of wall-clock limits keep a level reproducible across
+# machines: a slow CPU then thinks longer, but not shallower.
+PLAY_WEAK_NODES = (16, 32768)
+PLAY_STRONG_NODES = (32768, 1000000)
+
+PLAY_RATING_TIERS = (
+    {"id": "beginner", "rating": 600},
+    {"id": "easy", "rating": 1000},
+    {"id": "medium", "rating": 1500},
+    {"id": "hard", "rating": 2100},
+    {"id": "master", "rating": 2800},
 )
-DEFAULT_PLAY_LEVEL = "medium"
+
+
+def clamp_play_rating(rating):
+    return max(PLAY_RATING_MIN, min(PLAY_RATING_MAX, int(rating)))
+
+
+def play_rating_tier(rating):
+    """Return the tier id whose landmark rating is closest to ``rating``."""
+    rating = clamp_play_rating(rating)
+    return min(
+        PLAY_RATING_TIERS,
+        key=lambda tier: abs(tier["rating"] - rating),
+    )["id"]
+
+
+def play_engine_settings(rating, elo_floor=None, supports_elo=True):
+    """Translate a target rating into UCI options plus a search budget.
+
+    Ratings at or above ``elo_floor`` use Stockfish's calibrated
+    ``UCI_Elo`` limiter. Lower ratings fall back to ``Skill Level`` and a
+    logarithmic node cap, so they carry no calibrated meaning. Engines
+    without ``UCI_Elo`` always use that approximation.
+    """
+    rating = clamp_play_rating(rating)
+    if not supports_elo:
+        return _weak_settings(rating, PLAY_RATING_MAX)
+
+    floor = PLAY_ELO_FLOOR if elo_floor is None else int(elo_floor)
+    floor = max(PLAY_RATING_MIN, min(PLAY_RATING_MAX, floor))
+    if rating < floor:
+        return _weak_settings(rating, floor)
+
+    share = (rating - floor) / max(1, PLAY_RATING_MAX - floor)
+    low, high = PLAY_STRONG_NODES
+    return {
+        "options": {"UCI_LimitStrength": True, "UCI_Elo": rating},
+        "nodes": int(round(low + share * (high - low))),
+        "approximate": False,
+    }
+
+
+def _weak_settings(rating, floor):
+    share = (rating - PLAY_RATING_MIN) / max(1, floor - PLAY_RATING_MIN)
+    low, high = PLAY_WEAK_NODES
+    return {
+        "options": {"Skill Level": round(share * 10)},
+        "nodes": int(round(low * (high / low) ** share)),
+        "approximate": True,
+    }
 
 PLAY_TIME_CONTROLS = (
     {"id": "unlimited", "base": None, "increment": 0},

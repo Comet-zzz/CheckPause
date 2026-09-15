@@ -54,6 +54,25 @@ QMenuBar::item:selected {
 #moduleRail QToolButton::menu-indicator {
     image: none;
 }
+QSlider::groove:horizontal {
+    height: 4px;
+    background-color: #d0d3d8;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background-color: #3a7bd5;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+    background-color: #3a7bd5;
+}
+QSlider::handle:horizontal:hover {
+    background-color: #2f6bbd;
+}
 """
 
 DARK_STYLESHEET = """
@@ -198,6 +217,25 @@ QScrollBar::add-line, QScrollBar::sub-line {
 }
 #moduleRail QToolButton::menu-indicator {
     image: none;
+}
+QSlider::groove:horizontal {
+    height: 4px;
+    background-color: #4a4a4a;
+    border-radius: 2px;
+}
+QSlider::sub-page:horizontal {
+    background-color: #3a7bd5;
+    border-radius: 2px;
+}
+QSlider::handle:horizontal {
+    width: 14px;
+    height: 14px;
+    margin: -5px 0;
+    border-radius: 7px;
+    background-color: #3a7bd5;
+}
+QSlider::handle:horizontal:hover {
+    background-color: #4a8ae0;
 }
 """
 

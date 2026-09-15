@@ -2,12 +2,24 @@ import chess
 import chess.engine
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from checkpause.config import play_engine_settings
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.engine import StockfishAnalyzer, open_stockfish
 from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
+
+
+def _engine_elo_floor(engine):
+    """Return ``(has_uci_elo, floor)`` for the running engine."""
+    option = engine.options.get("UCI_Elo")
+    if option is None:
+        return False, None
+    try:
+        return True, int(option.min)
+    except (TypeError, ValueError):
+        return True, None
 
 
 class AnalysisWorker(QThread):
@@ -49,10 +61,10 @@ class EngineMoveWorker(QThread):
     move_ready = pyqtSignal(str)
     failed = pyqtSignal(str)
 
-    def __init__(self, fen, level, language="zh-CN", parent=None):
+    def __init__(self, fen, rating, language="zh-CN", parent=None):
         super().__init__(parent)
         self.fen = fen
-        self.level = dict(level)
+        self.rating = rating
         self.language = language
 
     def run(self):
@@ -64,15 +76,15 @@ class EngineMoveWorker(QThread):
             return
 
         try:
-            skill = self.level.get("skill")
-            if skill is not None:
-                try:
-                    engine.configure({"Skill Level": skill})
-                except chess.engine.EngineError:
-                    pass
-            limit = chess.engine.Limit(
-                depth=self.level.get("depth"), time=self.level.get("time")
+            supports_elo, floor = _engine_elo_floor(engine)
+            settings = play_engine_settings(
+                self.rating, elo_floor=floor, supports_elo=supports_elo
             )
+            try:
+                engine.configure(settings["options"])
+            except chess.engine.EngineError:
+                pass
+            limit = chess.engine.Limit(nodes=settings["nodes"])
             result = engine.play(chess.Board(self.fen), limit)
         except Exception as exc:
             self.failed.emit(str(exc))
