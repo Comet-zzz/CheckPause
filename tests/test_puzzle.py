@@ -165,5 +165,55 @@ class BuiltinPuzzleTests(unittest.TestCase):
         self.assertNotIn(puzzles.BUILTIN_ID, ids)
 
 
+class PuzzleProgressTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = self._tmp.name
+
+    def _write_csv(self):
+        path = os.path.join(self.base, "sample.csv")
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write(CSV_HEADER + CSV_ROW)
+        return path
+
+    def test_solved_indices_start_empty(self):
+        self.assertEqual(
+            puzzles.solved_indices("missing", base_dir=self.base), set()
+        )
+
+    def test_mark_solved_is_deduplicated(self):
+        puzzles.mark_solved("c1", 3, base_dir=self.base)
+        puzzles.mark_solved("c1", 1, base_dir=self.base)
+        puzzles.mark_solved("c1", 3, base_dir=self.base)
+        self.assertEqual(
+            puzzles.solved_indices("c1", base_dir=self.base), {1, 3}
+        )
+
+    def test_progress_is_per_collection(self):
+        puzzles.mark_solved("c1", 0, base_dir=self.base)
+        self.assertEqual(
+            puzzles.solved_indices("c2", base_dir=self.base), set()
+        )
+
+    def test_clear_progress(self):
+        puzzles.mark_solved("c1", 0, base_dir=self.base)
+        self.assertTrue(puzzles.clear_progress("c1", base_dir=self.base))
+        self.assertEqual(
+            puzzles.solved_indices("c1", base_dir=self.base), set()
+        )
+        self.assertFalse(puzzles.clear_progress("c1", base_dir=self.base))
+
+    def test_delete_collection_clears_progress(self):
+        meta = puzzles.import_collection(
+            self._write_csv(), base_dir=self.base
+        )
+        puzzles.mark_solved(meta["id"], 0, base_dir=self.base)
+        puzzles.delete_collection(meta["id"], base_dir=self.base)
+        self.assertEqual(
+            puzzles.solved_indices(meta["id"], base_dir=self.base), set()
+        )
+
+
 if __name__ == "__main__":
     unittest.main()

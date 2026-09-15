@@ -105,12 +105,12 @@ The original CLI flow is still available: paste a PGN, analyze it with Stockfish
 run_gui.py / run_cli.py        # GUI / CLI 入口
 checkpause/
   config.py  resources.py  assets.py
-  core/      engine.py  ai.py  rating.py  puzzle.py
+  core/      engine.py  ai.py  rating.py  puzzle.py  play_session.py  openings.py  endgames.py
   data/      paths.py  settings.py  profile.py  puzzles.py
   i18n/      zh_CN.py  en_US.py
   gui/       main_window.py  dialogs.py  theme.py  workers.py
              pages/    analysis_page.py  chat_page.py  stats_page.py  play_page.py  puzzle_page.py  welcome_page.py
-             widgets/  board_widget.py  move_list.py
+             widgets/  move_list.py  module_rail.py  board/widget.py  board/canvas.py  board/promo.py  board/constants.py
 cli/         main.py  chat_ui.py  input_handler.py  engine_cli.py
 tests/       unittest 测试
 tools/       build_openings.py  build_puzzles.py

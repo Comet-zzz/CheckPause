@@ -45,7 +45,7 @@ from checkpause.gui.pages.puzzle_page import PuzzlePage
 from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
-from checkpause.gui.widgets.board_widget import BoardWidget
+from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.module_rail import ModuleRail
 from checkpause.gui.workers import AnalysisWorker, ChatWorker
 from checkpause.i18n import t
