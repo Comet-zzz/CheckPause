@@ -132,6 +132,7 @@ class PuzzlePage(QWidget):
         layout.addWidget(self._collection_list, 1)
         layout.addLayout(nav_row)
         layout.addWidget(solve_box)
+        self.panel = panel
         return panel
 
     def refresh_collections(self, select_id=None):

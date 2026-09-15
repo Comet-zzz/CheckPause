@@ -153,6 +153,7 @@ class PlayPage(QWidget):
         layout.addLayout(buttons)
         layout.addWidget(self._move_list, 1)
         layout.addWidget(self._result_label)
+        self.panel = panel
         return panel
 
     def _new_game(self):
@@ -487,7 +488,9 @@ class PlayPage(QWidget):
             and not session.game_over
             and not session.paused
         )
-        self._btn_resign.setEnabled(not session.game_over)
+        self._btn_resign.setEnabled(
+            bool(session.moves) and not session.game_over
+        )
         self._btn_pause.setEnabled(
             not session.game_over and not thinking
         )

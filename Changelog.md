@@ -1,3 +1,33 @@
+# v1.4.1 – Layout Polish
+
+> 本次更新优化了界面布局：对弈、谜题与分析工具下的棋盘与侧栏尺寸保持统一，切换模块时界面不再跳动。
+>
+> This release polishes the layout: the board and side panel now stay the same size across Play, Puzzles, and Analysis, so switching modules no longer shifts the interface.
+
+---
+
+## 🎯 What's Changed
+- 优化了界面布局：统一各模块的棋盘与侧栏尺寸，并微调了模块入口与按钮的对齐。
+
+- Polished the layout: unified the board and side-panel sizes across modules and tidied module and button alignment.
+
+---
+
+## 🛠️ Full Changelog
+- fix(gui): keep the board and side panel the same size across modules
+- fix(gui): align the module rail buttons consistently
+- chore(version): bump the app version to 1.4.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
 # v1.4.0 – Puzzle Progress and Quick Jump
 
 > 谜题页焕新：已解开的谜题会被记住，重开自动继续，并可直接跳到任意一题。

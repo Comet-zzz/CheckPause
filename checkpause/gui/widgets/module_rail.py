@@ -1,6 +1,7 @@
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QButtonGroup,
+    QSizePolicy,
     QToolButton,
     QVBoxLayout,
     QWidget,
@@ -40,6 +41,9 @@ class ModuleRail(QWidget):
         button.setCheckable(True)
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         button.setFixedHeight(40)
+        button.setSizePolicy(
+            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
+        )
         button.clicked.connect(
             lambda _checked=False, mid=module_id: self.module_selected.emit(
                 mid
