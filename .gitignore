@@ -1,12 +1,51 @@
+# Secrets & local config
 .env
+.env.*
+!.env.example
 profile.json
+settings.json
+
+# Python
 .venv/
-stockfish/
-.idea/
 __pycache__/
-output/
+*.py[cod]
+*.egg-info/
+pip-wheel-metadata/
+
+# PyInstaller build output
 build/
 dist/
-*.pyc
-.Rhistory
+*.manifest
+
+# Test / lint caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+
+# IDE / editors
+.idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS metadata
 .DS_Store
+Thumbs.db
+desktop.ini
+.Rhistory
+
+# Logs & crash dumps
+*.log
+*.dmp
+
+# Third-party source (download separately)
+stockfish/
+output/
+
+# Kilo local state
+.kilo/worktrees/
+.kilo/agent-manager.json
