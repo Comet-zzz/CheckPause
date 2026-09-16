@@ -2,7 +2,7 @@
 
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.3/CheckPause_Setup_1.5.3.exe)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
@@ -29,7 +29,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows users
 
-1. Get `CheckPause_Setup_1.5.2.exe` from the Download section at the end of this file.
+1. Get `CheckPause_Setup_1.5.3.exe` from the Download section at the end of this file.
 2. Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
 3. Launch CheckPause from the desktop or Start Menu; first launch asks for a username and interface language.
 4. Open Settings → API settings... and enter an API key (DeepSeek by default; any OpenAI-compatible endpoint works).
@@ -146,10 +146,10 @@ Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then
 
 ## ⬇️ Download
 
-**Latest: CheckPause v1.5.2 (Windows x64)**
+**Latest: CheckPause v1.5.3 (Windows x64)**
 
-- 📦 [CheckPause_Setup_1.5.2.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe) (107.6 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
-- SHA-256: `FDC9A81D0C6B76B359EC1DE330887299674CB0E0D1DFC32D9441E953AAEE3E59`
+- 📦 [CheckPause_Setup_1.5.3.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.3/CheckPause_Setup_1.5.3.exe) (107.6 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
+- SHA-256: `5DB8434C0E5BCEA50D5CEBBC25B115CB54FAB46BCC69251F6B3C34EFDA838610`
 - Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
 

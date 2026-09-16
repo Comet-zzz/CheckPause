@@ -1,3 +1,55 @@
+# v1.5.3 – Queen App Icon and Vector Icons
+
+> 换上了王后造型的应用图标：深灰渐变圆角底配白色剪影，窗口、任务栏、exe、安装向导和桌面快捷方式全部生效。侧边栏与棋盘导航的图标也一并矢量重绘——原本用字符拼出来的 `|◀ ◀ ▶ ▶| ⇅` 换成矢量图标后不再受系统字体影响，侧边栏新增「对弈 / 谜题 / 分析工具」图标，并能跟随深浅主题自动换色。
+>
+> A queen icon now fronts the app: a rounded charcoal tile with a white silhouette, applied to the window, taskbar, executable, installer wizard, and desktop shortcuts. The module rail and board navigation are redrawn as vectors too — the old `|◀ ◀ ▶ ▶| ⇅` character glyphs no longer depend on system fonts, the rail gains Play / Puzzles / Analysis icons, and every icon re-tints itself for the light and dark themes.
+
+---
+
+## 🎯 What's New
+
+### 👑 Queen app icon
+- 新增王后造型应用图标：深灰渐变圆角底 + 白色剪影，严格黑白灰配色，窗口、任务栏、`CheckPause.exe`、安装向导与桌面快捷方式全部生效。
+- 图标以单个 SVG 为源文件（`assets/icons/app_icon.svg`），`tools/make_icon.py` 生成 16–256 共 9 个尺寸的 `assets/app.ico`；改图标只需改 SVG 再跑一次脚本，不引入任何新依赖。
+
+- The app ships a queen icon: a rounded charcoal tile with a white silhouette, kept strictly black, white, and gray, covering the window, taskbar, CheckPause.exe, the installer wizard, and desktop shortcuts.
+- One SVG (`assets/icons/app_icon.svg`) is the single source of truth; `tools/make_icon.py` renders a nine-size `assets/app.ico` (16–256 px) with no extra dependencies, so restyling is an SVG edit plus one script run.
+
+### 🧭 Vector icons across the UI
+- 侧边栏「对弈 / 谜题 / 分析工具」新增线性图标（交叉剑 / 拼图 / 放大镜柱状图），按钮改为图标 + 文字，栏宽由 84 调整为 108 像素。
+- 棋盘下方导航不再使用 `|◀ ◀ ▶ ▶| ⇅` 字符：`⇅` 在部分系统字体里缺失，会显示成方框；字符箭头还会随字体不同出现粗细不匀、基线错位。换成矢量图标后在任何机器上外观一致。
+- 图标只有一份单色 SVG，运行时按主题重新着色（浅色深灰 / 深色浅灰），禁用态另有配色；切换深浅主题即时刷新，高 DPI 屏幕额外渲染 2 倍图。
+- tooltip 文案去掉字符前缀：`|◀ 最初` → `最初一步`，`|◀ First` → `First move`。
+
+- The module rail (Play / Puzzles / Analysis) gains line icons — crossed swords, a jigsaw piece, and a magnifier with bars — and switches to icon + label buttons; the rail width goes from 84 to 108 px.
+- Board navigation drops the `|◀ ◀ ▶ ▶| ⇅` characters. The `⇅` glyph is missing from some system fonts and renders as a tofu box, while character arrows vary in weight and baseline between fonts; vector icons look identical everywhere.
+- Each icon is a single monochrome SVG re-tinted at runtime (dark gray on the light theme, light gray on the dark one) with a dedicated disabled color, instant refresh on theme switch, and a 2× render for high-DPI screens.
+- Tooltips lose their glyph prefixes: `|◀ First` becomes `First move`, `|◀ 最初` becomes `最初一步`.
+
+---
+
+## 🛠️ Full Changelog
+- feat(ui): add a queen application icon for the window, taskbar, executable, and installer
+- feat(ui): add vector icons to the module rail and the board navigation buttons
+- feat(ui): tint icons per theme through a cached SVG icon factory
+- feat(tools): add `tools/make_icon.py` to build the multi-size ICO from the SVG source
+- fix(i18n): drop glyph prefixes from the board navigation tooltips
+- chore(build): embed the executable icon and bundle the icon assets
+- chore(build): give the installer wizard the same icon
+- chore(version): bump the app version to 1.5.3
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。档案、题集进度、收藏与 API 设置均不受影响。
+- 侧边栏加宽 24 像素，默认窗口尺寸下棋盘区域会相应变窄；需要更大的棋盘可拉宽窗口或拖动分隔条。
+
+- No breaking changes. Profiles, puzzle progress, favorites, and API settings are untouched.
+- The module rail is 24 px wider, so the board is slightly narrower at the default window size; widen the window or drag the splitter for a bigger board.
+
+---
+
 # v1.5.2 – Favorites and Locked Settings
 
 > 谜题页新增「收藏夹」：点一下「收藏」或答错一题就会自动收录，方便集中复练；「上一题 / 下一题」只会在进入题集后出现，与「提示」重复的「显示答案」已移除。对弈中走出第一步后，「我方 / 计时 / 开局 / 残局」会自动变灰锁定，点击「新对局」即可重新调整，避免对局中途被误改。
