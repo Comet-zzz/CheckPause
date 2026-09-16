@@ -3,7 +3,7 @@
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
 [![release](https://img.shields.io/github/v/release/Comet-zzz/CheckPause?style=for-the-badge&label=release&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe)
 [![license](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
@@ -129,7 +129,8 @@ Output:
 1. Bump `APP_VERSION` in `checkpause/__init__.py` and `version_info.txt`, and add a new section at the top of `Changelog.md`;
 2. Run `.\build_exe.ps1` to produce `dist\CheckPause_Setup_<version>.exe`;
 3. Create a GitHub Release and upload that installer;
-4. **Update `version.json` in the repository root** so `latest` and `url` point at the new version.
+4. **Update `version.json` in the repository root** so `latest` and `url` point at the new version;
+5. Update the version number, installer link, and SHA-256 in `README.md` and `README.zh-CN.md` — the downloads badge and the Download section both point straight at the `.exe`, so they must follow the new file.
 
 Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then raw.githubusercontent) and prompt when a higher version is listed. Step 4 is what actually reaches existing users: without it the new installer exists but nobody is told about it.
 
