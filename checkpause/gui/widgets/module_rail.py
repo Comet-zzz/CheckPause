@@ -1,4 +1,4 @@
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, pyqtSignal
 from PyQt6.QtWidgets import (
     QButtonGroup,
     QSizePolicy,
@@ -7,9 +7,10 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from checkpause.gui.icons import rail_icon
 from checkpause.i18n import t
 
-RAIL_WIDTH = 84
+RAIL_WIDTH = 108
 
 
 class ModuleRail(QWidget):
@@ -21,6 +22,7 @@ class ModuleRail(QWidget):
         self.setFixedWidth(RAIL_WIDTH)
 
         self._language = "zh-CN"
+        self._theme = "light"
         self._modules = {}
 
         self._group = QButtonGroup(self)
@@ -35,11 +37,12 @@ class ModuleRail(QWidget):
         layout.addLayout(self._module_box)
         layout.addStretch(1)
 
-    def add_module(self, module_id, label_key):
+    def add_module(self, module_id, label_key, icon_name):
         button = QToolButton()
         button.setObjectName("railModule")
         button.setCheckable(True)
-        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        button.setIconSize(QSize(20, 20))
         button.setFixedHeight(40)
         button.setSizePolicy(
             QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
@@ -54,8 +57,19 @@ class ModuleRail(QWidget):
         self._modules[module_id] = {
             "button": button,
             "label_key": label_key,
+            "icon_name": icon_name,
         }
+        self._apply_icon(module_id)
         return button
+
+    def _apply_icon(self, module_id):
+        entry = self._modules[module_id]
+        entry["button"].setIcon(rail_icon(self._theme, entry["icon_name"]))
+
+    def set_theme(self, theme):
+        self._theme = theme
+        for module_id in self._modules:
+            self._apply_icon(module_id)
 
     def set_active(self, module_id):
         self._group.setExclusive(False)

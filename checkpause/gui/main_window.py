@@ -44,6 +44,7 @@ from checkpause.gui.dialogs import (
     show_about,
     show_update_dialog,
 )
+from checkpause.gui.icons import app_icon
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
 from checkpause.gui.pages.play_page import PlayPage
@@ -57,15 +58,18 @@ from checkpause.gui.workers import AnalysisWorker, ChatWorker, UpdateCheckWorker
 from checkpause.i18n import t
 
 MODULES = (
-    {"id": "play", "label_key": "nav_play"},
-    {"id": "puzzle", "label_key": "nav_puzzle"},
-    {"id": "analysis", "label_key": "nav_analysis"},
+    {"id": "play", "label_key": "nav_play", "icon": "rail_play"},
+    {"id": "puzzle", "label_key": "nav_puzzle", "icon": "rail_puzzle"},
+    {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+        app = QApplication.instance()
+        if app is not None:
+            app.setWindowIcon(app_icon())
         self.profile = load_profile()
         self._language = (self.profile or {}).get("language", "zh-CN")
         self._theme = (self.profile or {}).get("theme", LIGHT)
@@ -175,7 +179,7 @@ class MainWindow(QMainWindow):
     def _build_rail(self):
         rail = ModuleRail()
         for module in MODULES:
-            rail.add_module(module["id"], module["label_key"])
+            rail.add_module(module["id"], module["label_key"], module["icon"])
         rail.module_selected.connect(self._on_module_selected)
         rail.retranslate(self._language)
         return rail
@@ -504,6 +508,7 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
         if app is not None:
             apply_theme(app, self._theme)
+        self._rail.set_theme(self._theme)
         self.chat_page.set_theme(self._theme)
         self.board.set_theme(self._theme)
         self.analysis_page.set_theme(self._theme)

@@ -4,7 +4,7 @@ import time
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import QPointF, QRectF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QPainter, QPixmap
 from PyQt6.QtSvg import QSvgRenderer
 from PyQt6.QtWidgets import (
@@ -21,6 +21,7 @@ from checkpause.assets import (
     DEFAULT_PIECE_SET,
     PIECE_SETS,
 )
+from checkpause.gui.icons import nav_icon
 from checkpause.gui.theme import DARK
 from checkpause.gui.widgets.board.canvas import _BoardCanvas
 from checkpause.gui.widgets.board.constants import ANIMATION_MS, FRAME_MS
@@ -65,18 +66,20 @@ class BoardWidget(QWidget):
         self._step_label = QLabel()
         self._step_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        self._btn_first = QPushButton("|◀")
-        self._btn_prev = QPushButton("◀")
-        self._btn_next = QPushButton("▶")
-        self._btn_last = QPushButton("▶|")
-        self._btn_flip = QPushButton("⇅")
+        self._btn_first = QPushButton()
+        self._btn_prev = QPushButton()
+        self._btn_next = QPushButton()
+        self._btn_last = QPushButton()
+        self._btn_flip = QPushButton()
         for button in (self._btn_first, self._btn_prev, self._btn_next, self._btn_last):
             button.setEnabled(False)
+            button.setMinimumWidth(44)
         self._btn_first.clicked.connect(self.first)
         self._btn_prev.clicked.connect(self.prev)
         self._btn_next.clicked.connect(self.next)
         self._btn_last.clicked.connect(self.last)
         self._btn_flip.clicked.connect(self.flip)
+        self._apply_nav_icons()
 
         self._nav = QWidget()
         nav_layout = QHBoxLayout(self._nav)
@@ -374,8 +377,20 @@ class BoardWidget(QWidget):
             self._board_theme, BOARD_THEMES[DEFAULT_BOARD_THEME]
         )
 
+    def _apply_nav_icons(self):
+        for button, name in (
+            (self._btn_first, "nav_first"),
+            (self._btn_prev, "nav_prev"),
+            (self._btn_next, "nav_next"),
+            (self._btn_last, "nav_last"),
+            (self._btn_flip, "nav_flip"),
+        ):
+            button.setIcon(nav_icon(self._theme, name))
+            button.setIconSize(QSize(18, 18))
+
     def set_theme(self, theme):
         self._theme = theme
+        self._apply_nav_icons()
         self.render()
 
     def set_piece_set(self, name):
