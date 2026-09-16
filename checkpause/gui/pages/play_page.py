@@ -528,6 +528,17 @@ class PlayPage(QWidget):
             not session.game_over and not thinking
         )
         self._btn_import.setEnabled(bool(session.moves))
+        self._update_setup_controls()
+
+    def _update_setup_controls(self):
+        locked = self._session.can_undo()
+        for combo in (
+            self._side_combo,
+            self._time_combo,
+            self._opening_combo,
+            self._endgame_combo,
+        ):
+            combo.setEnabled(not locked)
 
     def set_theme(self, theme):
         self.board.set_theme(theme)
