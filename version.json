@@ -1,5 +1,5 @@
 {
-  "latest": "1.5.1",
-  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe",
-  "notes": "对弈难度改为 100–3000 分滑条，1320 分以上由引擎 Elo 限制器标定。"
+  "latest": "1.5.2",
+  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe",
+  "notes": "谜题新增收藏夹：收藏或答错自动收录；对弈开始后锁定设置，避免中途误改。"
 }

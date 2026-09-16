@@ -2,7 +2,7 @@
 
 The manifest only needs three fields:
 
-    {"latest": "1.5.1", "url": "https://.../CheckPause_Setup_1.5.1.exe", "notes": "..."}
+    {"latest": "1.5.2", "url": "https://.../CheckPause_Setup_1.5.2.exe", "notes": "..."}
 
 Update checks must never disturb the user: every failure path here returns
 None instead of raising, so being offline simply means "no update found".
