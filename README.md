@@ -4,6 +4,7 @@ A chess analysis tool that combines game-tree search with natural language gener
 
 [![release](https://img.shields.io/github/v/release/Comet-zzz/CheckPause?style=for-the-badge&label=release&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/latest)
 [![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases)
+[![license](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
 
@@ -139,6 +140,7 @@ Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then
 - Pieces come from Lichess open-source piece sets (cburnett, merida, chessnut, fantasy, spatial, celtic, kiwen-suwi, rhosgfx, totoy, mpchess), each owned by its author under GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 licenses.
 - Engine: [Stockfish](https://stockfishchess.org/) (GPLv3); the opening book is compiled from public opening lines by `tools/build_openings.py`.
 - The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php) and uses its official Simplified Chinese language file (`installer/languages/ChineseSimplified.isl`, maintained by Zhenghan Yang).
+- License: the CheckPause source code is released under the [MIT License](LICENSE). Bundled components keep their own terms — Stockfish is GPLv3 (source available at https://stockfishchess.org/download/), and the piece sets keep the licenses listed above.
 
 ---
 
