@@ -215,5 +215,84 @@ class PuzzleProgressTests(unittest.TestCase):
         )
 
 
+class PuzzleFavoritesTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = self._tmp.name
+
+    def _puzzle(self, puzzle_id="p1"):
+        return {
+            "id": puzzle_id,
+            "fen": chess.STARTING_FEN,
+            "moves": ["e2e4"],
+            "rating": 1200,
+            "themes": ["mate"],
+            "opponent_first": False,
+        }
+
+    def test_add_and_key_by_puzzle_id(self):
+        puzzle = self._puzzle()
+        self.assertFalse(puzzles.is_favorite(puzzle, self.base))
+        self.assertTrue(puzzles.add_favorite(puzzle, base_dir=self.base))
+        self.assertTrue(puzzles.is_favorite(puzzle, self.base))
+        self.assertIn("p1", puzzles.favorite_keys(self.base))
+        self.assertFalse(puzzles.add_favorite(puzzle, base_dir=self.base))
+
+    def test_remove_and_toggle(self):
+        puzzle = self._puzzle()
+        puzzles.add_favorite(puzzle, base_dir=self.base)
+        self.assertFalse(puzzles.toggle_favorite(puzzle, base_dir=self.base))
+        self.assertFalse(puzzles.is_favorite(puzzle, self.base))
+        self.assertTrue(puzzles.toggle_favorite(puzzle, base_dir=self.base))
+        self.assertTrue(puzzles.is_favorite(puzzle, self.base))
+
+    def test_fallback_key_uses_fen_and_moves(self):
+        puzzle = self._puzzle(puzzle_id="")
+        self.assertTrue(puzzles.add_favorite(puzzle, base_dir=self.base))
+        self.assertTrue(puzzles.is_favorite(dict(puzzle), self.base))
+
+    def test_store_persists_source_id_and_content(self):
+        puzzle = self._puzzle()
+        puzzles.add_favorite(puzzle, source_id="src", base_dir=self.base)
+        stored = puzzles.load_favorites(self.base)
+        self.assertEqual(len(stored), 1)
+        self.assertEqual(stored[0]["source_id"], "src")
+        self.assertEqual(stored[0]["moves"], ["e2e4"])
+
+    def test_delete_collection_refuses_favorites(self):
+        self.assertFalse(
+            puzzles.delete_collection(puzzles.FAVORITES_ID, base_dir=self.base)
+        )
+
+    def test_virtual_collection_tracks_count(self):
+        collection = puzzles.PuzzleCollection(
+            puzzles.favorites_collection(self.base)
+        )
+        self.assertTrue(collection.favorite)
+        self.assertEqual(collection.count, 0)
+        puzzles.add_favorite(self._puzzle("a"), base_dir=self.base)
+        puzzles.add_favorite(self._puzzle("b"), base_dir=self.base)
+        refreshed = puzzles.PuzzleCollection(
+            puzzles.favorites_collection(self.base)
+        )
+        self.assertEqual(refreshed.count, 2)
+        self.assertEqual(refreshed.get(0)["id"], "a")
+
+
+class FavoritesListedTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        patch = mock.patch.object(puzzles, "PUZZLE_DIR", self._tmp.name)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def test_favorites_is_always_listed_and_not_deletable(self):
+        ids = [meta["id"] for meta in puzzles.list_collections()]
+        self.assertIn(puzzles.FAVORITES_ID, ids)
+        self.assertFalse(puzzles.delete_collection(puzzles.FAVORITES_ID))
+
+
 if __name__ == "__main__":
     unittest.main()
