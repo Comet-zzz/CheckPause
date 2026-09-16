@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(1, 5, 2, 0),
-    prodvers=(1, 5, 2, 0),
+    filevers=(1, 5, 3, 0),
+    prodvers=(1, 5, 3, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -16,12 +16,12 @@ VSVersionInfo(
         [
           StringStruct('CompanyName', 'CometZZZ'),
           StringStruct('FileDescription', 'CheckPause - chess analysis tool'),
-          StringStruct('FileVersion', '1.5.2.0'),
+          StringStruct('FileVersion', '1.5.3.0'),
           StringStruct('InternalName', 'CheckPause'),
           StringStruct('LegalCopyright', 'Copyright (C) 2026 CometZZZ'),
           StringStruct('OriginalFilename', 'CheckPause.exe'),
           StringStruct('ProductName', 'CheckPause'),
-          StringStruct('ProductVersion', '1.5.2.0')
+          StringStruct('ProductVersion', '1.5.3.0')
         ]
       )
     ]),

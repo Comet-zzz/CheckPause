@@ -1,5 +1,5 @@
 {
-  "latest": "1.5.2",
-  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe",
-  "notes": "谜题新增收藏夹：收藏或答错自动收录；对弈开始后锁定设置，避免中途误改。"
+  "latest": "1.5.3",
+  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.3/CheckPause_Setup_1.5.3.exe",
+  "notes": "新增王后造型应用图标，窗口、任务栏、exe 与安装向导全部生效；侧边栏与棋盘导航图标改为矢量绘制，不再受系统字体影响。"
 }
