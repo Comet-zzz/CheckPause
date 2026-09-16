@@ -3,7 +3,7 @@
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
 [![release](https://img.shields.io/github/v/release/Comet-zzz/CheckPause?style=for-the-badge&label=release&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe)
 [![license](https://img.shields.io/badge/license-MIT-green?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -129,7 +129,8 @@ python -m unittest discover -s tests -v   # 单元测试
 1. 修改 `checkpause/__init__.py` 的 `APP_VERSION` 与 `version_info.txt`，并在 `Changelog.md` 顶部新增一节；
 2. 运行 `.\build_exe.ps1`，得到 `dist\CheckPause_Setup_<版本>.exe`；
 3. 在 GitHub 上创建 Release 并上传该安装包；
-4. **更新仓库根目录的 `version.json`**，把 `latest` 与 `url` 指向新版本。
+4. **更新仓库根目录的 `version.json`**，把 `latest` 与 `url` 指向新版本；
+5. 同步更新 `README.md` 与 `README.zh-CN.md` 里的版本号、安装包直链与 SHA-256——downloads 徽章与文末「下载」段落都直接指向 `.exe`，必须跟着换到新文件。
 
 客户端启动约 2.5 秒后会读取 `version.json`（依次尝试 jsDelivr 与 raw.githubusercontent），发现更高版本就提示用户。**第 4 步忘了做，老用户就收不到更新提示**——安装包已经传上去但没人知道。
 
