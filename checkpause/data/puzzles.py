@@ -14,10 +14,13 @@ from checkpause.resources import resource_path
 PUZZLE_DIR = os.path.join(DATA_DIR, "puzzles")
 INDEX_NAME = "index.json"
 PROGRESS_NAME = "progress.json"
+FAVORITES_NAME = "favorites.jsonl"
 
 BUILTIN_PATH_PARTS = ("assets", "puzzles", "lichess_sample.jsonl")
 BUILTIN_ID = "builtin-lichess-sample"
 BUILTIN_SOURCE = "https://database.lichess.org/#puzzles"
+
+FAVORITES_ID = "favorites"
 
 CSV_EXTENSIONS = {".csv"}
 PGN_EXTENSIONS = {".pgn", ".txt"}
@@ -120,9 +123,115 @@ def clear_progress(collection_id, base_dir=None):
     return False
 
 
+def favorites_path(base_dir=None):
+    base = base_dir or PUZZLE_DIR
+    return os.path.join(base, FAVORITES_NAME)
+
+
+def favorites_collection(base_dir=None):
+    return {
+        "id": FAVORITES_ID,
+        "name": FAVORITES_NAME,
+        "file": favorites_path(base_dir),
+        "format": "jsonl",
+        "favorite": True,
+    }
+
+
+def puzzle_key(puzzle):
+    if not isinstance(puzzle, dict):
+        return ""
+    puzzle_id = str(puzzle.get("id") or "").strip()
+    if puzzle_id:
+        return puzzle_id
+    fen = str(puzzle.get("fen") or "").strip()
+    moves = " ".join(str(move) for move in (puzzle.get("moves") or []))
+    if not fen and not moves:
+        return ""
+    return f"{fen}|{moves}"
+
+
+def load_favorites(base_dir=None):
+    path = favorites_path(base_dir)
+    if not os.path.isfile(path):
+        return []
+    result = []
+    try:
+        with open(path, "r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                if isinstance(item, dict):
+                    result.append(item)
+    except OSError:
+        return []
+    return result
+
+
+def save_favorites(entries, base_dir=None):
+    base = base_dir or puzzle_dir()
+    os.makedirs(base, exist_ok=True)
+    with open(favorites_path(base), "w", encoding="utf-8") as handle:
+        for item in entries:
+            handle.write(
+                json.dumps(item, ensure_ascii=False, separators=(",", ":"))
+            )
+            handle.write("\n")
+
+
+def favorite_keys(base_dir=None):
+    return {puzzle_key(item) for item in load_favorites(base_dir)}
+
+
+def is_favorite(puzzle, base_dir=None):
+    key = puzzle_key(puzzle)
+    return bool(key) and key in favorite_keys(base_dir)
+
+
+def add_favorite(puzzle, source_id=None, base_dir=None):
+    key = puzzle_key(puzzle)
+    if not key:
+        return False
+    entries = load_favorites(base_dir)
+    if any(puzzle_key(item) == key for item in entries):
+        return False
+    entry = dict(puzzle)
+    if source_id:
+        entry["source_id"] = source_id
+    save_favorites(entries + [entry], base_dir)
+    return True
+
+
+def remove_favorite(puzzle, base_dir=None):
+    key = puzzle_key(puzzle)
+    if not key:
+        return False
+    entries = load_favorites(base_dir)
+    kept = [item for item in entries if puzzle_key(item) != key]
+    if len(kept) == len(entries):
+        return False
+    save_favorites(kept, base_dir)
+    return True
+
+
+def toggle_favorite(puzzle, source_id=None, base_dir=None):
+    if is_favorite(puzzle, base_dir):
+        remove_favorite(puzzle, base_dir)
+        return False
+    add_favorite(puzzle, source_id, base_dir)
+    return True
+
+
 def list_collections(base_dir=None):
     base = base_dir or PUZZLE_DIR
     result = []
+    if base_dir is None:
+        result.append(favorites_collection(base))
     if base_dir is None and not is_builtin_hidden(base):
         builtin = builtin_collection()
         if builtin is not None:
@@ -270,6 +379,8 @@ def import_collection(path, name=None, progress=None, base_dir=None):
 
 
 def delete_collection(collection_id, base_dir=None):
+    if collection_id == FAVORITES_ID:
+        return False
     base = base_dir or puzzle_dir()
     entries = load_index(base)
     keep = []
@@ -301,6 +412,7 @@ class PuzzleCollection:
         self.name = self.meta.get("name", "")
         self.file = self.meta.get("file", "")
         self.builtin = bool(self.meta.get("builtin"))
+        self.favorite = bool(self.meta.get("favorite"))
         self._offsets = None
 
     @property
@@ -314,6 +426,9 @@ class PuzzleCollection:
 
     def _build_offsets(self):
         offsets = array.array("q")
+        if not self.file or not os.path.isfile(self.file):
+            self._offsets = offsets
+            return
         with open(self.file, "rb") as handle:
             while True:
                 position = handle.tell()

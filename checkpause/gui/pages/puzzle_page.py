@@ -16,11 +16,17 @@ from PyQt6.QtWidgets import (
 
 from checkpause.core.puzzle import PuzzleSession
 from checkpause.data.puzzles import (
+    FAVORITES_ID,
     PuzzleCollection,
+    add_favorite,
     delete_collection,
+    favorite_keys,
+    favorites_collection,
     list_collections,
     mark_solved,
+    puzzle_key,
     solved_indices,
+    toggle_favorite,
 )
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.workers import PuzzleImportWorker
@@ -39,6 +45,7 @@ class PuzzlePage(QWidget):
         self._puzzle = None
         self._session = None
         self._import_worker = None
+        self._favorite_keys = set()
 
         self.board = BoardWidget()
         self.board.set_navigation_visible(False)
@@ -86,8 +93,8 @@ class PuzzlePage(QWidget):
 
         self._btn_hint = QPushButton()
         self._btn_hint.clicked.connect(self._show_hint)
-        self._btn_solution = QPushButton()
-        self._btn_solution.clicked.connect(self._reveal)
+        self._btn_favorite = QPushButton()
+        self._btn_favorite.clicked.connect(self._toggle_favorite)
         self._btn_retry = QPushButton()
         self._btn_retry.clicked.connect(self._retry)
 
@@ -113,8 +120,8 @@ class PuzzlePage(QWidget):
         solve_layout = QHBoxLayout(solve_box)
         solve_layout.setContentsMargins(0, 0, 0, 0)
         solve_layout.addWidget(self._btn_hint)
-        solve_layout.addWidget(self._btn_solution)
         solve_layout.addWidget(self._btn_retry)
+        solve_layout.addWidget(self._btn_favorite)
         self._solve_box = solve_box
 
         collection_row = QHBoxLayout()
@@ -156,15 +163,14 @@ class PuzzlePage(QWidget):
         self._puzzle = None
         self._session = None
         self._index = 0
+        self._favorite_keys = favorite_keys()
         self.board.clear()
         self.board.set_navigation_visible(False)
 
-        if not self._collections:
+        if any(not collection.favorite for collection in self._collections):
+            self._set_status("")
+        else:
             self._set_status(t("puzzle_empty", self._language))
-            self._update_controls()
-            return
-
-        self._set_status("")
         if select_id:
             for row in range(self._collection_list.count()):
                 item = self._collection_list.item(row)
@@ -196,6 +202,19 @@ class PuzzlePage(QWidget):
         self._collection = collection
         self._solved = solved_indices(collection.id)
         self.board.set_navigation_visible(False)
+        if collection.count == 0:
+            self._puzzle = None
+            self._session = None
+            self._index = 0
+            self.board.clear()
+            self._set_status(
+                ""
+                if collection.favorite
+                else t("puzzle_status_bad_data", self._language)
+            )
+            self._update_info()
+            self._update_controls()
+            return
         self._load_puzzle(self._start_index())
 
     def _start_index(self):
@@ -251,27 +270,32 @@ class PuzzlePage(QWidget):
 
     def _update_info(self):
         self._clear_info_items()
-        if self._collection is None or self._puzzle is None:
+        if self._collection is None:
             return
-        lines = [
-            t(
-                "puzzle_info",
-                self._language,
-                name=self._display_name(self._collection),
-                solved=len(self._solved),
-                total=self._collection.count,
-            )
-        ]
-        rating = self._puzzle.get("rating")
-        if rating:
-            lines.append(
-                t("puzzle_rating", self._language, rating=rating)
-            )
-        themes = self._puzzle.get("themes") or []
-        if themes:
-            lines.append(
-                t("puzzle_themes", self._language, themes=", ".join(themes))
-            )
+        if self._puzzle is None:
+            if not (self._collection.favorite and self._collection.count == 0):
+                return
+            lines = [t("puzzle_favorites_empty", self._language)]
+        else:
+            lines = [
+                t(
+                    "puzzle_info",
+                    self._language,
+                    name=self._display_name(self._collection),
+                    solved=len(self._solved),
+                    total=self._collection.count,
+                )
+            ]
+            rating = self._puzzle.get("rating")
+            if rating:
+                lines.append(
+                    t("puzzle_rating", self._language, rating=rating)
+                )
+            themes = self._puzzle.get("themes") or []
+            if themes:
+                lines.append(
+                    t("puzzle_themes", self._language, themes=", ".join(themes))
+                )
         row = self._current_collection_row()
         if row < 0:
             return
@@ -332,6 +356,7 @@ class PuzzlePage(QWidget):
         status = session.play(move)
         self.board.clear_selection()
         if status == "wrong":
+            self._auto_favorite()
             self._set_status(t("puzzle_status_wrong", self._language))
             return
 
@@ -366,32 +391,70 @@ class PuzzlePage(QWidget):
             t("puzzle_status_hint", self._language, move=uci)
         )
 
-    def _reveal(self):
-        session = self._session
-        if session is None or session.solved:
+    def _toggle_favorite(self):
+        if self._collection is None or self._puzzle is None:
             return
-        while not session.solved:
-            uci = session.expected_move
-            if not uci:
-                break
-            try:
-                move = chess.Move.from_uci(uci)
-            except ValueError:
-                break
-            if move not in session.board.legal_moves:
-                break
-            if session.is_human_turn:
-                if session.play(move) == "wrong":
-                    break
-            elif session.opponent_reply() is None:
-                break
-        self.board.clear_hint()
-        self._sync_board(animate=False)
-        self._update_controls()
-        if session.solved:
-            self._set_status(t("puzzle_status_revealed", self._language))
+        added = toggle_favorite(
+            self._puzzle, source_id=self._collection.id
+        )
+        self._favorite_keys = favorite_keys()
+        self._refresh_favorites_collection()
+        self._set_status(
+            t(
+                "puzzle_favorited" if added else "puzzle_unfavorited",
+                self._language,
+            )
+        )
+        if self._collection.favorite:
+            self._reload_favorites()
         else:
-            self._set_status(t("puzzle_status_bad_data", self._language))
+            self._update_controls()
+
+    def _auto_favorite(self):
+        if self._collection is None or self._puzzle is None:
+            return
+        if add_favorite(self._puzzle, source_id=self._collection.id):
+            self._favorite_keys = favorite_keys()
+            self._refresh_favorites_collection()
+            self._update_controls()
+
+    def _refresh_favorites_collection(self):
+        for index, collection in enumerate(self._collections):
+            if collection.id == FAVORITES_ID:
+                self._collections[index] = PuzzleCollection(
+                    favorites_collection()
+                )
+                break
+        for row in range(self._collection_list.count()):
+            item = self._collection_list.item(row)
+            if item.data(Qt.ItemDataRole.UserRole) != FAVORITES_ID:
+                continue
+            for collection in self._collections:
+                if collection.id == FAVORITES_ID:
+                    item.setText(
+                        f"{self._display_name(collection)} "
+                        f"({collection.count})"
+                    )
+                    break
+            break
+
+    def _reload_favorites(self):
+        for collection in self._collections:
+            if collection.id == FAVORITES_ID:
+                self._load_collection(collection)
+                return
+
+    def _update_favorite_button(self):
+        favorited = (
+            self._puzzle is not None
+            and puzzle_key(self._puzzle) in self._favorite_keys
+        )
+        self._btn_favorite.setText(
+            t(
+                "puzzle_unfavorite" if favorited else "puzzle_favorite",
+                self._language,
+            )
+        )
 
     def _retry(self):
         if self._puzzle is not None:
@@ -487,6 +550,8 @@ class PuzzlePage(QWidget):
         self._status_label.setVisible(bool(text))
 
     def _display_name(self, collection):
+        if collection.favorite:
+            return t("puzzle_favorites_name", self._language)
         if collection.builtin:
             return t("puzzle_builtin_name", self._language)
         return collection.name
@@ -514,7 +579,7 @@ class PuzzlePage(QWidget):
             self._update_jump()
 
     def _update_jump(self):
-        if self._collection is None:
+        if self._collection is None or self._collection.count == 0:
             self._jump_edit.clear()
             self._jump_edit.setEnabled(False)
             self._jump_total.clear()
@@ -531,14 +596,19 @@ class PuzzlePage(QWidget):
         has_collection = self._collection is not None
         self._jump_box.setVisible(has_collection)
         self._solve_box.setVisible(has_collection)
+        self._btn_prev.setVisible(has_collection)
+        self._btn_next.setVisible(has_collection)
         self._btn_hint.setEnabled(has_session and not solved)
-        self._btn_solution.setEnabled(has_session and not solved)
         self._btn_retry.setEnabled(has_session)
-        self._btn_delete.setEnabled(has_collection)
+        self._btn_favorite.setEnabled(has_session)
+        self._btn_delete.setEnabled(
+            has_collection and not self._collection.favorite
+        )
         self._btn_prev.setEnabled(has_collection and self._index > 0)
         self._btn_next.setEnabled(
             has_collection and self._index + 1 < self._collection.count
         )
+        self._update_favorite_button()
         self._update_jump()
 
     def set_theme(self, theme):
@@ -576,7 +646,6 @@ class PuzzlePage(QWidget):
         self._btn_prev.setText(t("puzzle_prev", language))
         self._btn_next.setText(t("puzzle_next", language))
         self._btn_hint.setText(t("puzzle_hint", language))
-        self._btn_solution.setText(t("puzzle_solution", language))
         self._btn_retry.setText(t("puzzle_retry", language))
         self._btn_jump.setText(t("puzzle_jump", language))
         self._jump_edit.setToolTip(t("puzzle_jump_tip", language))
@@ -592,6 +661,8 @@ class PuzzlePage(QWidget):
                     )
                     break
         if self._puzzle is not None:
+            self._update_info()
+        elif self._collection is not None and self._collection.count == 0:
             self._update_info()
         elif not self._collections:
             self._set_status(t("puzzle_empty", language))
