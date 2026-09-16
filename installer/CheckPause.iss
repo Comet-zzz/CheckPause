@@ -40,6 +40,9 @@ DefaultGroupName={#AppName}
 UninstallDisplayName={#AppName}
 UninstallDisplayIcon={app}\{#AppExeName}
 
+; Setup wizard icon, compiled from the same source as the exe icon.
+SetupIconFile=..\assets\app.ico
+
 ; Per-user install: no UAC prompt, which matters for non-technical users.
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
