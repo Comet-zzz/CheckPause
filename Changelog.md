@@ -1,3 +1,61 @@
+# v1.5.2 – Favorites and Locked Settings
+
+> 谜题页新增「收藏夹」：点一下「收藏」或答错一题就会自动收录，方便集中复练；「上一题 / 下一题」只会在进入题集后出现，与「提示」重复的「显示答案」已移除。对弈中走出第一步后，「我方 / 计时 / 开局 / 残局」会自动变灰锁定，点击「新对局」即可重新调整，避免对局中途被误改。
+>
+> The Puzzle page gains a Favorites collection: tap Favorite on any puzzle, or simply miss one, and it is saved for later review. Previous / Next now appear only after you enter a collection, and the redundant Show solution button is gone. In Play, once a game is under way the Play as / Clock / Opening / Endgame pickers gray out until you start a new game, so a game in progress cannot be reconfigured by accident.
+
+---
+
+## 🎯 What's New
+
+### ⭐ Favorites collection
+- 题集列表新增「收藏夹」，始终存在、不可删除；收藏的题目连同难度与主题一并保存，离线也能复练。
+- 题目页底部新增「收藏 / 取消收藏」按钮；答错一步的题目会自动收录，不重复添加。
+- 收藏夹为空时，会在列表内「收藏夹」条目下方直接给出提示，而不是占用顶部状态栏。
+
+- A Favorites collection now sits at the top of the collection list: always present and never deletable, saving each puzzle with its rating and themes for offline review.
+- Puzzle pages gain a Favorite / Unfavorite button, and any puzzle answered incorrectly is added automatically without duplicates.
+- When Favorites is empty, a hint appears right under the Favorites entry in the list instead of in the status line above.
+
+### 🔒 Locked game settings
+- 对弈走出第一步后，「我方 / 计时 / 开局 / 残局」自动变灰不可修改；「新对局」或悔棋回到起始局面后恢复可编辑。
+- 难度滑条不受影响，对局中仍可随时调整电脑强度。
+
+- Once a Play game is under way, the Play as / Clock / Opening / Endgame pickers gray out and cannot be changed; New game (or undoing back to the start) unlocks them again.
+- The rating slider is unaffected and can still be adjusted mid-game.
+
+### 🧹 Puzzle panel cleanup
+- 未选择习题集时不再显示「上一题 / 下一题」与跳转框，选中后自动出现。
+- 移除与「提示」功能重复的「显示答案」按钮，界面更精简。
+
+- Previous / Next and the jump box stay hidden until a collection is selected, then appear automatically.
+- The Show solution button was removed as it duplicated Hint, leaving a cleaner panel.
+
+---
+
+## 🛠️ Full Changelog
+- feat(play): lock the side, clock, opening, and endgame pickers once a game is under way
+- feat(puzzle): add a non-deletable Favorites collection with a favorite toggle
+- feat(puzzle): auto-add puzzles answered incorrectly to Favorites
+- feat(puzzle): show the empty-Favorites hint as an in-list info line
+- feat(puzzle): hide Previous / Next until a collection is entered
+- refactor(puzzle): drop the Show solution button in favor of hints
+- test(puzzle): cover the favorites store and its virtual collection
+- docs: document Favorites and the Play settings lock in both READMEs
+- chore(version): bump the app version to 1.5.2
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。现有档案、题集进度、收藏以外的数据均不受影响。
+- 新增用户数据文件 `%APPDATA%\CheckPause\puzzles\favorites.jsonl`，仅在首次收藏（或首次答错）时创建。
+
+- No breaking changes. Existing profiles, puzzle progress, and other data keep working.
+- A new user data file, `%APPDATA%\CheckPause\puzzles\favorites.jsonl`, is created only when you first favorite a puzzle (or first miss one).
+
+---
+
 # v1.5.1 – Rating Slider
 
 > 对弈难度从五档下拉框换成了一条 100–3000 的等级分滑条，拖到哪就是哪：1320 分及以上由 Stockfish 官方的 Elo 限制器标定，更低分段用 Skill Level 与节点上限近似。难度与计时对调了位置，难度独享一整行；引擎思考量也从「秒数」改成「节点数」，同一档位不再因电脑快慢而变强变弱。

@@ -49,3 +49,4 @@ output/
 # Kilo local state
 .kilo/worktrees/
 .kilo/agent-manager.json
+.kilo/jetbrains.json

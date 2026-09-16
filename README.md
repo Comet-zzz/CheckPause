@@ -3,7 +3,7 @@
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
 [![release](https://img.shields.io/github/v/release/Comet-zzz/CheckPause?style=for-the-badge&label=release&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/latest)
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
@@ -18,8 +18,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 - **Local engine analysis**: Stockfish scores every move with progress and stop support; a Polyglot opening book detects book moves and skips engine work.
 - **AI explanations**: streamed answers based on engine data, with follow-up questions like a real coach; works with DeepSeek, OpenAI, OpenRouter, and local models.
 - **Clickable move list**: jump to any position and highlight the current ply; the board also shows engine best-move arrows and can be flipped.
-- **Play against the computer**: the Play module takes on Stockfish with click-to-move, White/Black, a 100–3000 rating slider (1320 and above calibrated by the engine's Elo limiter), common time controls (1+0 through 30+0, with increments or unlimited), selectable openings and endgames, undo, resign, promotion picking, and move review — plus one-click send to analysis.
-- **Puzzle training**: a Puzzles module between Play and Analysis ships with a Lichess sample and accepts your own open collections (Lichess CSV, FEN-based PGN), with correct/wrong feedback, hints, reveal, and rating/theme display; large collections are read lazily.
+- **Play against the computer**: the Play module takes on Stockfish with click-to-move, White/Black, a 100–3000 rating slider (1320 and above calibrated by the engine's Elo limiter), common time controls (1+0 through 30+0, with increments or unlimited), selectable openings and endgames, undo, resign, promotion picking, and move review — plus one-click send to analysis. Setup pickers lock once a game is under way and unlock on New game.
+- **Puzzle training**: a Puzzles module between Play and Analysis ships with a Lichess sample and accepts your own open collections (Lichess CSV, FEN-based PGN), with correct/wrong feedback, hints, and rating/theme display. A Favorites collection gathers the puzzles you star or miss for later review, and large collections are read lazily.
 - **Performance ratings and profile**: five tiers (Optimal / Precise / Competent / Steady / Volatile) plus per-game accuracy history on the Statistics tab.
 - **Personalization**: 10 Lichess piece sets, 6 board themes, and light/dark modes, applied instantly and saved.
 - **Privacy first**: your games and API keys stay on your machine; analysis never depends on the cloud.
@@ -30,7 +30,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows users
 
-1. Get `CheckPause_Setup_1.5.1.exe` from the Download section at the end of this file.
+1. Get `CheckPause_Setup_1.5.2.exe` from the Download section at the end of this file.
 2. Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
 3. Launch CheckPause from the desktop or Start Menu; first launch asks for a username and interface language.
 4. Open Settings → API settings... and enter an API key (DeepSeek by default; any OpenAI-compatible endpoint works).
@@ -147,10 +147,10 @@ Clients read `version.json` about 2.5 seconds after launch (jsDelivr first, then
 
 ## ⬇️ Download
 
-**Latest: CheckPause v1.5.1 (Windows x64)**
+**Latest: CheckPause v1.5.2 (Windows x64)**
 
-- 📦 [CheckPause_Setup_1.5.1.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.1/CheckPause_Setup_1.5.1.exe) (107.6 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
-- SHA-256: `5351A037CD0537E789D8A69586E38209A67D7E9F14C29A6FBA56FC0C9D7A47D7`
+- 📦 [CheckPause_Setup_1.5.2.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.2/CheckPause_Setup_1.5.2.exe) (107.6 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
+- SHA-256: `FDC9A81D0C6B76B359EC1DE330887299674CB0E0D1DFC32D9441E953AAEE3E59`
 - Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
 
