@@ -157,6 +157,21 @@ def public_url():
     )
 
 
+def sandbox_hint_enabled():
+    """Whether the payment page may explain the sandbox's unreadable QR code.
+
+    Off by default. It is useful while testing the sandbox and wrong
+    everywhere else - notably in a screenshot sent to a reviewer, which is how
+    it was first noticed.
+    """
+    return os.environ.get("CHECKPAUSE_SANDBOX_HINT", "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+        "on",
+    )
+
+
 def alipay_settings():
     """Everything the payment gateway needs.
 

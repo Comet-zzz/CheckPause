@@ -114,6 +114,19 @@ def _using_sandbox():
     return "sandbox" in config.alipay_settings()["gateway"].lower()
 
 
+def _sandbox_hint():
+    """The sandbox note, but only when this deployment asks for it.
+
+    It explains why the sandbox QR code cannot be scanned, which is useful
+    while testing and misleading anywhere else. In particular it must not end
+    up in a screenshot sent to a reviewer, which is exactly where it was first
+    seen.
+    """
+    if not config.sandbox_hint_enabled():
+        return ""
+    return SANDBOX_HINT if _using_sandbox() else ""
+
+
 def _same_amount(cents, text):
     """Compare money as text, never as floats.
 
@@ -275,7 +288,7 @@ def pay_page(order_id: str):
         )
         + "<p>{} CP积分</p>".format(order["credits"])
         + WAITING
-        + (SANDBOX_HINT if _using_sandbox() else "")
+        + _sandbox_hint()
         + '<button type="button" class="btn" '
         'onclick="document.forms[0].submit()">用支付宝付款</button>'
         '<p class="note">点击后会跳转到支付宝，可用手机扫码或登录付款。'

@@ -292,13 +292,27 @@ class OrderTests(PaymentTestCase):
         self.assertIn("alipay.trade.page.pay", response.text)
         self.assertIn(order["id"], response.text)
 
-    def test_the_sandbox_page_warns_that_the_real_app_cannot_scan_it(self):
+    def test_the_sandbox_hint_is_off_unless_asked_for(self):
+        # It explains a sandbox quirk, which is useful while testing and wrong
+        # in a screenshot sent to a reviewer - so it is opt-in.
+        order = self.make_order()
+        with mock.patch.dict(
+            os.environ,
+            {"AIPAY_GATEWAY": "https://sandbox.example.invalid/gateway.do"},
+        ):
+            response = self.client.get("/pay/" + order["id"])
+        self.assertNotIn("沙箱", response.text)
+
+    def test_the_sandbox_hint_can_be_switched_on_for_testing(self):
         order = self.make_order()
         # A sandbox-looking address that goes nowhere: the hint is chosen by
         # the gateway name, and a unit test has no business calling Alipay.
         with mock.patch.dict(
             os.environ,
-            {"AIPAY_GATEWAY": "https://sandbox.example.invalid/gateway.do"},
+            {
+                "AIPAY_GATEWAY": "https://sandbox.example.invalid/gateway.do",
+                "CHECKPAUSE_SANDBOX_HINT": "1",
+            },
         ):
             response = self.client.get("/pay/" + order["id"])
         self.assertIn("登录支付", response.text)
