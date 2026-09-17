@@ -2,7 +2,7 @@
 
 The manifest only needs three fields:
 
-    {"latest": "1.5.4", "url": "https://.../CheckPause_Setup_1.5.4.exe", "notes": "..."}
+    {"latest": "1.6.1", "url": "https://.../CheckPause_Setup_1.6.1.exe", "notes": "..."}
 
 Update checks must never disturb the user: every failure path here returns
 None instead of raising, so being offline simply means "no update found".
@@ -16,9 +16,10 @@ from checkpause import APP_VERSION, GITHUB_URL
 
 _REPO = GITHUB_URL.removeprefix("https://github.com/").strip("/")
 
-# Tried in order; the first mirror that answers wins. jsDelivr caches the repo
-# at a CDN edge that is usually reachable from mainland China, where
-# raw.githubusercontent.com frequently is not.
+# Every mirror is consulted and the highest version wins. jsDelivr caches
+# branch URLs for many hours, so trusting whichever mirror answered first let a
+# stale copy hide a new release; raw.githubusercontent is authoritative but is
+# frequently unreachable from mainland China, which is why both are needed.
 MANIFEST_URLS = (
     f"https://cdn.jsdelivr.net/gh/{_REPO}@main/version.json",
     f"https://raw.githubusercontent.com/{_REPO}/main/version.json",
@@ -35,7 +36,7 @@ class UpdateInfo:
 
 
 class UpdateCheckError(RuntimeError):
-    """Raised in strict mode when the manifest cannot be fetched."""
+    """Raised in strict mode when no manifest can be fetched."""
 
 
 def parse_version(text):
@@ -64,39 +65,51 @@ def _default_opener(url):
         return response.read()
 
 
-def fetch_manifest(opener=None):
-    """Return the manifest dict, or None when every mirror failed."""
+def fetch_manifests(opener=None):
+    """Return every manifest that answered, in mirror order."""
     fetch = opener or _default_opener
+    manifests = []
     for url in MANIFEST_URLS:
         try:
             payload = json.loads(fetch(url).decode("utf-8"))
         except Exception:
             continue
         if isinstance(payload, dict):
-            return payload
-    return None
+            manifests.append(payload)
+    return manifests
 
 
-def check_for_update(current=APP_VERSION, opener=None, strict=False):
-    """Return UpdateInfo when a newer release exists, otherwise None.
-
-    Failures are silent by default; strict mode raises UpdateCheckError
-    when no mirror answers, which manual checks use to tell being offline
-    apart from being up to date.
-    """
-    manifest = fetch_manifest(opener)
-    if not manifest:
-        if strict:
-            raise UpdateCheckError("no manifest could be fetched")
-        return None
-
+def _manifest_to_info(manifest, current):
+    """Build an UpdateInfo, or None when this manifest has nothing to offer."""
     latest = str(manifest.get("latest") or "").strip()
     url = str(manifest.get("url") or "").strip()
     if not latest or not url or not is_newer(latest, current):
         return None
-
     return UpdateInfo(
         version=latest,
         url=url,
         notes=str(manifest.get("notes") or "").strip(),
     )
+
+
+def check_for_update(current=APP_VERSION, opener=None, strict=False):
+    """Return the newest release any mirror knows about, otherwise None.
+
+    Failures are silent by default; strict mode raises UpdateCheckError when no
+    mirror answers, which manual checks use to tell being offline apart from
+    being up to date.
+    """
+    manifests = fetch_manifests(opener)
+    if not manifests:
+        if strict:
+            raise UpdateCheckError("no manifest could be fetched")
+        return None
+
+    best = None
+    for manifest in manifests:
+        info = _manifest_to_info(manifest, current)
+        if info is None:
+            continue
+        if best is None or is_newer(info.version, best.version):
+            best = info
+    return best
