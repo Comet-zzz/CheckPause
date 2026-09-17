@@ -1,6 +1,6 @@
-from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtGui import QFontDatabase
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Signal
+from PySide6.QtGui import QFontDatabase
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -17,11 +17,11 @@ from checkpause.i18n import t
 
 
 class AnalysisPage(QWidget):
-    analyze_requested = pyqtSignal(str)
-    stop_requested = pyqtSignal()
-    open_file_requested = pyqtSignal()
-    ply_selected = pyqtSignal(int)
-    moves_shown = pyqtSignal(str)
+    analyze_requested = Signal(str)
+    stop_requested = Signal()
+    open_file_requested = Signal()
+    ply_selected = Signal(int)
+    moves_shown = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -4,10 +4,10 @@ import time
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPainter, QPixmap
-from PyQt6.QtSvg import QSvgRenderer
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -31,8 +31,8 @@ from checkpause.resources import resource_path
 
 
 class BoardWidget(QWidget):
-    index_changed = pyqtSignal(int)
-    move_requested = pyqtSignal(int, int)
+    index_changed = Signal(int)
+    move_requested = Signal(int, int)
 
     def __init__(self, parent=None):
         super().__init__(parent)

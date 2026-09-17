@@ -2,9 +2,9 @@ import io
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtGui import QBrush, QColor
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QBrush, QColor
+from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
     QTableWidget,
@@ -17,7 +17,7 @@ from checkpause.gui.theme import DARK
 
 
 class MoveListWidget(QWidget):
-    ply_selected = pyqtSignal(int)
+    ply_selected = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)

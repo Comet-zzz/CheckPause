@@ -13,7 +13,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ## ✨ Features
 
-- **PyQt6 desktop app**: the board on the left, with Import / Analysis / Statistics tabs, in Chinese or English.
+- **PySide6 desktop app**: the board on the left, with Import / Analysis / Statistics tabs, in Chinese or English.
 - **Local engine analysis**: Stockfish scores every move with progress and stop support; a Polyglot opening book detects book moves and skips engine work.
 - **AI explanations**: streamed answers based on engine data, with follow-up questions like a real coach; works with DeepSeek, OpenAI, OpenRouter, and local models.
 - **Clickable move list**: jump to any position and highlight the current ply; the board also shows engine best-move arrows and can be flipped.

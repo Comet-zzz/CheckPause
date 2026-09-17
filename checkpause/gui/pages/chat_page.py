@@ -1,7 +1,7 @@
 import time
 
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLineEdit,
@@ -16,8 +16,8 @@ from checkpause.i18n import t
 
 
 class ChatPage(QWidget):
-    send_requested = pyqtSignal(str)
-    reset_requested = pyqtSignal()
+    send_requested = Signal(str)
+    reset_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)

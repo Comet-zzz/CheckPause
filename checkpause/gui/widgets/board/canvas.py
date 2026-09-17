@@ -2,9 +2,9 @@ import math
 import time
 
 import chess
-from PyQt6.QtCore import QPointF, QRectF, Qt
-from PyQt6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
-from PyQt6.QtWidgets import QSizePolicy, QWidget
+from PySide6.QtCore import QPointF, QRectF, Qt
+from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
+from PySide6.QtWidgets import QSizePolicy, QWidget
 
 from checkpause.gui.widgets.board.constants import (
     CHECK_RGBA,

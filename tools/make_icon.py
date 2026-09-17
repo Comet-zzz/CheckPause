@@ -3,7 +3,7 @@
 PyInstaller only accepts ``.ico`` files for the executable icon, so this
 script renders ``assets/icons/app_icon.svg`` with Qt's SVG engine and packs
 the bitmaps into a PNG-compressed ICO container. No extra dependency is
-needed: PyQt6 is already required by the GUI.
+needed: PySide6 is already required by the GUI.
 
 Usage:
     python tools/make_icon.py [source.svg] [output.ico]
@@ -16,9 +16,9 @@ import sys
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
-from PyQt6.QtCore import QBuffer, QByteArray, QIODevice, QRectF, Qt
-from PyQt6.QtGui import QGuiApplication, QImage, QPainter
-from PyQt6.QtSvg import QSvgRenderer
+from PySide6.QtCore import QBuffer, QByteArray, QIODevice, QRectF, Qt
+from PySide6.QtGui import QGuiApplication, QImage, QPainter
+from PySide6.QtSvg import QSvgRenderer
 
 SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))

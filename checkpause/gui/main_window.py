@@ -1,6 +1,6 @@
-from PyQt6.QtCore import Qt, QTimer
-from PyQt6.QtGui import QAction, QActionGroup
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QAction, QActionGroup
+from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
