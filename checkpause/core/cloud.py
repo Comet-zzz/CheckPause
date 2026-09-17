@@ -19,6 +19,8 @@ REGISTER_ENDPOINT = "/v1/accounts/register"
 LOGIN_ENDPOINT = "/v1/accounts/login"
 LOGOUT_ENDPOINT = "/v1/accounts/logout"
 ME_ENDPOINT = "/v1/accounts/me"
+PACKS_ENDPOINT = "/v1/pay/packs"
+ORDERS_ENDPOINT = "/v1/pay/orders"
 
 REQUEST_TIMEOUT = 180.0
 ACCOUNT_TIMEOUT = 30.0
@@ -121,6 +123,22 @@ def _post(server_url, path, payload, language, token=""):
     return response.json()
 
 
+def _get(server_url, path, token="", language="zh-CN"):
+    try:
+        response = httpx.get(
+            _url(server_url, path),
+            headers=headers(token),
+            timeout=ACCOUNT_TIMEOUT,
+        )
+    except httpx.TimeoutException as exc:
+        raise CloudRequestError(t("cloud_timeout", language)) from exc
+    except httpx.RequestError as exc:
+        raise CloudRequestError(t("cloud_unreachable", language)) from exc
+    if response.status_code >= 400:
+        raise _error(response, language)
+    return response.json()
+
+
 def register(server_url, username, password, language="zh-CN"):
     """Create an account. Returns the token and the account it belongs to."""
     return _post(
@@ -154,19 +172,30 @@ def sign_out(server_url, token, language="zh-CN"):
 
 def fetch_account(server_url, token, language="zh-CN"):
     """Ask the server for the balance instead of trusting a cached number."""
-    try:
-        response = httpx.get(
-            _url(server_url, ME_ENDPOINT),
-            headers=headers(token),
-            timeout=ACCOUNT_TIMEOUT,
-        )
-    except httpx.TimeoutException as exc:
-        raise CloudRequestError(t("cloud_timeout", language)) from exc
-    except httpx.RequestError as exc:
-        raise CloudRequestError(t("cloud_unreachable", language)) from exc
-    if response.status_code >= 400:
-        raise _error(response, language)
-    return response.json()
+    return _get(server_url, ME_ENDPOINT, token, language)
+
+
+def fetch_packs(server_url, language="zh-CN"):
+    """What the server is willing to sell, and for how much."""
+    return _get(server_url, PACKS_ENDPOINT, "", language)
+
+
+def create_order(server_url, token, yuan, language="zh-CN"):
+    """Open an order; the reply carries the page the browser should open."""
+    return _post(
+        server_url, ORDERS_ENDPOINT, {"yuan": int(yuan)}, language, token=token
+    )
+
+
+def order_status(server_url, token, order_id, language="zh-CN"):
+    """Whether an order has been paid.
+
+    Asking is what makes a purchase arrive: Alipay either notifies the server
+    or, as here, the server asks Alipay.
+    """
+    return _get(
+        server_url, ORDERS_ENDPOINT + "/" + str(order_id), token, language
+    )
 
 
 def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN"):

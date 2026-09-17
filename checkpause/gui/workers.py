@@ -189,6 +189,8 @@ class AccountWorker(QThread):
         username="",
         password="",
         token="",
+        yuan=0,
+        order_id="",
         parent=None,
     ):
         super().__init__(parent)
@@ -198,6 +200,8 @@ class AccountWorker(QThread):
         self.username = username
         self.password = password
         self.token = token
+        self.yuan = yuan
+        self.order_id = order_id
 
     def run(self):
         try:
@@ -212,6 +216,25 @@ class AccountWorker(QThread):
             elif self.action == "sign_out":
                 cloud.sign_out(self.server_url, self.token, self.language)
                 result = {"token": "", "account": {}}
+            elif self.action == "packs":
+                result = {
+                    "packs": cloud.fetch_packs(self.server_url, self.language)
+                }
+            elif self.action == "open_order":
+                result = {
+                    "order": cloud.create_order(
+                        self.server_url, self.token, self.yuan, self.language
+                    )
+                }
+            elif self.action == "order_status":
+                result = {
+                    "order": cloud.order_status(
+                        self.server_url,
+                        self.token,
+                        self.order_id,
+                        self.language,
+                    )
+                }
             else:
                 result = {
                     "token": self.token,

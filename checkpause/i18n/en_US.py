@@ -107,7 +107,7 @@ MESSAGES = {
 
     "action_cloud_account": "Cloud account...",
     "cloud_account_title": "Cloud account",
-    "cloud_account_hint": "Cloud analysis is paid for with CP credits. Contact the author to top up; your balance is below.",
+    "cloud_account_hint": "Cloud analysis is paid for with CP credits. Pick an amount and the payment page opens in your browser; the credits arrive by themselves.",
     "cloud_account_server": "Server:",
     "cloud_account_username": "Username:",
     "cloud_account_password": "Password:",
@@ -129,6 +129,13 @@ MESSAGES = {
     "cloud_account_password_empty": "Enter a password.",
     "cloud_account_menu_signed_in": "Cloud account ({username} · {balance} CP credits)...",
     "cloud_account_menu_no_balance": "Cloud account ({username})...",
+
+    "cloud_topup_label": "Top up:",
+    "cloud_topup_buy": "Pay",
+    "cloud_topup_pack": "CNY {yuan} · {credits} CP credits",
+    "cloud_topup_waiting": "The payment page is open in your browser. This updates by itself once you have paid.",
+    "cloud_topup_done": "Payment received. Balance: {balance} CP credits.",
+    "cloud_topup_gave_up": "No payment result yet. Once you have paid, press Refresh balance.",
     "update_none": "You are running the latest version.",
     "update_failed": "Could not check for updates. Check your network connection and try again.",
 

@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QTimer, QUrl
 from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -22,6 +22,12 @@ from checkpause.data.settings import (
 )
 from checkpause.gui.workers import AccountWorker
 from checkpause.i18n import t
+
+# How often to ask whether a payment has landed, and when to stop asking.
+# Three seconds feels immediate without hammering the server; ten minutes is
+# longer than the cashier holds an order anyway.
+POLL_INTERVAL_MS = 3000
+POLL_LIMIT = 200
 
 
 def choose_language_dialog(parent, current="zh-CN"):
@@ -219,6 +225,14 @@ def cloud_account_dialog(parent, language, config=None):
     sign_out_button = QPushButton(t("cloud_account_sign_out", language))
     close_button = QPushButton(t("cloud_account_close", language))
 
+    # Buying credits. The server owns the prices; this only picks one of the
+    # packs it offers and then hands the browser over to the payment page.
+    pack_combo = QComboBox()
+    buy_button = QPushButton(t("cloud_topup_buy", language))
+    topup_label = QLabel(t("cloud_topup_label", language))
+    topup_status = QLabel()
+    topup_status.setWordWrap(True)
+
     form = QFormLayout()
     form.setHorizontalSpacing(16)
     form.setVerticalSpacing(10)
@@ -238,10 +252,17 @@ def cloud_account_dialog(parent, language, config=None):
     row.addStretch(1)
     row.addWidget(close_button)
 
+    topup_row = QHBoxLayout()
+    topup_row.addWidget(topup_label)
+    topup_row.addWidget(pack_combo, 1)
+    topup_row.addWidget(buy_button)
+
     layout = QVBoxLayout(dialog)
     layout.addWidget(hint)
     layout.addLayout(form)
     layout.addWidget(status)
+    layout.addLayout(topup_row)
+    layout.addWidget(topup_status)
     layout.addLayout(row)
 
     credentials = (
@@ -251,8 +272,17 @@ def cloud_account_dialog(parent, language, config=None):
         sign_in_button,
         register_button,
     )
+    # A hidden input still leaves its label behind, which reads as a bug, so the
+    # labels move with their fields.
+    credential_labels = [
+        (field, form.labelForField(field)) for field in credentials
+    ]
     session_buttons = (refresh_button, sign_out_button)
-    everything = credentials + session_buttons + (close_button, server_field)
+    topup_widgets = (topup_label, pack_combo, buy_button, topup_status)
+    everything = (
+        credentials + session_buttons + topup_widgets
+        + (close_button, server_field)
+    )
 
     def signed_in():
         return bool(account.get("token"))
@@ -281,7 +311,10 @@ def cloud_account_dialog(parent, language, config=None):
         logged_in = signed_in()
         for widget in credentials:
             widget.setVisible(not logged_in)
-        for widget in session_buttons:
+        for field, label in credential_labels:
+            if label is not None and label.text():
+                label.setVisible(not logged_in)
+        for widget in session_buttons + topup_widgets:
             widget.setVisible(logged_in)
         server_field.setEnabled(not logged_in)
         if not logged_in:
@@ -301,6 +334,33 @@ def cloud_account_dialog(parent, language, config=None):
         set_busy(False)
 
     def on_done(action, result):
+        if action == "packs":
+            pack_combo.clear()
+            for pack in result.get("packs") or []:
+                pack_combo.addItem(
+                    t(
+                        "cloud_topup_pack",
+                        language,
+                        yuan=pack.get("yuan", 0),
+                        credits=pack.get("credits", 0),
+                    ),
+                    pack.get("yuan"),
+                )
+            finish()
+            return
+
+        if action == "open_order":
+            order = result.get("order") or {}
+            if order.get("pay_url"):
+                topup_status.setText(t("cloud_topup_waiting", language))
+                # The checkout belongs in a browser - Alipay's form is built to
+                # be submitted by one - so the desktop app opens a page rather
+                # than trying to become a web application.
+                QDesktopServices.openUrl(QUrl(order["pay_url"]))
+                start_polling(order.get("order_id", ""))
+            finish()
+            return
+
         changed["value"] = True
         account.update(
             {
@@ -320,6 +380,9 @@ def cloud_account_dialog(parent, language, config=None):
                     username=account["username"],
                 ),
             )
+        elif action == "me" and pack_combo.count() == 0 and signed_in():
+            # The prices are the server's to decide; ask once per dialog.
+            run("packs")
 
     def on_failed(message):
         finish()
@@ -391,12 +454,81 @@ def cloud_account_dialog(parent, language, config=None):
     def sign_out():
         run("sign_out", token=account.get("token", ""))
 
+    def buy():
+        if pack_combo.count() == 0:
+            return
+        run(
+            "open_order",
+            token=account.get("token", ""),
+            yuan=pack_combo.currentData(),
+        )
+
+    # Waiting for a payment. Polling is what makes the purchase arrive at all:
+    # the server either hears from Alipay or asks it, and nothing pushes the
+    # news to a desktop client.
+    poll = {"timer": None, "worker": None, "order_id": "", "tries": 0}
+
+    def forget_poll_worker():
+        poll["worker"] = None
+
+    def stop_polling():
+        if poll["timer"] is not None:
+            poll["timer"].stop()
+        poll["order_id"] = ""
+        poll["tries"] = 0
+
+    def on_poll_done(result):
+        poll["worker"] = None
+        order = result.get("order") or {}
+        if order.get("status") != "paid":
+            return
+        stop_polling()
+        changed["value"] = True
+        account["balance"] = order.get("balance")
+        topup_status.setText(
+            t("cloud_topup_done", language, balance=order.get("balance"))
+        )
+        show_status()
+
+    def poll_once():
+        if not poll["order_id"] or poll["worker"] is not None:
+            return
+        poll["tries"] += 1
+        if poll["tries"] > POLL_LIMIT:
+            stop_polling()
+            topup_status.setText(t("cloud_topup_gave_up", language))
+            return
+        worker = AccountWorker(
+            "order_status",
+            server_field.text().strip(),
+            language,
+            token=account.get("token", ""),
+            order_id=poll["order_id"],
+            parent=parent if parent is not None else dialog,
+        )
+        worker.done.connect(on_poll_done)
+        worker.failed.connect(lambda _message: None)
+        worker.finished.connect(forget_poll_worker)
+        worker.finished.connect(worker.deleteLater)
+        poll["worker"] = worker
+        worker.start()
+
+    def start_polling(order_id):
+        stop_polling()
+        poll["order_id"] = order_id
+        if poll["timer"] is None:
+            poll["timer"] = QTimer(dialog)
+            poll["timer"].setInterval(POLL_INTERVAL_MS)
+            poll["timer"].timeout.connect(poll_once)
+        poll["timer"].start()
+
     sign_in_button.clicked.connect(sign_in)
     register_button.clicked.connect(register)
     refresh_button.clicked.connect(
         lambda: run("me", token=account.get("token", ""))
     )
     sign_out_button.clicked.connect(sign_out)
+    buy_button.clicked.connect(buy)
     close_button.clicked.connect(dialog.accept)
 
     refresh()

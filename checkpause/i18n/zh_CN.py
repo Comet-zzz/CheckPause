@@ -107,7 +107,7 @@ MESSAGES = {
 
     "action_cloud_account": "云端账号...",
     "cloud_account_title": "云端账号",
-    "cloud_account_hint": "云端讲解按CP积分计费。充值请联系作者，余额显示在下面。",
+    "cloud_account_hint": "云端讲解按CP积分计费。选择金额后会用浏览器打开支付宝付款，付完余额自动到账。",
     "cloud_account_server": "服务器地址：",
     "cloud_account_username": "用户名：",
     "cloud_account_password": "密码：",
@@ -129,6 +129,13 @@ MESSAGES = {
     "cloud_account_password_empty": "请填写密码。",
     "cloud_account_menu_signed_in": "云端账号（{username} · {balance} CP积分）...",
     "cloud_account_menu_no_balance": "云端账号（{username}）...",
+
+    "cloud_topup_label": "充值：",
+    "cloud_topup_buy": "去支付",
+    "cloud_topup_pack": "{yuan} 元 · {credits} CP积分",
+    "cloud_topup_waiting": "已打开浏览器，请在页面上完成付款。付完这里会自动更新。",
+    "cloud_topup_done": "已到账！余额：{balance} CP积分。",
+    "cloud_topup_gave_up": "还没收到付款结果。付完后点「刷新余额」即可。",
     "update_none": "当前已是最新版本。",
     "update_failed": "检查更新失败，请检查网络连接后重试。",
 
