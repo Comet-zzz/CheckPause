@@ -1,3 +1,40 @@
+# v1.5.4 – Update Notifications and Clock Fixes
+
+> 本次更新修复了更新提示与对弈计时的问题，并新增「检查更新」入口。
+>
+> This release fixes issues with update notifications and the play clock, and adds a manual update check.
+
+---
+
+## 🎯 What's Changed
+- 修复更新提示：关闭提示或更新途中关闭程序后，下次启动仍会正常提醒；「帮助」菜单新增「检查更新」，可随时手动检查并给出结果。
+- 修复对弈计时：新对局后时钟立即回到所选模式的初始时间，离开对弈页面时的计时表现保持一致。
+- 「暂停 / 继续」改为与界面风格一致的矢量图标，跟随深浅主题。
+
+- Update notifications behave correctly again: dismissing the prompt or closing the app while updating no longer silences that release, and Help gains a Check for updates action with clear feedback.
+- The play clock is fixed: a new game immediately shows the selected mode's starting time, and the clock behaves consistently while you are away from the Play page.
+- Pause / Resume are now vector icons that match the UI and follow the light and dark themes.
+
+---
+
+## 🛠️ Full Changelog
+- fix(update): scope "Later" to the running session instead of persisting it
+- feat(update): add a Check for updates action under Help
+- fix(play): refresh the clock display when a new game starts
+- fix(play): pause the clock consistently while the Play page is hidden
+- feat(play): use theme-aware vector icons for pause and resume
+- chore(version): bump the app version to 1.5.4
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
 # v1.5.3 – Queen App Icon and Vector Icons
 
 > 换上了王后造型的应用图标：深灰渐变圆角底配白色剪影，窗口、任务栏、exe、安装向导和桌面快捷方式全部生效。侧边栏与棋盘导航的图标也一并矢量重绘——原本用字符拼出来的 `|◀ ◀ ▶ ▶| ⇅` 换成矢量图标后不再受系统字体影响，侧边栏新增「对弈 / 谜题 / 分析工具」图标，并能跟随深浅主题自动换色。
