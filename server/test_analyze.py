@@ -111,6 +111,14 @@ class BuildMessagesTests(unittest.TestCase):
         messages = prompting.build_messages("1. e4", "data")
         self.assertIn("1. e4", messages[1]["content"])
 
+    def test_pins_the_answer_language(self):
+        messages = prompting.build_messages("1. e4", "", [], "zh-CN")
+        self.assertIn("Simplified Chinese", messages[0]["content"])
+
+    def test_leaves_the_prompt_alone_for_an_unknown_language(self):
+        messages = prompting.build_messages("1. e4", "", [], "fr-FR")
+        self.assertEqual(messages[0]["content"], "TUNED PROMPT")
+
 
 class AnalyzeEndpointTests(unittest.TestCase):
     def setUp(self):

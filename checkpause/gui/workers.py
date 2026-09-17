@@ -3,7 +3,9 @@ import chess.engine
 from PySide6.QtCore import QThread, Signal
 
 from checkpause.config import play_engine_settings
+from checkpause.core import cloud
 from checkpause.core.ai import ChatRequestError, chat_with_model
+from checkpause.core.cloud import CloudRequestError
 from checkpause.core.engine import StockfishAnalyzer, open_stockfish
 from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
@@ -133,18 +135,37 @@ class ChatWorker(QThread):
     done = Signal(str)
     failed = Signal(str)
 
-    def __init__(self, messages, language="zh-CN", parent=None):
+    def __init__(self, messages, language="zh-CN", parent=None, cloud_request=None):
+        """``cloud_request`` selects the paid path.
+
+        It is a dict with server_url, pgn, analysis and history. The request
+        then carries raw material only - the server builds the prompt - which
+        is what keeps the tuned prompt off user machines. Passing None keeps
+        the bring-your-own-key path.
+        """
         super().__init__(parent)
         self.messages = list(messages)
         self.language = language
+        self.cloud_request = dict(cloud_request) if cloud_request else None
+
+    def _pieces(self):
+        if not self.cloud_request:
+            return chat_with_model(self.messages, self.language)
+        return cloud.stream_reply(
+            self.cloud_request.get("server_url", ""),
+            self.cloud_request.get("pgn", ""),
+            self.cloud_request.get("analysis", ""),
+            self.cloud_request.get("history", []),
+            self.language,
+        )
 
     def run(self):
         full_reply = ""
         try:
-            for piece in chat_with_model(self.messages, self.language):
+            for piece in self._pieces():
                 full_reply += piece
                 self.chunk.emit(piece)
-        except ChatRequestError as exc:
+        except (ChatRequestError, CloudRequestError) as exc:
             self.failed.emit(str(exc))
             return
         except Exception as exc:

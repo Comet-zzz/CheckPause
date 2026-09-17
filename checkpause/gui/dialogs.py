@@ -13,6 +13,7 @@ from PySide6.QtWidgets import (
 )
 
 from checkpause import APP_VERSION, AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
+from checkpause.data.settings import MODE_CLOUD, MODE_LOCAL
 from checkpause.i18n import t
 
 
@@ -51,6 +52,19 @@ def api_settings_dialog(parent, language, config=None):
     hint = QLabel(t("api_settings_hint", language))
     hint.setWordWrap(True)
 
+    mode_combo = QComboBox()
+    mode_combo.addItem(t("mode_local", language), MODE_LOCAL)
+    mode_combo.addItem(t("mode_cloud", language), MODE_CLOUD)
+    if config.get("mode") == MODE_CLOUD:
+        mode_combo.setCurrentIndex(1)
+
+    mode_hint = QLabel()
+    mode_hint.setWordWrap(True)
+
+    server_field = QLineEdit()
+    server_field.setPlaceholderText("http://...")
+    server_field.setText(config.get("server_url", "") or "")
+
     key_field = QLineEdit()
     key_field.setEchoMode(QLineEdit.EchoMode.Password)
     key_field.setPlaceholderText(t("api_key_placeholder", language))
@@ -74,10 +88,26 @@ def api_settings_dialog(parent, language, config=None):
     form = QFormLayout()
     form.setHorizontalSpacing(16)
     form.setVerticalSpacing(10)
+    form.addRow(t("ai_mode_label", language), mode_combo)
+    form.addRow("", mode_hint)
+    form.addRow(t("server_url_label", language), server_field)
     form.addRow(t("api_key_label", language), key_field)
     form.addRow("", show_toggle)
     form.addRow(t("api_base_url_label", language), base_field)
     form.addRow(t("api_model_label", language), model_field)
+
+    def refresh_mode():
+        """Only the fields the chosen mode actually needs stay editable."""
+        cloud = mode_combo.currentData() == MODE_CLOUD
+        mode_hint.setText(
+            t("mode_cloud_hint" if cloud else "mode_local_hint", language)
+        )
+        for widget in (key_field, show_toggle, base_field, model_field):
+            widget.setEnabled(not cloud)
+        server_field.setEnabled(cloud)
+
+    mode_combo.currentIndexChanged.connect(refresh_mode)
+    refresh_mode()
 
     buttons = QDialogButtonBox(
         QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -90,7 +120,15 @@ def api_settings_dialog(parent, language, config=None):
     ).setText(t("btn_no", language))
 
     def on_accept():
-        if not key_field.text().strip():
+        if mode_combo.currentData() == MODE_CLOUD:
+            if not server_field.text().strip():
+                QMessageBox.warning(
+                    dialog,
+                    t("api_settings_title", language),
+                    t("server_url_empty", language),
+                )
+                return
+        elif not key_field.text().strip():
             QMessageBox.warning(
                 dialog,
                 t("api_settings_title", language),
@@ -109,6 +147,8 @@ def api_settings_dialog(parent, language, config=None):
 
     if dialog.exec() == QDialog.DialogCode.Accepted:
         return {
+            "mode": mode_combo.currentData(),
+            "server_url": server_field.text().strip(),
             "api_key": key_field.text().strip(),
             "base_url": base_field.text().strip(),
             "model": model_field.text().strip(),

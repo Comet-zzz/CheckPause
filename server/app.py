@@ -34,6 +34,7 @@ class AnalyzeRequest(BaseModel):
     pgn: str = Field(min_length=1, max_length=MAX_PGN_CHARS)
     analysis: str = Field(default="", max_length=MAX_ANALYSIS_CHARS)
     history: list[ConversationMessage] = Field(default_factory=list)
+    language: str = Field(default="", max_length=16)
 
 
 def _require_token(token):
@@ -76,7 +77,7 @@ async def analyze(
     _require_token(x_checkpause_token)
 
     messages = prompting.build_messages(
-        request.pgn, request.analysis, request.history
+        request.pgn, request.analysis, request.history, request.language
     )
 
     try:

@@ -12,6 +12,21 @@ from server import config
 # a coaching dialogue and keeps input cost predictable.
 MAX_HISTORY_MESSAGES = 12
 
+# The tuned prompt decides how coaching sounds; this only pins the language so
+# a Chinese user does not get an English answer from an English prompt.
+LANGUAGE_INSTRUCTIONS = {
+    "zh-CN": "Always answer in Simplified Chinese.",
+    "en-US": "Always answer in English.",
+}
+
+
+def _system_prompt(language=""):
+    prompt = config.system_prompt()
+    instruction = LANGUAGE_INSTRUCTIONS.get(language)
+    if instruction:
+        return f"{prompt}\n\n{instruction}"
+    return prompt
+
 
 def render_context(pgn, analysis=""):
     """Wrap the game and the engine data in the server-side template.
@@ -28,14 +43,14 @@ def render_context(pgn, analysis=""):
         )
 
 
-def build_messages(pgn, analysis="", history=None):
+def build_messages(pgn, analysis="", history=None, language=""):
     """Return the messages for one request.
 
     Layout: the tuned system prompt, one user turn carrying the game and the
     engine data, then the conversation so far.
     """
     messages = [
-        {"role": "system", "content": config.system_prompt()},
+        {"role": "system", "content": _system_prompt(language)},
         {"role": "user", "content": render_context(pgn, analysis)},
     ]
 

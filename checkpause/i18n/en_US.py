@@ -84,6 +84,20 @@ MESSAGES = {
     "update_available": "CheckPause {version} is available; you are running {current}.",
     "update_download": "Download",
     "update_later": "Later",
+
+    "ai_mode_label": "AI mode:",
+    "mode_local": "Your own API key (free)",
+    "mode_cloud": "Cloud coaching (uses credits)",
+    "mode_local_hint": "Requests go straight to the provider with your own key, at your own cost.",
+    "mode_cloud_hint": "Requests go through the CheckPause server, which uses the tuned coaching prompt and charges credits.",
+    "server_url_label": "Server address:",
+
+    "cloud_timeout": "The cloud service timed out. Please try again later.",
+    "cloud_unreachable": "Could not reach the cloud service. Check your network.",
+    "cloud_unauthorized": "The cloud service rejected this client. Please update to the latest version.",
+    "cloud_no_credit": "Not enough credits. Please top up.",
+    "cloud_server_error": "The cloud service returned an error (HTTP {code}).",
+    "server_url_empty": "Enter the server address.",
     "update_none": "You are running the latest version.",
     "update_failed": "Could not check for updates. Check your network connection and try again.",
 

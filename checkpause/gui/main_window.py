@@ -30,7 +30,7 @@ from checkpause.data.profile import (
     set_theme,
     update_profile,
 )
-from checkpause.data.settings import get_api_config, save_api_config
+from checkpause.data.settings import MODE_CLOUD, get_api_config, save_api_config
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
@@ -77,6 +77,10 @@ class MainWindow(QMainWindow):
         self._messages = []
         self._results = []
         self._current_pgn = ""
+        self._current_analysis = ""
+        api_config = get_api_config()
+        self._ai_mode = api_config["mode"]
+        self._server_url = api_config["server_url"]
         self._analysis_worker = None
         self._chat_worker = None
         self._update_worker = None
@@ -452,12 +456,13 @@ class MainWindow(QMainWindow):
             )
             self._refresh_stats()
 
+        self._current_analysis = compact_analysis(results)
         self._messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": USER_PROMPT_TEMPLATE.format(
-                    棋谱=self._current_pgn, 数据=compact_analysis(results)
+                    棋谱=self._current_pgn, 数据=self._current_analysis
                 ),
             },
         ]
@@ -517,7 +522,19 @@ class MainWindow(QMainWindow):
         self.chat_page.begin_assistant()
         self.chat_page.set_busy(True)
 
-        self._chat_worker = ChatWorker(self._messages, self._language, self)
+        # Cloud mode sends raw material only: the server owns the prompt.
+        cloud_request = None
+        if self._ai_mode == MODE_CLOUD:
+            cloud_request = {
+                "server_url": self._server_url,
+                "pgn": self._current_pgn,
+                "analysis": self._current_analysis,
+                "history": self._messages[2:],
+            }
+
+        self._chat_worker = ChatWorker(
+            self._messages, self._language, self, cloud_request=cloud_request
+        )
         self._chat_worker.chunk.connect(self.chat_page.append_chunk)
         self._chat_worker.done.connect(self._on_chat_done)
         self._chat_worker.failed.connect(self._on_chat_failed)
@@ -588,8 +605,14 @@ class MainWindow(QMainWindow):
         if not result:
             return
         save_api_config(
-            result["api_key"], result["base_url"], result["model"]
+            result["api_key"],
+            result["base_url"],
+            result["model"],
+            mode=result["mode"],
+            server_url=result["server_url"],
         )
+        self._ai_mode = result["mode"]
+        self._server_url = result["server_url"]
         QMessageBox.information(
             self,
             t("api_settings_title", self._language),

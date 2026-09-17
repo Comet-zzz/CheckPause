@@ -84,6 +84,20 @@ MESSAGES = {
     "update_available": "发现新版本 {version}，你当前使用的是 {current}。",
     "update_download": "前往下载",
     "update_later": "稍后",
+
+    "ai_mode_label": "AI 模式：",
+    "mode_local": "自带 API Key（免费）",
+    "mode_cloud": "云端讲解（需积分）",
+    "mode_local_hint": "请求直连服务商，用你自己的 Key，费用由你承担。",
+    "mode_cloud_hint": "请求走 CheckPause 服务器，使用调教好的讲解，按积分计费。",
+    "server_url_label": "服务器地址：",
+
+    "cloud_timeout": "云端服务响应超时，请稍后重试。",
+    "cloud_unreachable": "无法连接云端服务，请检查网络。",
+    "cloud_unauthorized": "云端鉴权失败，请更新到最新版本。",
+    "cloud_no_credit": "积分不足，请先充值。",
+    "cloud_server_error": "云端服务返回错误（HTTP {code}）。",
+    "server_url_empty": "请填写服务器地址。",
     "update_none": "当前已是最新版本。",
     "update_failed": "检查更新失败，请检查网络连接后重试。",
 
