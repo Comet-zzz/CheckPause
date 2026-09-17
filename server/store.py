@@ -1,0 +1,619 @@
+"""Accounts, credits and the ledger, kept in SQLite on the server.
+
+All the money lives here so the endpoint stays readable: it reserves credits
+before calling the model, then settles the reservation afterwards.
+
+Two invariants are enforced by the schema rather than by discipline:
+
+* ``users.balance`` can never go negative. The CHECK constraint plus the
+  ``WHERE balance >= ?`` in :func:`open_hold` mean two concurrent requests
+  cannot spend the same credits twice.
+* Every change to a balance has a ledger row recording the balance it produced
+  and the price table that was in force, so a receipt can always be explained.
+
+Reservations are deliberately *not* ledger rows. A request writes exactly one
+row when it finishes, whether it finished cleanly or was cut off mid-stream, so
+one exchange is always one line in the history.
+
+``CHECKPAUSE_DB`` overrides the database location, which is how the tests point
+the code at a temporary file.
+"""
+
+import hashlib
+import hmac
+import os
+import pathlib
+import re
+import secrets
+import sqlite3
+import threading
+import uuid
+from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
+
+DEFAULT_DB_PATH = "/var/lib/checkpause/checkpause.db"
+
+USERNAME_PATTERN = re.compile(r"^[\w.-]{3,32}$")
+MIN_PASSWORD_LENGTH = 6
+TOKEN_BYTES = 32
+
+SCHEMA = """
+CREATE TABLE IF NOT EXISTS users (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    username       TEXT    NOT NULL UNIQUE COLLATE NOCASE,
+    password_hash  TEXT    NOT NULL,
+    balance        INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    is_active      INTEGER NOT NULL DEFAULT 1,
+    created_at     TEXT    NOT NULL,
+    first_topup_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS tokens (
+    token        TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    created_at   TEXT NOT NULL,
+    last_seen_at TEXT
+);
+
+-- Credits taken out of a balance while a request runs, so the same credits
+-- cannot be reserved twice. Closed by settle_hold or refund_hold.
+CREATE TABLE IF NOT EXISTS holds (
+    id         TEXT PRIMARY KEY,
+    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    amount     INTEGER NOT NULL CHECK (amount >= 0),
+    note       TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    settled_at TEXT
+);
+
+CREATE TABLE IF NOT EXISTS ledger (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    delta         INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    reason        TEXT    NOT NULL,
+    reference     TEXT    NOT NULL DEFAULT '',
+    price_version TEXT    NOT NULL DEFAULT '',
+    input_tokens  INTEGER NOT NULL DEFAULT 0,
+    output_tokens INTEGER NOT NULL DEFAULT 0,
+    note          TEXT    NOT NULL DEFAULT '',
+    created_at    TEXT    NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS ledger_by_user ON ledger(user_id, id);
+
+-- A reference may not be credited twice, which is what makes a retried top-up
+-- or a replayed payment notification safe to process.
+CREATE UNIQUE INDEX IF NOT EXISTS ledger_once ON ledger(reference, reason)
+    WHERE reference <> '';
+"""
+
+
+class StoreError(RuntimeError):
+    """Something the API should report rather than turn into a 500."""
+
+    def __init__(self, code, message):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+
+
+class NoCredits(StoreError):
+    """The balance does not cover the reservation."""
+
+    def __init__(self, balance, needed):
+        super().__init__(
+            "no_credits", "the balance does not cover this request"
+        )
+        self.balance = balance
+        self.needed = needed
+
+
+_lock = threading.RLock()
+_connection = None
+_connection_path = None
+
+
+def db_path():
+    override = os.environ.get("CHECKPAUSE_DB", "").strip()
+    return pathlib.Path(override or DEFAULT_DB_PATH)
+
+
+def connection():
+    """The one connection, reopened if the configured path has changed."""
+    global _connection, _connection_path
+    path = db_path()
+    if _connection is not None and _connection_path == path:
+        return _connection
+    if _connection is not None:
+        _connection.close()
+        _connection = None
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fresh = sqlite3.connect(path, isolation_level=None, check_same_thread=False)
+    fresh.row_factory = sqlite3.Row
+    fresh.execute("PRAGMA journal_mode=WAL")
+    fresh.execute("PRAGMA foreign_keys=ON")
+    fresh.execute("PRAGMA busy_timeout=5000")
+    fresh.executescript(SCHEMA)
+    _connection = fresh
+    _connection_path = path
+    return fresh
+
+
+def close():
+    """Drop the connection; the next call opens a fresh one."""
+    global _connection, _connection_path
+    with _lock:
+        if _connection is not None:
+            _connection.close()
+        _connection = None
+        _connection_path = None
+
+
+@contextmanager
+def transaction():
+    """Serialise writers and make each change all-or-nothing."""
+    with _lock:
+        conn = connection()
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            yield conn
+        except Exception:
+            conn.execute("ROLLBACK")
+            raise
+        conn.execute("COMMIT")
+
+
+def _now():
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+# --- passwords -------------------------------------------------------------
+
+
+def _hash_password(password):
+    salt = secrets.token_bytes(16)
+    digest = hashlib.scrypt(
+        password.encode("utf-8"), salt=salt, n=2**14, r=8, p=1, dklen=32
+    )
+    return "scrypt${}${}${}${}${}".format(
+        2**14, 8, 1, salt.hex(), digest.hex()
+    )
+
+
+def _verify_password(password, stored):
+    try:
+        scheme, n, r, p, salt, digest = (stored or "").split("$")
+        if scheme != "scrypt":
+            return False
+        expected = bytes.fromhex(digest)
+        actual = hashlib.scrypt(
+            password.encode("utf-8"),
+            salt=bytes.fromhex(salt),
+            n=int(n),
+            r=int(r),
+            p=int(p),
+            dklen=len(expected),
+        )
+    except (AttributeError, ValueError):
+        return False
+    return hmac.compare_digest(actual, expected)
+
+
+# --- users -----------------------------------------------------------------
+
+
+def _user(row):
+    if row is None:
+        return None
+    return {
+        "id": row["id"],
+        "username": row["username"],
+        "balance": row["balance"],
+        "is_active": bool(row["is_active"]),
+        "created_at": row["created_at"],
+        "first_topup_at": row["first_topup_at"],
+    }
+
+
+def create_user(username, password):
+    """Register an account. Raises StoreError if the name is taken."""
+    username = (username or "").strip()
+    if not USERNAME_PATTERN.match(username):
+        raise StoreError(
+            "username_invalid",
+            "use 3-32 letters, digits, underscores, dots or dashes",
+        )
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        raise StoreError(
+            "password_too_short",
+            "the password needs at least {} characters".format(
+                MIN_PASSWORD_LENGTH
+            ),
+        )
+    with transaction() as conn:
+        try:
+            cursor = conn.execute(
+                "INSERT INTO users (username, password_hash, created_at)"
+                " VALUES (?, ?, ?)",
+                (username, _hash_password(password), _now()),
+            )
+        except sqlite3.IntegrityError as error:
+            raise StoreError(
+                "username_taken", "that username is already registered"
+            ) from error
+        return _user(
+            conn.execute(
+                "SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)
+            ).fetchone()
+        )
+
+
+def verify_login(username, password):
+    """The user row when the credentials match, otherwise None."""
+    with _lock:
+        row = connection().execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            ((username or "").strip(),),
+        ).fetchone()
+    if row is None or not row["is_active"]:
+        # Hash anyway, so a missing account and a wrong password take about
+        # the same time to answer.
+        _verify_password(password or "", _hash_password("decoy"))
+        return None
+    if not _verify_password(password or "", row["password_hash"]):
+        return None
+    return _user(row)
+
+
+def set_password(user_id, password):
+    """Set a new password and drop every session, for admin recovery."""
+    if len(password or "") < MIN_PASSWORD_LENGTH:
+        raise StoreError(
+            "password_too_short",
+            "the password needs at least {} characters".format(
+                MIN_PASSWORD_LENGTH
+            ),
+        )
+    with transaction() as conn:
+        cursor = conn.execute(
+            "UPDATE users SET password_hash = ? WHERE id = ?",
+            (_hash_password(password), user_id),
+        )
+        if cursor.rowcount == 0:
+            raise StoreError("no_such_user", "no user with that id")
+        conn.execute("DELETE FROM tokens WHERE user_id = ?", (user_id,))
+
+
+def get_user(user_id):
+    with _lock:
+        row = connection().execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    return _user(row)
+
+
+def find_user(username):
+    with _lock:
+        row = connection().execute(
+            "SELECT * FROM users WHERE username = ? COLLATE NOCASE",
+            ((username or "").strip(),),
+        ).fetchone()
+    return _user(row)
+
+
+def list_users():
+    with _lock:
+        rows = connection().execute(
+            "SELECT * FROM users ORDER BY id"
+        ).fetchall()
+    return [_user(row) for row in rows]
+
+
+# --- sessions --------------------------------------------------------------
+
+
+def issue_token(user_id):
+    token = secrets.token_urlsafe(TOKEN_BYTES)
+    with transaction() as conn:
+        conn.execute(
+            "INSERT INTO tokens (token, user_id, created_at) VALUES (?, ?, ?)",
+            (token, user_id, _now()),
+        )
+    return token
+
+
+def user_for_token(token):
+    """The user behind a bearer token, or None. Touches last_seen_at."""
+    token = (token or "").strip()
+    if not token:
+        return None
+    with _lock:
+        conn = connection()
+        row = conn.execute(
+            "SELECT * FROM users WHERE id ="
+            " (SELECT user_id FROM tokens WHERE token = ?)",
+            (token,),
+        ).fetchone()
+        if row is not None:
+            conn.execute(
+                "UPDATE tokens SET last_seen_at = ? WHERE token = ?",
+                (_now(), token),
+            )
+    user = _user(row)
+    if user is not None and not user["is_active"]:
+        return None
+    return user
+
+
+def revoke_token(token):
+    with transaction() as conn:
+        conn.execute("DELETE FROM tokens WHERE token = ?", (token,))
+
+
+# --- credits ---------------------------------------------------------------
+
+
+def _move(conn, user_id, amount, reason, reference="", note="", **extra):
+    """Change a balance and write the ledger row that explains it."""
+    row = conn.execute(
+        "SELECT balance FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    if row is None:
+        raise StoreError("no_such_user", "no user with that id")
+    balance = row["balance"] + int(amount)
+    if balance < 0:
+        raise StoreError(
+            "below_zero", "that would push the balance below zero"
+        )
+    conn.execute(
+        "UPDATE users SET balance = ? WHERE id = ?", (balance, user_id)
+    )
+    try:
+        conn.execute(
+            "INSERT INTO ledger (user_id, delta, balance_after, reason,"
+            " reference, price_version, input_tokens, output_tokens, note,"
+            " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                user_id,
+                int(amount),
+                balance,
+                reason,
+                reference,
+                extra.get("price_version", ""),
+                int(extra.get("input_tokens", 0)),
+                int(extra.get("output_tokens", 0)),
+                note,
+                _now(),
+            ),
+        )
+    except sqlite3.IntegrityError as error:
+        raise StoreError(
+            "duplicate_reference", "that reference was already credited"
+        ) from error
+    return balance
+
+
+def balance_of(user_id):
+    with _lock:
+        row = connection().execute(
+            "SELECT balance FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+    return row["balance"] if row else 0
+
+
+def add_credits(user_id, amount, reason="grant", reference="", note=""):
+    """Adjust a balance by hand: a gift, a refund or a correction."""
+    amount = int(amount)
+    if amount == 0:
+        raise StoreError("bad_amount", "nothing to do for zero credits")
+    with transaction() as conn:
+        return _move(conn, user_id, amount, reason, reference, note)
+
+
+def top_up(
+    user_id, credits, reference="", note="", bonus_percent=0, price_version=""
+):
+    """Record a purchase, plus a one-off bonus the first time it happens.
+
+    Returns the total credits added, so the caller can show a receipt. The
+    bonus is applied once per account, keyed off first_topup_at, so a second
+    purchase - or a retried notification - never earns it twice.
+    """
+    credits = int(credits)
+    if credits <= 0:
+        raise StoreError("bad_amount", "a top-up must be positive")
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_user", "no user with that id")
+        first = row["first_topup_at"] is None
+        _move(
+            conn,
+            user_id,
+            credits,
+            "topup",
+            reference,
+            note,
+            price_version=price_version,
+        )
+        bonus = 0
+        if first and bonus_percent:
+            bonus = credits * int(bonus_percent) // 100
+            if bonus:
+                _move(
+                    conn,
+                    user_id,
+                    bonus,
+                    "topup_bonus",
+                    reference,
+                    note,
+                    price_version=price_version,
+                )
+        if first:
+            conn.execute(
+                "UPDATE users SET first_topup_at = ? WHERE id = ?",
+                (_now(), user_id),
+            )
+    return credits + bonus
+
+
+# --- reservations ----------------------------------------------------------
+
+
+def open_hold(user_id, amount, note="", hold_id=None):
+    """Reserve credits for a request; raises NoCredits if they are not there.
+
+    The UPDATE is the only place a balance is checked, so it is also the only
+    place that needs to be atomic: it either takes the credits or matches no
+    rows, and two requests can never both win.
+    """
+    amount = max(0, int(amount))
+    hold_id = hold_id or uuid.uuid4().hex
+    with transaction() as conn:
+        cursor = conn.execute(
+            "UPDATE users SET balance = balance - ?"
+            " WHERE id = ? AND balance >= ?",
+            (amount, user_id, amount),
+        )
+        if cursor.rowcount == 0:
+            row = conn.execute(
+                "SELECT balance FROM users WHERE id = ?", (user_id,)
+            ).fetchone()
+            if row is None:
+                raise StoreError("no_such_user", "no user with that id")
+            raise NoCredits(row["balance"], amount)
+        conn.execute(
+            "INSERT INTO holds (id, user_id, amount, note, created_at)"
+            " VALUES (?, ?, ?, ?, ?)",
+            (hold_id, user_id, amount, note, _now()),
+        )
+    return hold_id
+
+
+def refund_hold(hold_id, note=""):
+    """Cancel a reservation untouched. Nothing was billed, so no ledger row."""
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM holds WHERE id = ? AND settled_at IS NULL",
+            (hold_id,),
+        ).fetchone()
+        if row is None:
+            return False
+        conn.execute(
+            "UPDATE users SET balance = balance + ? WHERE id = ?",
+            (row["amount"], row["user_id"]),
+        )
+        conn.execute(
+            "UPDATE holds SET settled_at = ?, note = ? WHERE id = ?",
+            (_now(), note, hold_id),
+        )
+    return True
+
+
+def settle_hold(
+    hold_id,
+    input_tokens=0,
+    output_tokens=0,
+    cost=None,
+    price_version="",
+    note="",
+):
+    """Close a reservation and write the one ledger row it produces.
+
+    ``cost`` is what the exchange really cost in credits. A caller that never
+    learned the upstream usage passes ``None``: the reservation then stands as
+    the charge, so an interrupted reply is not given away for free.
+    """
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM holds WHERE id = ? AND settled_at IS NULL",
+            (hold_id,),
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_reservation", "no open reservation with that id")
+
+        user_id = row["user_id"]
+        reserved = row["amount"]
+        balance = conn.execute(
+            "SELECT balance FROM users WHERE id = ?", (user_id,)
+        ).fetchone()["balance"]
+
+        if cost is None:
+            charge = reserved
+            reason = "analyze_interrupted"
+        else:
+            charge = max(0, int(cost))
+            reason = "analyze"
+
+        if charge <= reserved:
+            new_balance = balance + (reserved - charge)
+        else:
+            # An under-estimate is rare, and the shortfall is capped by what is
+            # actually there: a user is never pushed into debt.
+            new_balance = max(0, balance - (charge - reserved))
+            charge = reserved + (balance - new_balance)
+
+        conn.execute(
+            "UPDATE users SET balance = ? WHERE id = ?", (new_balance, user_id)
+        )
+        conn.execute(
+            "UPDATE holds SET settled_at = ?, note = ? WHERE id = ?",
+            (_now(), note, hold_id),
+        )
+        conn.execute(
+            "INSERT INTO ledger (user_id, delta, balance_after, reason,"
+            " reference, price_version, input_tokens, output_tokens, note,"
+            " created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (
+                user_id,
+                -charge,
+                new_balance,
+                reason,
+                hold_id,
+                price_version,
+                int(input_tokens),
+                int(output_tokens),
+                note,
+                _now(),
+            ),
+        )
+        return {"charge": charge, "balance": new_balance, "reason": reason}
+
+
+def sweep_stale_holds(older_than_seconds=900):
+    """Charge for reservations whose request never came back.
+
+    A crash mid-stream can leave a reservation that nothing will ever settle.
+    Charging it, rather than deleting it, matches the rule for an interrupted
+    reply: the upstream did the work, so it does not come free.
+    """
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(seconds=older_than_seconds)
+    ).isoformat(timespec="seconds")
+    with _lock:
+        rows = connection().execute(
+            "SELECT id FROM holds WHERE settled_at IS NULL AND created_at < ?",
+            (cutoff,),
+        ).fetchall()
+    swept = []
+    for row in rows:
+        try:
+            swept.append(settle_hold(row["id"], note="abandoned"))
+        except StoreError:
+            continue
+    return swept
+
+
+# --- reporting -------------------------------------------------------------
+
+
+def ledger_for(user_id, limit=20):
+    with _lock:
+        rows = connection().execute(
+            "SELECT * FROM ledger WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user_id, int(limit)),
+        ).fetchall()
+    return [dict(row) for row in rows]

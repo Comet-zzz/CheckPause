@@ -11,7 +11,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from server import config, deepseek, prompting
+from server import config, deepseek, pricing, prompting, store
 from server.app import app
 
 
@@ -21,6 +21,24 @@ def fake_body(chunks):
             yield chunk
 
     return generator()
+
+
+def fake_usage(chunks, input_tokens=0, output_tokens=0):
+    """Stand in for the upstream stream, reporting usage as DeepSeek does."""
+
+    def factory(stream, usage=None):
+        async def generator():
+            for chunk in chunks:
+                yield chunk
+            if usage is not None:
+                usage.input_tokens = input_tokens
+                usage.output_tokens = output_tokens
+                usage.counted = True
+                usage.finished = True
+
+        return generator()
+
+    return factory
 
 
 class PromptLoadingTests(unittest.TestCase):
@@ -43,10 +61,23 @@ class PromptLoadingTests(unittest.TestCase):
                     config.system_prompt(), "You are a grandmaster coach."
                 )
 
-    def test_the_access_token_is_optional(self):
+    def test_the_billing_knobs_have_workable_defaults(self):
         with mock.patch.dict(os.environ, {}, clear=False):
-            os.environ.pop("CHECKPAUSE_ACCESS_TOKEN", None)
-            self.assertEqual(config.access_token(), "")
+            os.environ.pop("CHECKPAUSE_MAX_ANSWER_TOKENS", None)
+            os.environ.pop("CHECKPAUSE_FIRST_TOPUP_BONUS_PERCENT", None)
+            self.assertEqual(
+                config.max_answer_tokens(), config.DEFAULT_MAX_ANSWER_TOKENS
+            )
+            self.assertEqual(
+                config.first_topup_bonus_percent(),
+                config.DEFAULT_FIRST_TOPUP_BONUS_PERCENT,
+            )
+
+    def test_the_first_purchase_offer_can_be_switched_off(self):
+        with mock.patch.dict(
+            os.environ, {"CHECKPAUSE_FIRST_TOPUP_BONUS_PERCENT": "0"}
+        ):
+            self.assertEqual(config.first_topup_bonus_percent(), 0)
 
 
 class BuildMessagesTests(unittest.TestCase):
@@ -121,51 +152,139 @@ class BuildMessagesTests(unittest.TestCase):
 
 
 class AnalyzeEndpointTests(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(app)
+    """Every case here is about money: the endpoint spends real credits."""
 
-    def test_streams_the_reply(self):
-        with mock.patch.object(
+    def setUp(self):
+        self._temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._temp.cleanup)
+        patcher = mock.patch.dict(
+            os.environ,
+            {
+                "CHECKPAUSE_DB": str(
+                    pathlib.Path(self._temp.name, "checkpause.db")
+                ),
+                "CHECKPAUSE_CONFIG_DIR": self._temp.name,
+            },
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.addCleanup(store.close)
+
+        self.client = TestClient(app)
+        self.user = store.create_user("player", "hunter22")
+        self.headers = {
+            "Authorization": "Bearer {}".format(
+                store.issue_token(self.user["id"])
+            )
+        }
+
+    def fund(self, credits):
+        store.add_credits(
+            self.user["id"], credits, reason="grant", reference="seed"
+        )
+
+    def balance(self):
+        return store.balance_of(self.user["id"])
+
+    def reservation(self):
+        """What the endpoint will reserve for the payload used below."""
+        return pricing.estimate_hold(prompting.build_messages("1. e4", ""))
+
+    def post(self, payload=None, headers=None):
+        return self.client.post(
+            "/v1/analyze",
+            json={"pgn": "1. e4"} if payload is None else payload,
+            headers=self.headers if headers is None else headers,
+        )
+
+    def stream(self, chunks, input_tokens=0, output_tokens=0):
+        return mock.patch.object(
             deepseek, "open_stream", mock.AsyncMock(return_value=object())
         ), mock.patch.object(
-            deepseek, "iter_text", lambda stream: fake_body(["Nf3 ", "is better."])
-        ):
-            response = self.client.post(
-                "/v1/analyze", json={"pgn": "1. e4", "analysis": "e4: +0.3"}
-            )
+            deepseek,
+            "iter_text",
+            fake_usage(chunks, input_tokens, output_tokens),
+        )
+
+    def test_streams_the_reply(self):
+        self.fund(100)
+        opened, text = self.stream(["Nf3 ", "is better."], 100, 20)
+        with opened, text:
+            response = self.post()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "Nf3 is better.")
 
-    def test_reports_an_upstream_failure_as_502(self):
+    def test_requires_a_signed_in_account(self):
+        self.assertEqual(self.post(headers={}).status_code, 401)
+        self.assertEqual(
+            self.post(
+                headers={"Authorization": "Bearer nonsense"}
+            ).status_code,
+            401,
+        )
+
+    def test_a_blank_balance_cannot_start_a_request(self):
+        response = self.post()
+        self.assertEqual(response.status_code, 402)
+        self.assertEqual(response.json()["detail"]["code"], "no_credits")
+        self.assertEqual(response.json()["detail"]["balance"], 0)
+
+    def test_a_request_that_costs_more_than_the_balance_is_refused(self):
+        self.fund(1)
+        response = self.post()
+        self.assertEqual(response.status_code, 402)
+        self.assertGreater(response.json()["detail"]["needed"], 1)
+        self.assertEqual(self.balance(), 1)
+
+    def test_the_charge_follows_the_usage_the_upstream_reports(self):
+        self.fund(100)
+        opened, text = self.stream(["ok"], 5000, 400)
+        with opened, text:
+            response = self.post()
+        self.assertEqual(response.status_code, 200)
+
+        self.assertEqual(self.balance(), 100 - pricing.credits_for(5000, 400))
+        row = store.ledger_for(self.user["id"])[0]
+        self.assertEqual(row["reason"], "analyze")
+        self.assertEqual(row["input_tokens"], 5000)
+        self.assertEqual(row["output_tokens"], 400)
+        self.assertEqual(row["price_version"], pricing.PRICE_VERSION)
+
+    def test_a_reply_with_no_usage_still_pays_the_reservation(self):
+        self.fund(100)
+        reserved = self.reservation()
+        with mock.patch.object(
+            deepseek, "open_stream", mock.AsyncMock(return_value=object())
+        ), mock.patch.object(
+            deepseek,
+            "iter_text",
+            lambda stream, usage=None: fake_body(["half an answer"]),
+        ):
+            response = self.post()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, "half an answer")
+        self.assertEqual(self.balance(), 100 - reserved)
+        self.assertEqual(
+            store.ledger_for(self.user["id"])[0]["reason"],
+            "analyze_interrupted",
+        )
+
+    def test_a_refused_upstream_costs_nothing(self):
+        self.fund(100)
         with mock.patch.object(
             deepseek,
             "open_stream",
             mock.AsyncMock(side_effect=deepseek.UpstreamError("no API key")),
         ):
-            response = self.client.post("/v1/analyze", json={"pgn": "1. e4"})
+            response = self.post()
+
         self.assertEqual(response.status_code, 502)
-        self.assertIn("no API key", response.json()["detail"])
+        self.assertEqual(response.json()["detail"]["code"], "upstream_error")
+        self.assertEqual(self.balance(), 100)
 
     def test_rejects_an_empty_pgn(self):
-        response = self.client.post("/v1/analyze", json={"pgn": ""})
-        self.assertEqual(response.status_code, 422)
-
-    def test_requires_the_token_when_one_is_configured(self):
-        with mock.patch.dict(os.environ, {"CHECKPAUSE_ACCESS_TOKEN": "secret"}):
-            denied = self.client.post("/v1/analyze", json={"pgn": "1. e4"})
-            self.assertEqual(denied.status_code, 401)
-
-            with mock.patch.object(
-                deepseek, "open_stream", mock.AsyncMock(return_value=object())
-            ), mock.patch.object(
-                deepseek, "iter_text", lambda stream: fake_body(["ok"])
-            ):
-                allowed = self.client.post(
-                    "/v1/analyze",
-                    json={"pgn": "1. e4"},
-                    headers={"X-CheckPause-Token": "secret"},
-                )
-        self.assertEqual(allowed.status_code, 200)
+        self.assertEqual(self.post({"pgn": ""}).status_code, 422)
 
 
 if __name__ == "__main__":

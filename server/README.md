@@ -96,8 +96,12 @@ server/
 
 ```powershell
 $env:CHECKPAUSE_CONFIG_DIR = "$PWD\server\deploy"
+$env:CHECKPAUSE_DB = "$env:TEMP\checkpause-dev.db"
 .venv\Scripts\python.exe -m uvicorn server.app:app --port 8000
 ```
+
+`CHECKPAUSE_DB` **在 Windows 上必须设**：默认值是 Linux 的
+`/var/lib/checkpause/checkpause.db`，不设的话本地会去建一个 `D:\var\lib\...`。
 
 没配 `DEEPSEEK_API_KEY` 时，状态页会显示 `"upstream_configured": false`，`/v1/analyze` 返回 502。
 
@@ -121,6 +125,7 @@ bash /srv/checkpause/server/deploy/install.sh
 | 代码 | `/srv/checkpause` |
 | Python 环境 | `/srv/checkpause/.venv` |
 | **密钥与提示词** | **`/etc/checkpause/`** |
+| **积分账本（SQLite）** | **`/var/lib/checkpause/checkpause.db`** |
 | 服务单元 | `/etc/systemd/system/checkpause.service` |
 | nginx 站点 | `/etc/nginx/sites-available/checkpause` |
 
@@ -130,15 +135,52 @@ journalctl -u checkpause -n 50   # 日志
 systemctl restart checkpause     # 重启（改完提示词用它）
 ```
 
-## 关于鉴权
+## 账号与积分
 
-`CHECKPAUSE_ACCESS_TOKEN` 是**临时措施**：设了之后请求必须带 `X-CheckPause-Token` 头。
+请求必须带 `Authorization: Bearer <token>`，token 来自注册或登录：
 
-它**不是真安全** —— 客户端是桌面包，密钥终究能被扒出来。它的作用只是**挡掉扫描器和顺手白嫖**。
+```bash
+curl -s http://127.0.0.1:8000/v1/accounts/register \
+     -H 'Content-Type: application/json' \
+     -d '{"username":"player","password":"hunter22"}'
+```
 
-第 ③ 阶段做账号系统时会用真正的鉴权替换掉它。
+| 接口 | 作用 |
+| --- | --- |
+| `POST /v1/accounts/register` | 注册，返回 token |
+| `POST /v1/accounts/login` | 登录，返回 token |
+| `POST /v1/accounts/logout` | 让当前 token 失效 |
+| `GET /v1/accounts/me` | 余额 |
+| `GET /v1/accounts/ledger` | 自己的流水 |
 
-## 第 ③ 阶段要加什么
+`POST /v1/analyze` 的收费流程是**预扣 → 结算**：
 
-账号、积分账本、充值。需要补的坑（预扣+结算、流式中断兜底、原子扣费、价格版本号等）
-见仓库根目录 `AGENTS.md` 的「积分方案」一节。
+1. 按输入长度和输出上限估一个预扣额，**原子地**从余额里划走（余额不够直接 402）
+2. 调上游，流式返回
+3. 拿到 `usage` 后按真实 token 结算，多退少补
+4. **流中断拿不到 `usage` 时按预扣结算**，不白送；上游拒单则全额退还
+
+单价在 `server/pricing.py`，改完记得**同时改 `PRICE_VERSION`** —— 每条流水都记着当时的价格版本号。
+
+### 管理员操作
+
+没有 HTTP 后台，只能在服务器上跑（这是故意的：多一个 URL 就多一个要被攻破的东西）：
+
+```bash
+cd /srv/checkpause
+.venv/bin/python -m server.admin users
+.venv/bin/python -m server.admin show player
+.venv/bin/python -m server.admin add-credits player 1000 --note "微信转账"
+.venv/bin/python -m server.admin grant player 100 --note "补偿"
+.venv/bin/python -m server.admin set-password player
+.venv/bin/python -m server.admin sweep
+```
+
+`add-credits` 记的是**真实收款**，所以会触发首充福利；`grant` 不会。
+加错两次就用 `grant <用户名> -1000` 冲回来 —— 账本是只增不改的，纠正靠反向流水。
+
+**备份**：`/var/lib/checkpause/checkpause.db` 里是全部余额和密码哈希，丢了就全没了。
+
+## 第 ③ 阶段剩下的部分
+
+充值对接（支付宝 Vibe Pay）。账本本身已经能用，手动加积分的流程今天就可以收款。

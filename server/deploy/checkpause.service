@@ -16,6 +16,12 @@ ExecStart=/srv/checkpause/.venv/bin/uvicorn server.app:app --host 127.0.0.1 --po
 # keeps the unit startable before that file exists.
 EnvironmentFile=-/etc/checkpause/env
 
+# The ledger - accounts, credits, password hashes - lives here rather than in
+# the checkout, which is mounted read-only below. systemd creates the directory
+# owned by the service account; the mode keeps the hashes to that account.
+StateDirectory=checkpause
+StateDirectoryMode=750
+
 Restart=always
 RestartSec=3
 

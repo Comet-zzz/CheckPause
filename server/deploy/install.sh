@@ -84,6 +84,17 @@ else
     echo "    no tuned prompt yet - the built-in placeholder is in use"
 fi
 
+# The SQLite ledger lives here. The unit asks systemd for the same directory,
+# but creating it explicitly keeps the mode right and means a manual run does
+# not end up with a root-owned database.
+log "State directory /var/lib/checkpause"
+install -d -m 750 -o "$SERVICE_USER" -g "$SERVICE_USER" /var/lib/checkpause
+if [ -f /var/lib/checkpause/checkpause.db ]; then
+    echo "    ledger present"
+else
+    echo "    no ledger yet - it is created on first start"
+fi
+
 log "systemd unit"
 install -m 644 "$APP_DIR/server/deploy/checkpause.service" \
     "/etc/systemd/system/$SERVICE_NAME.service"

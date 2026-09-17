@@ -28,6 +28,16 @@ FALLBACK_USER_TEMPLATE = """PGN:
 Engine analysis:
 {analysis}"""
 
+# Answers are billed by the token, so one reply must not be able to cost an
+# unbounded amount. The upstream default is far higher than a coaching answer
+# needs; this cap is still comfortably above a normal one.
+DEFAULT_MAX_ANSWER_TOKENS = 3000
+
+# Share of a first purchase handed back as bonus credits. Ten percent of a
+# CNY 10 top-up means 1100 credits for CNY 10, which trims the first sale's
+# margin from about 50% to about 45%. Zero switches the offer off.
+DEFAULT_FIRST_TOPUP_BONUS_PERCENT = 10
+
 
 def config_dir():
     override = os.environ.get("CHECKPAUSE_CONFIG_DIR", "").strip()
@@ -68,12 +78,31 @@ def model():
     return os.environ.get("DEEPSEEK_MODEL", "deepseek-chat").strip()
 
 
-def access_token():
-    """Shared secret expected in the ``X-CheckPause-Token`` header.
+def _positive_int(name, default):
+    try:
+        value = int(os.environ.get(name, "").strip())
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
-    An empty value disables the check, which is only sensible for local work.
-    This is a stopgap: it keeps scanners and casual abuse off the endpoint but
-    it cannot be a real secret while it ships inside a desktop client. Real
-    accounts replace it in the next milestone.
-    """
-    return os.environ.get("CHECKPAUSE_ACCESS_TOKEN", "").strip()
+
+def max_answer_tokens():
+    """Upper bound on one reply, so a request cannot cost without limit."""
+    return _positive_int(
+        "CHECKPAUSE_MAX_ANSWER_TOKENS", DEFAULT_MAX_ANSWER_TOKENS
+    )
+
+
+def first_topup_bonus_percent():
+    """Extra credits given on a first purchase, as a percentage."""
+    try:
+        return max(
+            0,
+            int(
+                os.environ.get(
+                    "CHECKPAUSE_FIRST_TOPUP_BONUS_PERCENT", ""
+                ).strip()
+            ),
+        )
+    except ValueError:
+        return DEFAULT_FIRST_TOPUP_BONUS_PERCENT
