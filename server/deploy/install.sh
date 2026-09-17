@@ -34,10 +34,22 @@ else
 fi
 
 log "Source code in $APP_DIR"
+# The tree belongs to the service account while this script runs as root, and
+# git refuses to touch a repository owned by somebody else unless it is listed
+# as safe. Setting the key (rather than adding to it) keeps this idempotent.
+git config --system safe.directory "$APP_DIR"
 if [ -d "$APP_DIR/.git" ]; then
     git -C "$APP_DIR" pull --ff-only
 else
     git clone "$REPO_URL" "$APP_DIR"
+fi
+
+# The pull above may have replaced this very script, but bash keeps reading the
+# copy it started with. Re-exec once so edits to the installer take effect in
+# the same invocation instead of silently waiting for the next one.
+if [ "${CHECKPAUSE_REEXEC:-0}" != "1" ]; then
+    export CHECKPAUSE_REEXEC=1
+    exec bash "$0" "$@"
 fi
 
 log "Python virtual environment"
@@ -65,6 +77,10 @@ ln -sf /etc/nginx/sites-available/checkpause /etc/nginx/sites-enabled/checkpause
 rm -f /etc/nginx/sites-enabled/default
 nginx -t
 systemctl reload nginx
+
+log "Login banner"
+install -m 755 "$APP_DIR/server/deploy/checkpause-motd.sh" \
+    /etc/update-motd.d/99-checkpause
 
 log "Waiting for the app to answer on 127.0.0.1:8000"
 for _ in $(seq 1 20); do
