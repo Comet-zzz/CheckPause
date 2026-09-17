@@ -125,8 +125,9 @@ DEFAULT_ALIPAY_GATEWAY = "https://openapi.alipay.com/gateway.do"
 CREDITS_PER_YUAN = 100
 
 # What a buyer may choose, in yuan. The price is looked up here rather than
-# taken from the request, so a client cannot name its own amount.
-DEFAULT_TOPUP_PACKS = (10, 30, 100)
+# taken from the request, so a client cannot name its own amount. The tiers are
+# deliberately impulse-sized: one yuan to try it, and two familiar steps above.
+DEFAULT_TOPUP_PACKS = (1, 6, 18)
 
 
 def topup_packs():

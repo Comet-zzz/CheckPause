@@ -95,6 +95,10 @@ else
     echo "    no ledger yet - it is created on first start"
 fi
 
+log "Download directory /srv/downloads"
+install -d -m 755 -o root -g root /srv/downloads
+echo "    release installers go here; nginx mirrors them at /download/"
+
 # The unit sets UMask so new files are private, but a ledger created before
 # that existed keeps its old mode, and SQLite reuses the write-ahead log and
 # the shared-memory file it finds. They hold the same password hashes and
