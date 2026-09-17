@@ -91,6 +91,9 @@ log "State directory /var/lib/checkpause"
 install -d -m 750 -o "$SERVICE_USER" -g "$SERVICE_USER" /var/lib/checkpause
 if [ -f /var/lib/checkpause/checkpause.db ]; then
     echo "    ledger present"
+    # The unit sets UMask so new files are private, but a ledger created
+    # before that existed keeps its old mode. Pin it on every deploy.
+    chmod 600 /var/lib/checkpause/checkpause.db
 else
     echo "    no ledger yet - it is created on first start"
 fi

@@ -33,5 +33,11 @@ ProtectSystem=full
 ProtectHome=yes
 ReadOnlyPaths=/srv/checkpause
 
+# Everything the service creates - the ledger, its WAL and its shared-memory
+# file - holds password hashes and balances. The 750 state directory already
+# keeps other accounts out; this means the files stay private even if that
+# directory is ever loosened.
+UMask=0077
+
 [Install]
 WantedBy=multi-user.target
