@@ -25,7 +25,15 @@ from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from server import accounts, config, deepseek, pricing, prompting, store
+from server import (
+    accounts,
+    config,
+    deepseek,
+    payments,
+    pricing,
+    prompting,
+    store,
+)
 
 SERVICE_NAME = "CheckPause Server"
 SERVICE_VERSION = "0.3.0"
@@ -45,6 +53,7 @@ async def lifespan(_app):
 
 app = FastAPI(title=SERVICE_NAME, version=SERVICE_VERSION, lifespan=lifespan)
 app.include_router(accounts.router)
+app.include_router(payments.router)
 
 
 class ConversationMessage(BaseModel):

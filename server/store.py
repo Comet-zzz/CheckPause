@@ -86,6 +86,22 @@ CREATE INDEX IF NOT EXISTS ledger_by_user ON ledger(user_id, id);
 -- or a replayed payment notification safe to process.
 CREATE UNIQUE INDEX IF NOT EXISTS ledger_once ON ledger(reference, reason)
     WHERE reference <> '';
+
+-- One row per attempt to buy credits. The id is what the buyer pays against,
+-- so it doubles as the out_trade_no Alipay sees.
+CREATE TABLE IF NOT EXISTS orders (
+    id           TEXT PRIMARY KEY,
+    user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    credits      INTEGER NOT NULL CHECK (credits > 0),
+    amount_cents INTEGER NOT NULL CHECK (amount_cents > 0),
+    status       TEXT    NOT NULL DEFAULT 'created',
+    trade_no     TEXT    NOT NULL DEFAULT '',
+    notify_id    TEXT    NOT NULL DEFAULT '',
+    created_at   TEXT    NOT NULL,
+    paid_at      TEXT
+);
+
+CREATE INDEX IF NOT EXISTS orders_by_user ON orders(user_id, id);
 """
 
 
@@ -411,36 +427,30 @@ def add_credits(user_id, amount, reason="grant", reference="", note=""):
         return _move(conn, user_id, amount, reason, reference, note)
 
 
-def top_up(
-    user_id, credits, reference="", note="", bonus_percent=0, price_version=""
+def _credit_purchase(
+    conn, user_id, credits, reference, note, bonus_percent, price_version
 ):
-    """Record a purchase, plus a one-off bonus the first time it happens.
+    """Credit a purchase, and once per account its first-purchase bonus."""
+    row = conn.execute(
+        "SELECT first_topup_at FROM users WHERE id = ?", (user_id,)
+    ).fetchone()
+    if row is None:
+        raise StoreError("no_such_user", "no user with that id")
+    first = row["first_topup_at"] is None
 
-    Returns the total credits added, so the caller can show a receipt. The
-    bonus is applied once per account, keyed off first_topup_at, so a second
-    purchase - or a retried notification - never earns it twice.
-    """
-    credits = int(credits)
-    if credits <= 0:
-        raise StoreError("bad_amount", "a top-up must be positive")
-    with transaction() as conn:
-        row = conn.execute(
-            "SELECT * FROM users WHERE id = ?", (user_id,)
-        ).fetchone()
-        if row is None:
-            raise StoreError("no_such_user", "no user with that id")
-        first = row["first_topup_at"] is None
-        _move(
-            conn,
-            user_id,
-            credits,
-            "topup",
-            reference,
-            note,
-            price_version=price_version,
-        )
-        bonus = 0
-        if first and bonus_percent:
+    _move(
+        conn,
+        user_id,
+        credits,
+        "topup",
+        reference,
+        note,
+        price_version=price_version,
+    )
+
+    bonus = 0
+    if first:
+        if bonus_percent:
             bonus = credits * int(bonus_percent) // 100
             if bonus:
                 _move(
@@ -452,12 +462,36 @@ def top_up(
                     note,
                     price_version=price_version,
                 )
-        if first:
-            conn.execute(
-                "UPDATE users SET first_topup_at = ? WHERE id = ?",
-                (_now(), user_id),
-            )
+        conn.execute(
+            "UPDATE users SET first_topup_at = ? WHERE id = ?",
+            (_now(), user_id),
+        )
     return credits + bonus
+
+
+def top_up(
+    user_id, credits, reference="", note="", bonus_percent=0, price_version=""
+):
+    """Record a purchase made outside the payment gateway.
+
+    Returns the total credits added, so the caller can show a receipt. A caller
+    that has more than one way to be told about the same purchase can pass the
+    same ``reference`` again and the second attempt will be refused rather than
+    credited twice.
+    """
+    credits = int(credits)
+    if credits <= 0:
+        raise StoreError("bad_amount", "a top-up must be positive")
+    with transaction() as conn:
+        return _credit_purchase(
+            conn,
+            user_id,
+            credits,
+            reference,
+            note,
+            bonus_percent,
+            price_version,
+        )
 
 
 # --- reservations ----------------------------------------------------------
@@ -617,3 +651,102 @@ def ledger_for(user_id, limit=20):
             (user_id, int(limit)),
         ).fetchall()
     return [dict(row) for row in rows]
+
+
+# --- orders ----------------------------------------------------------------
+
+
+def _order(row):
+    if row is None:
+        return None
+    return {
+        "id": row["id"],
+        "user_id": row["user_id"],
+        "credits": row["credits"],
+        "amount_cents": row["amount_cents"],
+        "status": row["status"],
+        "trade_no": row["trade_no"],
+        "created_at": row["created_at"],
+        "paid_at": row["paid_at"],
+    }
+
+
+def create_order(user_id, credits, amount_cents):
+    """Open an order. Its id is what the buyer pays against."""
+    credits = int(credits)
+    amount_cents = int(amount_cents)
+    if credits <= 0 or amount_cents <= 0:
+        raise StoreError("bad_amount", "an order needs a positive price")
+    # Random rather than sequential: the id travels to Alipay and back, and it
+    # is also the only thing protecting the payment page from being guessed.
+    order_id = "CP" + secrets.token_hex(10).upper()
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT 1 FROM users WHERE id = ?", (user_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_user", "no user with that id")
+        conn.execute(
+            "INSERT INTO orders (id, user_id, credits, amount_cents,"
+            " created_at) VALUES (?, ?, ?, ?, ?)",
+            (order_id, user_id, credits, amount_cents, _now()),
+        )
+    return order(order_id)
+
+
+def order(order_id):
+    with _lock:
+        row = connection().execute(
+            "SELECT * FROM orders WHERE id = ?", ((order_id or "").strip(),)
+        ).fetchone()
+    return _order(row)
+
+
+def orders_for_user(user_id, limit=20):
+    with _lock:
+        rows = connection().execute(
+            "SELECT * FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT ?",
+            (user_id, int(limit)),
+        ).fetchall()
+    return [_order(row) for row in rows]
+
+
+def mark_order_paid(
+    order_id, trade_no="", notify_id="", bonus_percent=0, price_version=""
+):
+    """Credit the buyer for an order, exactly once.
+
+    Safe to call again. An order already marked paid comes back untouched, and
+    even without that check the ledger's unique index on the reference would
+    refuse the second credit. So a retried notification, or a notification
+    arriving alongside the query fallback, cannot pay a buyer twice.
+    """
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE id = ?", (order_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_order", "no order with that id")
+        current = _order(row)
+        if current["status"] == "paid":
+            return current
+
+        _credit_purchase(
+            conn,
+            current["user_id"],
+            current["credits"],
+            order_id,
+            "alipay",
+            bonus_percent,
+            price_version,
+        )
+        conn.execute(
+            "UPDATE orders SET status = 'paid', trade_no = ?, notify_id = ?,"
+            " paid_at = ? WHERE id = ?",
+            (trade_no, notify_id, _now(), order_id),
+        )
+        return _order(
+            conn.execute(
+                "SELECT * FROM orders WHERE id = ?", (order_id,)
+            ).fetchone()
+        )

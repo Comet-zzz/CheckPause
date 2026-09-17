@@ -106,3 +106,62 @@ def first_topup_bonus_percent():
         )
     except ValueError:
         return DEFAULT_FIRST_TOPUP_BONUS_PERCENT
+
+
+# --- payments --------------------------------------------------------------
+
+DEFAULT_ALIPAY_GATEWAY = "https://openapi.alipay.com/gateway.do"
+
+# CNY 10 buys 1000 credits, so one yuan is a hundred credits.
+CREDITS_PER_YUAN = 100
+
+# What a buyer may choose, in yuan. The price is looked up here rather than
+# taken from the request, so a client cannot name its own amount.
+DEFAULT_TOPUP_PACKS = (10, 30, 100)
+
+
+def topup_packs():
+    """The amounts a buyer may pay, in yuan, cheapest first."""
+    raw = os.environ.get("CHECKPAUSE_TOPUP_PACKS", "").strip()
+    if not raw:
+        return list(DEFAULT_TOPUP_PACKS)
+    packs = []
+    for piece in raw.split(","):
+        try:
+            amount = int(piece.strip())
+        except ValueError:
+            continue
+        if amount > 0:
+            packs.append(amount)
+    return packs or list(DEFAULT_TOPUP_PACKS)
+
+
+def alipay_settings():
+    """Everything the payment gateway needs.
+
+    ``private_key`` is the non-Java key: the official SDK example states that
+    Python takes PKCS#1 and Java takes PKCS#8, and mixing them up fails every
+    signature. Alipay's console labels the PKCS#1 one "非 JAVA 语言私钥", which
+    is why it is read from ``AIPAY_PRIVATE_PKCS_KEY`` despite the name.
+    """
+    app_id = os.environ.get("AIPAY_APP_ID", "").strip()
+    private_key = os.environ.get("AIPAY_PRIVATE_PKCS_KEY", "").strip()
+    alipay_public_key = os.environ.get("AIPAY_ALIPAY_PUBLIC_KEY", "").strip()
+    return {
+        "app_id": app_id,
+        "private_key": private_key,
+        "alipay_public_key": alipay_public_key,
+        "gateway": (
+            os.environ.get("AIPAY_GATEWAY", "").strip()
+            or DEFAULT_ALIPAY_GATEWAY
+        ),
+        # Both may be empty. The notification contract allows omitting
+        # notify_url when there is no public HTTPS address yet, provided the
+        # trade query fallback is implemented - and it is.
+        "notify_url": os.environ.get("AIPAY_NOTIFY_URL", "").strip(),
+        "return_url": os.environ.get("AIPAY_RETURN_URL", "").strip(),
+        # Checked against the notification so a stranger's app_id cannot be
+        # used to pay into this account.
+        "seller_id": os.environ.get("AIPAY_SELLER_ID", "").strip(),
+        "enabled": bool(app_id and private_key and alipay_public_key),
+    }

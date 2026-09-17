@@ -3,5 +3,14 @@ fastapi==0.141.1
 uvicorn[standard]==0.53.0
 openai
 
+# Alipay's own SDK. Its Python signature utility removes any temptation to
+# hand-roll RSA, which the official integration contract explicitly forbids.
+alipay-sdk-python==3.7.1360
+
+# Starlette refuses to parse any form body without this, and Alipay's payment
+# notification is a form post. Without it the notification endpoint would
+# answer "fail" forever and no purchase would ever be credited.
+python-multipart==0.0.32
+
 # Only needed to run the tests in this directory.
 httpx==0.28.1
