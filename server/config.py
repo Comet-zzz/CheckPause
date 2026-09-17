@@ -145,6 +145,17 @@ def topup_packs():
     return packs or list(DEFAULT_TOPUP_PACKS)
 
 
+DEFAULT_PUBLIC_URL = "http://43.108.99.244"
+
+
+def public_url():
+    """Where buyers reach this server, used to build payment links."""
+    return (
+        os.environ.get("CHECKPAUSE_PUBLIC_URL", "").strip()
+        or DEFAULT_PUBLIC_URL
+    )
+
+
 def alipay_settings():
     """Everything the payment gateway needs.
 

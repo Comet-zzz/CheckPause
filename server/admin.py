@@ -152,6 +152,40 @@ def cmd_rename(args):
     print("  sessions stay signed in (they follow the account, not the name)")
 
 
+def cmd_open_order(args):
+    """Make a payment link to hand to a buyer.
+
+    This is the whole sales flow before the client grows a top-up button: ask
+    the buyer for their username, run this, send them the link. The credits
+    arrive by themselves once they pay, because Alipay either notifies the
+    server or the server asks Alipay.
+    """
+    user = _who(args.username)
+    yuan = int(args.yuan)
+    packs = config.topup_packs()
+    if yuan not in packs:
+        sys.exit(
+            "{} is not one of the packs ({}). Use one of those, or change "
+            "CHECKPAUSE_TOPUP_PACKS.".format(
+                yuan, ", ".join(str(pack) for pack in packs)
+            )
+        )
+
+    order = store.create_order(
+        user["id"], yuan * config.CREDITS_PER_YUAN, yuan * 100
+    )
+    print(
+        "{} buys {} CP credits for CNY {}".format(
+            user["username"], order["credits"], yuan
+        )
+    )
+    print()
+    print("  {}/pay/{}".format(config.public_url().rstrip("/"), order["id"]))
+    print()
+    print("Send them that link. Once they pay, check it landed with:")
+    print("  .venv/bin/python -m server.admin show {}".format(user["username"]))
+
+
 def cmd_sweep(_args):
     swept = store.sweep_stale_holds()
     if not swept:
@@ -210,6 +244,13 @@ def build_parser():
     rename.add_argument("username")
     rename.add_argument("new_username")
     rename.set_defaults(run=cmd_rename)
+
+    open_order = sub.add_parser(
+        "open-order", help="make a payment link to hand to a buyer"
+    )
+    open_order.add_argument("username")
+    open_order.add_argument("yuan", type=int)
+    open_order.set_defaults(run=cmd_open_order)
 
     sub.add_parser(
         "sweep", help="charge reservations abandoned by a crash"
