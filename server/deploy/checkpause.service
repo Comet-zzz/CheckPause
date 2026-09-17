@@ -1,0 +1,22 @@
+[Unit]
+Description=CheckPause API server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=checkpause
+Group=checkpause
+WorkingDirectory=/srv/checkpause/server
+ExecStart=/srv/checkpause/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+# The service never needs to touch anything outside its own directory.
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=full
+ProtectHome=yes
+
+[Install]
+WantedBy=multi-user.target

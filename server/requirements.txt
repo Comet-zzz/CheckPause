@@ -1,0 +1,6 @@
+# Runtime dependencies for the CheckPause server.
+fastapi==0.141.1
+uvicorn[standard]==0.53.0
+
+# Only needed to run server/test_app.py.
+httpx==0.28.1
