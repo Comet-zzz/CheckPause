@@ -1,5 +1,5 @@
-from PyQt6.QtCore import Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtWidgets import (
     QComboBox,
     QFormLayout,
     QHBoxLayout,
@@ -15,7 +15,7 @@ from checkpause.i18n import t
 
 
 class WelcomePage(QWidget):
-    started = pyqtSignal(str, str)
+    started = Signal(str, str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -1,5 +1,5 @@
-from PyQt6.QtCore import QSize, Qt, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtWidgets import (
     QButtonGroup,
     QSizePolicy,
     QToolButton,
@@ -14,7 +14,7 @@ RAIL_WIDTH = 108
 
 
 class ModuleRail(QWidget):
-    module_selected = pyqtSignal(str)
+    module_selected = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)

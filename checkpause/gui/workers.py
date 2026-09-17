@@ -1,6 +1,6 @@
 import chess
 import chess.engine
-from PyQt6.QtCore import QThread, pyqtSignal
+from PySide6.QtCore import QThread, Signal
 
 from checkpause.config import play_engine_settings
 from checkpause.core.ai import ChatRequestError, chat_with_model
@@ -23,10 +23,10 @@ def _engine_elo_floor(engine):
 
 
 class AnalysisWorker(QThread):
-    progress = pyqtSignal(int)
-    move_done = pyqtSignal(int, int, str, str)
-    done = pyqtSignal(list, float)
-    failed = pyqtSignal(str)
+    progress = Signal(int)
+    move_done = Signal(int, int, str, str)
+    done = Signal(list, float)
+    failed = Signal(str)
 
     def __init__(self, pgn_text, language="zh-CN", parent=None):
         super().__init__(parent)
@@ -58,8 +58,8 @@ class AnalysisWorker(QThread):
 
 
 class EngineMoveWorker(QThread):
-    move_ready = pyqtSignal(str)
-    failed = pyqtSignal(str)
+    move_ready = Signal(str)
+    failed = Signal(str)
 
     def __init__(self, fen, rating, language="zh-CN", parent=None):
         super().__init__(parent)
@@ -102,9 +102,9 @@ class EngineMoveWorker(QThread):
 
 
 class PuzzleImportWorker(QThread):
-    progress = pyqtSignal(int)
-    done = pyqtSignal(dict)
-    failed = pyqtSignal(str, str)
+    progress = Signal(int)
+    done = Signal(dict)
+    failed = Signal(str, str)
 
     def __init__(self, path, name=None, parent=None):
         super().__init__(parent)
@@ -129,9 +129,9 @@ class PuzzleImportWorker(QThread):
 
 
 class ChatWorker(QThread):
-    chunk = pyqtSignal(str)
-    done = pyqtSignal(str)
-    failed = pyqtSignal(str)
+    chunk = Signal(str)
+    done = Signal(str)
+    failed = Signal(str)
 
     def __init__(self, messages, language="zh-CN", parent=None):
         super().__init__(parent)
@@ -156,8 +156,8 @@ class ChatWorker(QThread):
 class UpdateCheckWorker(QThread):
     """Looks for a newer release; reports the result and never raises."""
 
-    checked = pyqtSignal(object)
-    failed = pyqtSignal()
+    checked = Signal(object)
+    failed = Signal()
 
     def run(self):
         try:

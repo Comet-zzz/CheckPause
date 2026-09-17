@@ -2,8 +2,8 @@ import time
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
-from PyQt6.QtWidgets import (
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
     QHBoxLayout,
@@ -40,7 +40,7 @@ CLOCK_TICK_MS = 100
 
 
 class PlayPage(QWidget):
-    analysis_requested = pyqtSignal(str)
+    analysis_requested = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
