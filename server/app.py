@@ -36,7 +36,7 @@ from server import (
 )
 
 SERVICE_NAME = "CheckPause Server"
-SERVICE_VERSION = "0.3.0"
+SERVICE_VERSION = "0.4.0"
 STARTED_AT = datetime.now(timezone.utc)
 
 MAX_PGN_CHARS = 200_000
