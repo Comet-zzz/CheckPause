@@ -6,6 +6,13 @@ from checkpause.data.paths import SETTINGS_FILE, ensure_data_dir
 DEFAULT_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-flash"
 
+# Where the paid tier sends its requests. The client only ever sends raw
+# material here; the tuned prompt stays on the server.
+DEFAULT_SERVER_URL = "http://43.108.99.244"
+
+MODE_LOCAL = "local"   # bring your own API key, straight to the provider
+MODE_CLOUD = "cloud"   # through the CheckPause server
+
 
 def load_settings():
     if os.path.exists(SETTINGS_FILE):
@@ -41,19 +48,34 @@ def get_model():
     return (load_settings().get("model") or "").strip() or DEFAULT_MODEL
 
 
+def get_ai_mode():
+    mode = (load_settings().get("ai_mode") or "").strip()
+    return mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+
+
+def get_server_url():
+    return (load_settings().get("server_url") or "").strip() or DEFAULT_SERVER_URL
+
+
 def get_api_config():
     return {
+        "mode": get_ai_mode(),
+        "server_url": get_server_url(),
         "api_key": get_api_key(),
         "base_url": get_base_url(),
         "model": get_model(),
     }
 
 
-def save_api_config(api_key, base_url, model):
+def save_api_config(api_key, base_url, model, mode=None, server_url=None):
     settings = load_settings()
     settings["api_key"] = (api_key or "").strip()
     settings["base_url"] = (base_url or "").strip()
     settings["model"] = (model or "").strip()
+    if mode is not None:
+        settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+    if server_url is not None:
+        settings["server_url"] = (server_url or "").strip()
     return save_settings(settings)
 
 
