@@ -3,7 +3,7 @@
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
 [![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.6.1/CheckPause_Setup_1.6.1.exe)
-[![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
+[![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
 
@@ -37,41 +37,6 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 > 没有配置 API 也能正常分析和看棋，只是 AI 对话不可用。
 
-### 从源码运行
-
-要求 Python 3.10+。
-
-```powershell
-git clone https://github.com/Comet-zzz/CheckPause.git
-cd CheckPause
-python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
-python run_gui.py
-```
-
-源码运行时需要自行准备 Stockfish（发布包中已内置）：
-
-- 从 https://stockfishchess.org/download/ 下载对应平台版本；
-- 放到 `stockfish\stockfish\stockfish-windows-x86-64-universal.exe`，或在 `.env` 中配置 `STOCKFISH_PATH`。
-
-API Key 可以在应用内填写，也可以复制 `.env.example` 为 `.env`：
-
-```env
-DEEPSEEK_API_KEY = "sk-your-api-key-here"
-STOCKFISH_PATH = "C:/your/path/to/stockfish.exe"
-```
-
-### 命令行版本
-
-原有命令行流程仍然保留：
-
-```powershell
-python run_cli.py        # 或 python -m cli.main
-```
-
-粘贴 PGN → Stockfish 分析 → 终端内与 AI 连续对话；支持 `/language` 切换语言、`clear` 清除用户数据。
-
 ---
 
 ## ⚙️ 配置与数据
@@ -81,66 +46,12 @@ python run_cli.py        # 或 python -m cli.main
 
 ---
 
-## 🧱 项目结构
-
-```
-run_gui.py / run_cli.py        # GUI / CLI 入口
-checkpause/
-  config.py  resources.py  assets.py
-  core/      engine.py  ai.py  rating.py  puzzle.py  play_session.py  openings.py  endgames.py
-  data/      paths.py  settings.py  profile.py  puzzles.py
-  i18n/      zh_CN.py  en_US.py
-  gui/       main_window.py  dialogs.py  theme.py  workers.py
-             pages/    analysis_page.py  chat_page.py  stats_page.py  play_page.py  puzzle_page.py  welcome_page.py
-             widgets/  move_list.py  module_rail.py  board/widget.py  board/canvas.py  board/promo.py  board/constants.py
-cli/         main.py  chat_ui.py  input_handler.py  engine_cli.py
-tests/       unittest 测试
-tools/       build_openings.py  build_puzzles.py
-assets/      pieces/  puzzles/  openings.pgn  opening_book.bin
-```
-
-GUI 与 CLI 共用 `checkpause` 核心逻辑，互不依赖界面代码。
-
----
-
-## 🧪 测试与打包
-
-```powershell
-python -m unittest discover -s tests -v   # 单元测试
-.\build_exe.ps1                            # 便携目录 + 单文件安装包
-```
-
-打包需要 [Inno Setup 6.3+](https://jrsoftware.org/isdl.php)：`winget install JRSoftware.InnoSetup`
-
-若提示"禁止运行脚本"，改用：`powershell -ExecutionPolicy Bypass -File .\build_exe.ps1`
-
-`CheckPause.spec` 会把 Stockfish、开局谱库与棋子资源一并打进 `dist\CheckPause\`，`installer\CheckPause.iss` 再把整个目录编译成一个安装包。版本号自动读取 `checkpause\__init__.py` 中的 `APP_VERSION`。
-
-产出：
-
-| 产物 | 用途 |
-| --- | --- |
-| `dist\CheckPause_Setup_<版本>.exe` | **安装包，发给用户的那个文件** |
-| `dist\CheckPause\CheckPause.exe` | 便携版（安装包的中间产物，需连同整个文件夹一起分发） |
-
-### 发布新版本
-
-1. 修改 `checkpause/__init__.py` 的 `APP_VERSION` 与 `version_info.txt`，并在 `Changelog.md` 顶部新增一节；
-2. 运行 `.\build_exe.ps1`，得到 `dist\CheckPause_Setup_<版本>.exe`；
-3. 在 GitHub 上创建 Release 并上传该安装包；
-4. **更新仓库根目录的 `version.json`**，把 `latest` 与 `url` 指向新版本；
-5. 同步更新 `README.md` 与 `README.zh-CN.md` 里的版本号、安装包直链与 SHA-256——downloads 徽章与文末「下载」段落都直接指向 `.exe`，必须跟着换到新文件。
-
-客户端启动约 2.5 秒后会读取 `version.json`（依次尝试 jsDelivr 与 raw.githubusercontent），发现更高版本就提示用户。**第 4 步忘了做，老用户就收不到更新提示**——安装包已经传上去但没人知道。
-
----
-
 ## 🙏 致谢
 
 - 棋子来自 Lichess 开源棋子集（cburnett、merida、chessnut、fantasy、spatial、celtic、kiwen-suwi、rhosgfx、totoy、mpchess），版权归各作者所有，遵循 GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 等许可。
-- 引擎为 [Stockfish](https://stockfishchess.org/)（GPLv3），开局库由 `tools/build_openings.py` 从公开开局线路编译。
+- 引擎为 [Stockfish](https://stockfishchess.org/)（GPLv3），开局库由公开开局线路编译。
 - 安装包由 [Inno Setup](https://jrsoftware.org/isinfo.php) 生成，并使用其官方简体中文语言包（`installer/languages/ChineseSimplified.isl`，维护者 Zhenghan Yang）。
-- 许可：CheckPause 以 [GNU 通用公共许可证 v3.0](LICENSE) 发布，版权所有 (C) 2026 CometZZZ；内置组件沿用各自原有许可——Stockfish 为 GPLv3（源码可从 https://stockfishchess.org/download/ 获取），棋子集遵循上述各自许可。
+- 许可：CheckPause 为**专有软件**，版权所有 (C) 2026 CometZZZ，保留所有权利，详见 [LICENSE](LICENSE)；**v1.6.1 及更早版本仍按其发布时的 GPLv3 授权**。内置组件沿用各自原有许可——Stockfish 为 GPLv3（源码可从 https://stockfishchess.org/download/ 获取），棋子集遵循上述各自许可。
 
 ---
 
