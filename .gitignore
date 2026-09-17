@@ -49,4 +49,7 @@ output/
 # Kilo local state
 .kilo/worktrees/
 .kilo/agent-manager.json
+
+# Local working notes, kept out of the public repository on purpose
+AGENTS.md
 .kilo/jetbrains.json
