@@ -1,5 +1,5 @@
 {
-  "latest": "1.5.4",
-  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.4/CheckPause_Setup_1.5.4.exe",
-  "notes": "修复更新提示：关闭弹窗或更新途中关闭程序后，下次启动仍会提醒，并新增「帮助 → 检查更新」。修复对弈计时显示，暂停/继续改为矢量图标。"
+  "latest": "1.6.0",
+  "url": "https://github.com/Comet-zzz/CheckPause/releases/download/v1.6.0/CheckPause_Setup_1.6.0.exe",
+  "notes": "界面底层框架换成 Qt 官方的 PySide6。界面、操作、数据完全不变，直接覆盖安装即可，安装包略大（约 114 MB）。"
 }

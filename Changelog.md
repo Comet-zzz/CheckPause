@@ -1,3 +1,45 @@
+# v1.6.0 – PySide6 Migration
+
+> 界面的底层图形框架从 PyQt6 换成了 **PySide6** —— Qt 官方维护的那套绑定，采用 LGPL 许可。这不是一次功能更新：界面、操作、数据完全不变，升级后一切照旧，你不需要做任何额外的事。
+>
+> The interface toolkit moves from PyQt6 to PySide6, the binding Qt maintains itself, licensed under the LGPL. This is not a feature release: the UI, the controls and your data are all unchanged. Install it as usual and everything stays where it was.
+
+---
+
+## 🎯 What's Changed
+
+### 🔄 Qt's official binding
+- 图形界面框架由 PyQt6 迁移到 **PySide6**。两者 API 几乎一致，所以这是一次纯粹的底层替换，没有重写任何界面。
+
+- The GUI toolkit moves from PyQt6 to PySide6. The two APIs are near-identical, so this is a straight swap underneath rather than a rewrite of any screen.
+
+### 🧩 界面和数据完全不变
+- 布局、配色、字体、快捷键、棋子样式、谜题进度、统计数据、API 设置 —— **全部保持不变**。升级后第一次打开，看到的就是原来那个 CheckPause。
+
+- Layout, colours, fonts, shortcuts, piece sets, puzzle progress, statistics and API settings all stay exactly as they are. The first launch after upgrading looks like the CheckPause you already know.
+
+### 📦 安装包略微变大
+- 从 107.6 MB 变成约 114 MB。原因是 PySide6 的打包工具会带上一批程序用不到的 Qt 组件（QML、Quick、PDF 等），后续版本会把它们排除掉。
+
+- The installer grows from 107.6 MB to roughly 114 MB, because PySide6's packaging pulls in Qt components the app never touches (QML, Quick, PDF and friends). A later release will trim them out.
+
+---
+
+## 🛠️ Full Changelog
+- refactor(gui): migrate every module from PyQt6 to PySide6
+- build: swap the dependency, the PyInstaller spec and the documentation
+- chore(version): bump the app version to 1.6.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。直接覆盖安装即可，所有设置、统计与谜题进度都会保留。
+
+- No breaking changes. Install straight over the previous version; every setting, statistic and puzzle progress is preserved.
+
+---
+
 # v1.5.4 – Update Notifications and Clock Fixes
 
 > 本次更新修复了更新提示与对弈计时的问题，并新增「检查更新」入口。
