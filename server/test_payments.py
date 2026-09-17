@@ -292,6 +292,29 @@ class OrderTests(PaymentTestCase):
         self.assertIn("alipay.trade.page.pay", response.text)
         self.assertIn(order["id"], response.text)
 
+    def test_the_sandbox_page_warns_that_the_real_app_cannot_scan_it(self):
+        order = self.make_order()
+        # A sandbox-looking address that goes nowhere: the hint is chosen by
+        # the gateway name, and a unit test has no business calling Alipay.
+        with mock.patch.dict(
+            os.environ,
+            {"AIPAY_GATEWAY": "https://sandbox.example.invalid/gateway.do"},
+        ):
+            response = self.client.get("/pay/" + order["id"])
+        self.assertIn("登录支付", response.text)
+        self.assertIn("沙箱", response.text)
+
+    def test_a_production_page_carries_no_sandbox_warning(self):
+        order = self.make_order()
+        # Any gateway that is not the sandbox. Pointing this at the real one
+        # would make a unit test call Alipay for real, which is rude and slow.
+        with mock.patch.dict(
+            os.environ,
+            {"AIPAY_GATEWAY": "https://example.invalid/production-gateway.do"},
+        ):
+            response = self.client.get("/pay/" + order["id"])
+        self.assertNotIn("沙箱", response.text)
+
     def test_the_payment_page_of_an_unknown_order_is_not_a_form(self):
         response = self.client.get("/pay/CPNOPE")
         self.assertEqual(response.status_code, 200)

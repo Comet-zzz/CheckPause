@@ -62,6 +62,15 @@ WAITING = """
 <p>如果没有自动跳转，请检查浏览器是否拦截了页面。</p>
 """
 
+# Shown only while the sandbox gateway is in use. Its cashier draws a QR code
+# that the real Alipay app cannot read - only the sandbox build can - which
+# otherwise looks like a broken page and wastes an afternoon.
+SANDBOX_HINT = """
+<p style="color:#b45309">沙箱测试环境：请选「登录支付」输入沙箱买家账号，
+或者用沙箱版支付宝 APP 扫码。<b>手机上真正的支付宝扫不了这个码</b>，
+那是沙箱的限制，不是页面坏了。</p>
+"""
+
 PAID = """
 <p class="amount">{credits} CP积分</p>
 <p>已到账，可以回到 CheckPause 继续使用了。</p>
@@ -95,6 +104,11 @@ class OrderStatus(BaseModel):
 
 def _page(title, body, form=""):
     return HTMLResponse(PAGE.format(title=title, body=body, form=form))
+
+
+def _using_sandbox():
+    """Whether the payment gateway is the test one, which changes what works."""
+    return "sandbox" in config.alipay_settings()["gateway"].lower()
 
 
 def _same_amount(cents, text):
@@ -247,6 +261,7 @@ def pay_page(order_id: str):
     return _page(
         "CheckPause 充值",
         WAITING
+        + (SANDBOX_HINT if _using_sandbox() else "")
         + "<p>应付金额 ¥{:.2f}，{} CP积分</p>".format(
             order["amount_cents"] / 100, order["credits"]
         ),
