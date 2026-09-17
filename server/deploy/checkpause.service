@@ -7,16 +7,25 @@ Wants=network-online.target
 Type=simple
 User=checkpause
 Group=checkpause
-WorkingDirectory=/srv/checkpause/server
-ExecStart=/srv/checkpause/.venv/bin/uvicorn app:app --host 127.0.0.1 --port 8000
+
+# Run from the repository root so `server` is importable as a package.
+WorkingDirectory=/srv/checkpause
+ExecStart=/srv/checkpause/.venv/bin/uvicorn server.app:app --host 127.0.0.1 --port 8000
+
+# The API key and the tuned prompt live outside the checkout; the leading dash
+# keeps the unit startable before that file exists.
+EnvironmentFile=-/etc/checkpause/env
+
 Restart=always
 RestartSec=3
 
-# The service never needs to touch anything outside its own directory.
+# The service never needs to touch anything outside its own directory, except
+# for its configuration.
 NoNewPrivileges=yes
 PrivateTmp=yes
 ProtectSystem=full
 ProtectHome=yes
+ReadOnlyPaths=/srv/checkpause
 
 [Install]
 WantedBy=multi-user.target

@@ -63,6 +63,27 @@ fi
 log "Ownership"
 chown -R "$SERVICE_USER:$SERVICE_USER" "$APP_DIR"
 
+# Secrets and the tuned prompt live here, never in the checkout. The service
+# account owns the directory so only it (and root) can read what is inside.
+log "Configuration directory /etc/checkpause"
+install -d -m 750 -o "$SERVICE_USER" -g "$SERVICE_USER" /etc/checkpause
+install -m 640 -o "$SERVICE_USER" -g "$SERVICE_USER" \
+    "$APP_DIR/server/deploy/env.example" /etc/checkpause/env.example
+
+if [ -f /etc/checkpause/env ]; then
+    echo "    env file present"
+else
+    echo "    no env file yet - copy env.example and add the API key:"
+    echo "      install -m 640 -o $SERVICE_USER -g $SERVICE_USER \\"
+    echo "          /etc/checkpause/env.example /etc/checkpause/env"
+fi
+
+if [ -f /etc/checkpause/system_prompt.txt ]; then
+    echo "    tuned prompt present"
+else
+    echo "    no tuned prompt yet - the built-in placeholder is in use"
+fi
+
 log "systemd unit"
 install -m 644 "$APP_DIR/server/deploy/checkpause.service" \
     "/etc/systemd/system/$SERVICE_NAME.service"
