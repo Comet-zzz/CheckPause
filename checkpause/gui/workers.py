@@ -138,10 +138,10 @@ class ChatWorker(QThread):
     def __init__(self, messages, language="zh-CN", parent=None, cloud_request=None):
         """``cloud_request`` selects the paid path.
 
-        It is a dict with server_url, pgn, analysis and history. The request
-        then carries raw material only - the server builds the prompt - which
-        is what keeps the tuned prompt off user machines. Passing None keeps
-        the bring-your-own-key path.
+        It is a dict with server_url, token, pgn, analysis and history. The
+        request then carries raw material only - the server builds the prompt -
+        which is what keeps the tuned prompt off user machines. Passing None
+        keeps the bring-your-own-key path.
         """
         super().__init__(parent)
         self.messages = list(messages)
@@ -153,6 +153,7 @@ class ChatWorker(QThread):
             return chat_with_model(self.messages, self.language)
         return cloud.stream_reply(
             self.cloud_request.get("server_url", ""),
+            self.cloud_request.get("token", ""),
             self.cloud_request.get("pgn", ""),
             self.cloud_request.get("analysis", ""),
             self.cloud_request.get("history", []),
@@ -172,6 +173,59 @@ class ChatWorker(QThread):
             self.failed.emit(str(exc))
             return
         self.done.emit(full_reply)
+
+
+class AccountWorker(QThread):
+    """Signs in, registers, or re-reads the balance without freezing the UI."""
+
+    done = Signal(dict)
+    failed = Signal(str)
+
+    def __init__(
+        self,
+        action,
+        server_url,
+        language="zh-CN",
+        username="",
+        password="",
+        token="",
+        parent=None,
+    ):
+        super().__init__(parent)
+        self.action = action
+        self.server_url = server_url
+        self.language = language
+        self.username = username
+        self.password = password
+        self.token = token
+
+    def run(self):
+        try:
+            if self.action == "register":
+                result = cloud.register(
+                    self.server_url, self.username, self.password, self.language
+                )
+            elif self.action == "sign_in":
+                result = cloud.sign_in(
+                    self.server_url, self.username, self.password, self.language
+                )
+            elif self.action == "sign_out":
+                cloud.sign_out(self.server_url, self.token, self.language)
+                result = {"token": "", "account": {}}
+            else:
+                result = {
+                    "token": self.token,
+                    "account": cloud.fetch_account(
+                        self.server_url, self.token, self.language
+                    ),
+                }
+        except CloudRequestError as exc:
+            self.failed.emit(str(exc))
+            return
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        self.done.emit(result)
 
 
 class UpdateCheckWorker(QThread):

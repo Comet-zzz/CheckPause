@@ -57,6 +57,41 @@ def get_server_url():
     return (load_settings().get("server_url") or "").strip() or DEFAULT_SERVER_URL
 
 
+def get_account():
+    """The signed-in cloud account.
+
+    Only the session token is kept, never the password: the token can be
+    revoked server-side, a password cannot be un-leaked.
+    """
+    settings = load_settings()
+    return {
+        "username": (settings.get("account_username") or "").strip(),
+        "token": (settings.get("account_token") or "").strip(),
+        "balance": settings.get("account_balance"),
+    }
+
+
+def save_account(username, token, balance=None):
+    settings = load_settings()
+    settings["account_username"] = (username or "").strip()
+    settings["account_token"] = (token or "").strip()
+    settings["account_balance"] = balance
+    return save_settings(settings)
+
+
+def save_balance(balance):
+    settings = load_settings()
+    settings["account_balance"] = balance
+    return save_settings(settings)
+
+
+def clear_account():
+    settings = load_settings()
+    for key in ("account_username", "account_token", "account_balance"):
+        settings.pop(key, None)
+    return save_settings(settings)
+
+
 def get_api_config():
     return {
         "mode": get_ai_mode(),
@@ -64,6 +99,7 @@ def get_api_config():
         "api_key": get_api_key(),
         "base_url": get_base_url(),
         "model": get_model(),
+        "account": get_account(),
     }
 
 
