@@ -32,6 +32,7 @@ from server import (
     payments,
     pricing,
     prompting,
+    site,
     store,
 )
 
@@ -54,6 +55,7 @@ async def lifespan(_app):
 app = FastAPI(title=SERVICE_NAME, version=SERVICE_VERSION, lifespan=lifespan)
 app.include_router(accounts.router)
 app.include_router(payments.router)
+app.include_router(site.router)
 
 
 class ConversationMessage(BaseModel):
@@ -100,9 +102,9 @@ async def billed(stream, usage, hold_id):
             pass
 
 
-@app.get("/")
+@app.get("/status")
 def status():
-    """Human-facing status page: open the address in a browser."""
+    """Machine-readable status. The front page belongs to the shop now."""
     return {
         "service": SERVICE_NAME,
         "version": SERVICE_VERSION,

@@ -45,6 +45,10 @@ PAGE = """<!doctype html>
   h1 {{ font-size: 18px; margin: 0 0 12px; }}
   p {{ font-size: 14px; line-height: 1.6; margin: 8px 0; color: #555; }}
   .amount {{ font-size: 28px; font-weight: 600; color: #1677ff; margin: 16px 0; }}
+  .btn {{ margin-top: 18px; padding: 12px 30px; border: 0; border-radius: 8px;
+         background: #1677ff; color: #fff; font-size: 16px; cursor: pointer; }}
+  .btn:hover {{ background: #0f62e0; }}
+  .note {{ color: #6b7280; font-size: 13px; }}
 </style>
 </head>
 <body>
@@ -58,8 +62,7 @@ PAGE = """<!doctype html>
 """
 
 WAITING = """
-<p>正在跳转到支付宝，请稍候……</p>
-<p>如果没有自动跳转，请检查浏览器是否拦截了页面。</p>
+<p>请确认下面的金额，然后点击按钮前往支付宝付款。</p>
 """
 
 # Shown only while the sandbox gateway is in use. Its cashier draws a QR code
@@ -258,13 +261,25 @@ def pay_page(order_id: str):
         log.exception("could not build a payment form for %s", order_id)
         return _page("暂时无法支付", "<p>生成付款页面失败，请稍后再试。</p>")
 
+    # Alipay's form submits itself the moment the page loads. That is right for
+    # a bare redirect, but their onboarding asks for a payment page that shows
+    # the Alipay option and waits - and a page that vanishes cannot be looked
+    # at, or screenshotted. Removing the automatic submit leaves the same form,
+    # submitted by a button instead of by arriving.
+    form = form.replace("document.forms[0].submit();", "")
+
     return _page(
         "CheckPause 充值",
-        WAITING
+        '<p class="amount">¥{:.2f}</p>'.format(
+            order["amount_cents"] / 100
+        )
+        + "<p>{} CP积分</p>".format(order["credits"])
+        + WAITING
         + (SANDBOX_HINT if _using_sandbox() else "")
-        + "<p>应付金额 ¥{:.2f}，{} CP积分</p>".format(
-            order["amount_cents"] / 100, order["credits"]
-        ),
+        + '<button type="button" class="btn" '
+        'onclick="document.forms[0].submit()">用支付宝付款</button>'
+        '<p class="note">点击后会跳转到支付宝，可用手机扫码或登录付款。'
+        "付款完成后回到 CheckPause，余额会自动到账。</p>",
         form,
     )
 
