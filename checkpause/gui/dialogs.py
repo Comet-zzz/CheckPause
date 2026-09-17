@@ -6,14 +6,21 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QHBoxLayout,
     QLabel,
     QLineEdit,
     QMessageBox,
+    QPushButton,
     QVBoxLayout,
 )
 
 from checkpause import APP_VERSION, AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
-from checkpause.data.settings import MODE_CLOUD, MODE_LOCAL
+from checkpause.data.settings import (
+    DEFAULT_SERVER_URL,
+    MODE_CLOUD,
+    MODE_LOCAL,
+)
+from checkpause.gui.workers import AccountWorker
 from checkpause.i18n import t
 
 
@@ -154,6 +161,238 @@ def api_settings_dialog(parent, language, config=None):
             "model": model_field.text().strip(),
         }
     return None
+
+
+def cloud_account_dialog(parent, language, config=None):
+    """Sign in, register, or just look at the balance.
+
+    Returns the account to store when something changed, otherwise None. Only
+    the token is ever handed back: the password is used for the one request
+    that needs it and is then dropped.
+    """
+    config = config or {}
+    server_url = (config.get("server_url") or "").strip() or DEFAULT_SERVER_URL
+    account = dict(config.get("account") or {})
+    changed = {"value": False}
+    busy = {"worker": None}
+
+    dialog = QDialog(parent)
+    dialog.setWindowTitle(t("cloud_account_title", language))
+    dialog.setMinimumWidth(500)
+
+    hint = QLabel(t("cloud_account_hint", language))
+    hint.setWordWrap(True)
+
+    server_field = QLineEdit(server_url)
+    server_field.setPlaceholderText("http://...")
+
+    username_field = QLineEdit(account.get("username", ""))
+    password_field = QLineEdit()
+    password_field.setEchoMode(QLineEdit.EchoMode.Password)
+
+    show_toggle = QCheckBox(t("cloud_account_show_password", language))
+    show_toggle.toggled.connect(
+        lambda checked: password_field.setEchoMode(
+            QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+        )
+    )
+
+    status = QLabel()
+    status.setWordWrap(True)
+
+    sign_in_button = QPushButton(t("cloud_account_sign_in", language))
+    register_button = QPushButton(t("cloud_account_register", language))
+    refresh_button = QPushButton(t("cloud_account_refresh", language))
+    sign_out_button = QPushButton(t("cloud_account_sign_out", language))
+    close_button = QPushButton(t("cloud_account_close", language))
+
+    form = QFormLayout()
+    form.setHorizontalSpacing(16)
+    form.setVerticalSpacing(10)
+    form.addRow(t("cloud_account_server", language), server_field)
+    form.addRow(t("cloud_account_username", language), username_field)
+    form.addRow(t("cloud_account_password", language), password_field)
+    form.addRow("", show_toggle)
+
+    row = QHBoxLayout()
+    for button in (
+        sign_in_button,
+        register_button,
+        refresh_button,
+        sign_out_button,
+    ):
+        row.addWidget(button)
+    row.addStretch(1)
+    row.addWidget(close_button)
+
+    layout = QVBoxLayout(dialog)
+    layout.addWidget(hint)
+    layout.addLayout(form)
+    layout.addWidget(status)
+    layout.addLayout(row)
+
+    credentials = (
+        username_field,
+        password_field,
+        show_toggle,
+        sign_in_button,
+        register_button,
+    )
+    session_buttons = (refresh_button, sign_out_button)
+    everything = credentials + session_buttons + (close_button, server_field)
+
+    def signed_in():
+        return bool(account.get("token"))
+
+    def show_status():
+        if not signed_in():
+            status.setText(t("cloud_account_not_signed_in", language))
+            return
+        balance = account.get("balance")
+        lines = [
+            t(
+                "cloud_account_signed_in",
+                language,
+                username=account.get("username", ""),
+            )
+        ]
+        if balance is None:
+            lines.append(t("cloud_account_balance_unknown", language))
+        else:
+            lines.append(
+                t("cloud_account_balance", language, balance=balance)
+            )
+        status.setText("\n".join(lines))
+
+    def refresh():
+        logged_in = signed_in()
+        for widget in credentials:
+            widget.setVisible(not logged_in)
+        for widget in session_buttons:
+            widget.setVisible(logged_in)
+        server_field.setEnabled(not logged_in)
+        if not logged_in:
+            username_field.setFocus()
+        show_status()
+
+    def set_busy(value):
+        for widget in everything:
+            widget.setEnabled(not value)
+        if value:
+            status.setText(t("cloud_account_working", language))
+        else:
+            refresh()
+
+    def finish():
+        busy["worker"] = None
+        set_busy(False)
+
+    def on_done(action, result):
+        changed["value"] = True
+        account.update(
+            {
+                "username": (result.get("account") or {}).get("username", ""),
+                "token": result.get("token", ""),
+                "balance": (result.get("account") or {}).get("balance"),
+            }
+        )
+        finish()
+        if action in ("sign_in", "register"):
+            QMessageBox.information(
+                dialog,
+                t("cloud_account_title", language),
+                t(
+                    "cloud_account_welcome",
+                    language,
+                    username=account["username"],
+                ),
+            )
+
+    def on_failed(message):
+        finish()
+        QMessageBox.warning(
+            dialog, t("cloud_account_title", language), message
+        )
+
+    def run(action, **values):
+        if busy["worker"] is not None:
+            return
+        set_busy(True)
+        # Parented to the window rather than the dialog: closing the dialog
+        # must never destroy a thread that is still running.
+        worker = AccountWorker(
+            action,
+            server_field.text().strip(),
+            language,
+            parent=parent if parent is not None else dialog,
+            **values,
+        )
+        worker.done.connect(lambda result: on_done(action, result))
+        worker.failed.connect(on_failed)
+        worker.finished.connect(worker.deleteLater)
+        busy["worker"] = worker
+        worker.start()
+
+    def sign_in():
+        if not username_field.text().strip():
+            QMessageBox.warning(
+                dialog,
+                t("cloud_account_title", language),
+                t("cloud_account_username_empty", language),
+            )
+            return
+        if not password_field.text():
+            QMessageBox.warning(
+                dialog,
+                t("cloud_account_title", language),
+                t("cloud_account_password_empty", language),
+            )
+            return
+        run(
+            "sign_in",
+            username=username_field.text().strip(),
+            password=password_field.text(),
+        )
+
+    def register():
+        if not username_field.text().strip():
+            QMessageBox.warning(
+                dialog,
+                t("cloud_account_title", language),
+                t("cloud_account_username_empty", language),
+            )
+            return
+        if not password_field.text():
+            QMessageBox.warning(
+                dialog,
+                t("cloud_account_title", language),
+                t("cloud_account_password_empty", language),
+            )
+            return
+        run(
+            "register",
+            username=username_field.text().strip(),
+            password=password_field.text(),
+        )
+
+    def sign_out():
+        run("sign_out", token=account.get("token", ""))
+
+    sign_in_button.clicked.connect(sign_in)
+    register_button.clicked.connect(register)
+    refresh_button.clicked.connect(
+        lambda: run("me", token=account.get("token", ""))
+    )
+    sign_out_button.clicked.connect(sign_out)
+    close_button.clicked.connect(dialog.accept)
+
+    refresh()
+    if signed_in():
+        # The cached number is only a hint; ask while the dialog is open.
+        run("me", token=account.get("token", ""))
+
+    dialog.exec()
+    return account if changed["value"] else None
 
 
 def confirm_delete_dialog(parent, language="zh-CN"):

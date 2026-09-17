@@ -30,10 +30,19 @@ from checkpause.data.profile import (
     set_theme,
     update_profile,
 )
-from checkpause.data.settings import MODE_CLOUD, get_api_config, save_api_config
+from checkpause.data.settings import (
+    MODE_CLOUD,
+    clear_account,
+    get_account,
+    get_api_config,
+    save_account,
+    save_api_config,
+    save_balance,
+)
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
+    cloud_account_dialog,
     confirm_close_dialog,
     confirm_delete_dialog,
     show_about,
@@ -49,7 +58,12 @@ from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.module_rail import ModuleRail
-from checkpause.gui.workers import AnalysisWorker, ChatWorker, UpdateCheckWorker
+from checkpause.gui.workers import (
+    AccountWorker,
+    AnalysisWorker,
+    ChatWorker,
+    UpdateCheckWorker,
+)
 from checkpause.i18n import t
 
 MODULES = (
@@ -81,8 +95,10 @@ class MainWindow(QMainWindow):
         api_config = get_api_config()
         self._ai_mode = api_config["mode"]
         self._server_url = api_config["server_url"]
+        self._account = api_config["account"]
         self._analysis_worker = None
         self._chat_worker = None
+        self._account_worker = None
         self._update_worker = None
         self._update_manual = False
         self._skipped_update = ""
@@ -268,11 +284,14 @@ class MainWindow(QMainWindow):
 
         self._act_api_settings = QAction(self)
         self._act_api_settings.triggered.connect(self._open_api_settings)
+        self._act_cloud_account = QAction(self)
+        self._act_cloud_account.triggered.connect(self._open_cloud_account)
         self._act_language = QAction(self)
         self._act_language.triggered.connect(self._change_language)
         self._act_delete = QAction(self)
         self._act_delete.triggered.connect(self._delete_profile)
         self._menu_settings.addAction(self._act_api_settings)
+        self._menu_settings.addAction(self._act_cloud_account)
         self._menu_settings.addAction(self._act_language)
         self._menu_settings.addAction(self._act_delete)
 
@@ -364,6 +383,7 @@ class MainWindow(QMainWindow):
         self._act_dark.setText(t("theme_dark", self._language))
         self._menu_help.setTitle(t("menu_help", self._language))
         self._act_api_settings.setText(t("action_api_settings", self._language))
+        self._refresh_account_menu()
         self._act_language.setText(t("action_change_language", self._language))
         self._act_delete.setText(t("action_delete_data", self._language))
         self._act_check_update.setText(t("action_check_update", self._language))
@@ -515,6 +535,13 @@ class MainWindow(QMainWindow):
             return
         if self._chat_worker and self._chat_worker.isRunning():
             return
+        # Cloud replies come out of a balance, so there has to be an account
+        # before anything is sent.
+        if self._ai_mode == MODE_CLOUD and not self._account.get("token"):
+            if not self._ask_to_sign_in():
+                return
+        if not text.strip():
+            return
 
         username = self.profile["username"] if self.profile else "You"
         self.chat_page.append_user(username, text)
@@ -527,6 +554,7 @@ class MainWindow(QMainWindow):
         if self._ai_mode == MODE_CLOUD:
             cloud_request = {
                 "server_url": self._server_url,
+                "token": self._account.get("token", ""),
                 "pgn": self._current_pgn,
                 "analysis": self._current_analysis,
                 "history": self._messages[2:],
@@ -553,6 +581,89 @@ class MainWindow(QMainWindow):
         self._chat_worker = None
         if worker is not None:
             worker.deleteLater()
+        if self._ai_mode == MODE_CLOUD:
+            self._refresh_balance()
+
+    def _ask_to_sign_in(self):
+        """Offer the account dialog; True once an account is available."""
+        answer = QMessageBox.question(
+            self,
+            t("cloud_account_title", self._language),
+            t("cloud_account_needs_signin", self._language),
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return False
+        self._open_cloud_account()
+        return bool(self._account.get("token"))
+
+    def _account_menu_text(self):
+        """The settings entry doubles as the balance readout."""
+        if not self._account.get("token"):
+            return t("action_cloud_account", self._language)
+        username = self._account.get("username", "")
+        balance = self._account.get("balance")
+        if balance is None:
+            return t(
+                "cloud_account_menu_no_balance",
+                self._language,
+                username=username,
+            )
+        return t(
+            "cloud_account_menu_signed_in",
+            self._language,
+            username=username,
+            balance=balance,
+        )
+
+    def _refresh_account_menu(self):
+        if hasattr(self, "_act_cloud_account"):
+            self._act_cloud_account.setText(self._account_menu_text())
+
+    def _refresh_balance(self):
+        """Ask the server what is left; the reply just came out of it."""
+        if self._account_worker is not None or not self._account.get("token"):
+            return
+        worker = AccountWorker(
+            "me",
+            self._server_url,
+            self._language,
+            token=self._account.get("token", ""),
+            parent=self,
+        )
+        worker.done.connect(self._on_balance)
+        worker.failed.connect(lambda _message: None)
+        worker.finished.connect(self._on_balance_finished)
+        self._account_worker = worker
+        worker.start()
+
+    def _on_balance(self, result):
+        balance = (result.get("account") or {}).get("balance")
+        if balance is None:
+            return
+        self._account["balance"] = balance
+        save_balance(balance)
+        self._refresh_account_menu()
+
+    def _on_balance_finished(self):
+        worker = self._account_worker
+        self._account_worker = None
+        if worker is not None:
+            worker.deleteLater()
+
+    def _open_cloud_account(self):
+        result = cloud_account_dialog(self, self._language, get_api_config())
+        if not result:
+            return
+        if result.get("token"):
+            save_account(
+                result.get("username", ""),
+                result["token"],
+                result.get("balance"),
+            )
+        else:
+            clear_account()
+        self._account = get_account()
+        self._refresh_account_menu()
 
     def _reset_chat(self):
         self._messages = self._messages[:2]
