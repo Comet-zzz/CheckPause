@@ -2,7 +2,7 @@ import time
 
 import chess
 import chess.pgn
-from PyQt6.QtCore import Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QSize, Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -29,6 +29,8 @@ from checkpause.config import (
 from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
 from checkpause.core.play_session import PlaySession
+from checkpause.gui.icons import nav_icon
+from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import EngineMoveWorker
@@ -43,6 +45,7 @@ class PlayPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
+        self._theme = LIGHT
         self._level_rating = PLAY_RATING_DEFAULT
         self._time_id = DEFAULT_PLAY_TIME
         self._opening_index = 0
@@ -92,6 +95,8 @@ class PlayPage(QWidget):
         clock_row.addWidget(self._clock_white)
         clock_row.addStretch(1)
         self._btn_pause = QPushButton()
+        self._btn_pause.setMinimumWidth(44)
+        self._btn_pause.setIconSize(QSize(18, 18))
         self._btn_pause.clicked.connect(self._toggle_pause)
         clock_row.addWidget(self._btn_pause)
         clock_row.addStretch(1)
@@ -191,6 +196,8 @@ class PlayPage(QWidget):
         self._update_pause_button()
         self._update_buttons()
         self._sync_clock_timer()
+        # Let the clock labels show the reset time right away.
+        self._update_clock_labels()
         if self._session.board.turn != self._session.human_color:
             self._start_engine()
 
@@ -224,7 +231,7 @@ class PlayPage(QWidget):
         return None
 
     def _sync_clock_timer(self):
-        if not self._session.clock_should_run():
+        if not self.isVisible() or not self._session.clock_should_run():
             self._clock_timer.stop()
             return
         if not self._clock_timer.isActive():
@@ -291,13 +298,14 @@ class PlayPage(QWidget):
         self._update_buttons()
 
     def _update_pause_button(self):
-        key = "play_resume" if self._session.paused else "play_pause"
+        paused = self._session.paused
+        key = "play_resume" if paused else "play_pause"
         tooltip_key = (
-            "play_resume_tooltip"
-            if self._session.paused
-            else "play_pause_tooltip"
+            "play_resume_tooltip" if paused else "play_pause_tooltip"
         )
-        self._btn_pause.setText(t(key, self._language))
+        icon_name = "resume" if paused else "pause"
+        self._btn_pause.setIcon(nav_icon(self._theme, icon_name))
+        self._btn_pause.setAccessibleName(t(key, self._language))
         self._btn_pause.setToolTip(t(tooltip_key, self._language))
 
     def _on_time_changed(self, _index):
@@ -541,8 +549,10 @@ class PlayPage(QWidget):
             combo.setEnabled(not locked)
 
     def set_theme(self, theme):
+        self._theme = theme
         self.board.set_theme(theme)
         self._move_list.set_theme(theme)
+        self._update_pause_button()
 
     def set_piece_set(self, name):
         self.board.set_piece_set(name)
