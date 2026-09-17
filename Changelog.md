@@ -1,3 +1,42 @@
+# v1.6.1 – Update Notifications Actually Arrive
+
+> 修好了一个**静默失效**的问题：更新提示一直没生效。软件读取版本信息时，会先访问一个国内能连上的加速源，而那份副本可能是**十几个小时前的**，于是软件以为"已经是最新版"，从不提示升级。**你的 1.5.4 和 1.6.0 很可能都没推送到老用户。** 现在改成两个来源都读、取版本号更高的那个。
+>
+> Fixes a silent failure: update notifications never fired. The app read its version manifest from a China-friendly CDN first, and that copy could be many hours stale, so the app believed it was already current and stayed quiet. Releases 1.5.4 and 1.6.0 most likely never reached existing users. Both sources are now consulted and the higher version wins.
+
+---
+
+## 🎯 What's Changed
+
+### 🔔 更新提示真的会弹了
+- 之前：只读**第一个**能连上的来源。那个来源可能缓存着十几小时前的旧版本号 → 软件误以为"已是最新" → 不提示。
+- 现在：**两个来源都读**，取版本号更高的那个。任何一个源过期，都不会再掩盖新版本。
+
+- Before: only the **first** reachable source was read. That source could serve a version number many hours old, so the app concluded it was current and stayed quiet.
+- Now: **both sources are read** and the higher version wins, so a stale copy can no longer hide a release.
+
+### 🧪 补了三个测试
+- 专门覆盖"一个源过期、另一个源是新版"这种情况，包括这次真实踩到的场景。
+
+- Three tests now cover the case where one mirror is stale and the other is current, including the exact situation that caused this release.
+
+---
+
+## 🛠️ Full Changelog
+- fix(update): consult every mirror and keep the newest version found
+- test(update): cover a stale mirror hiding a newer release
+- chore(version): bump the app version to 1.6.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。但请注意：**这个修复只有装上它之后才生效** —— 在此之前，软件仍然看不到新版本。
+
+- No breaking changes. One caveat: the fix only takes effect once installed. Until then the app still cannot see new releases.
+
+---
+
 # v1.6.0 – PySide6 Migration
 
 > 界面的底层图形框架从 PyQt6 换成了 **PySide6** —— Qt 官方维护的那套绑定，采用 LGPL 许可。这不是一次功能更新：界面、操作、数据完全不变，升级后一切照旧，你不需要做任何额外的事。

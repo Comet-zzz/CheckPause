@@ -91,7 +91,7 @@ class CheckForUpdateTests(unittest.TestCase):
         opener = FakeOpener({"latest": "1.5.1"})
         self.assertIsNone(check_for_update(current="1.5.0", opener=opener))
 
-    def test_falls_back_to_the_next_mirror(self):
+    def test_survives_one_mirror_being_blocked(self):
         opener = FakeOpener(
             {
                 MANIFEST_URLS[0]: OSError("blocked"),
@@ -103,6 +103,60 @@ class CheckForUpdateTests(unittest.TestCase):
         )
         self.assertIsNotNone(check_for_update(current="1.5.0", opener=opener))
         self.assertEqual(opener.calls, list(MANIFEST_URLS))
+
+    def test_prefers_the_newer_manifest_when_a_mirror_is_stale(self):
+        # The bug behind v1.6.1: jsDelivr served a cached manifest two versions
+        # behind, and "the first mirror that answers wins" hid the release.
+        opener = FakeOpener(
+            {
+                MANIFEST_URLS[0]: {
+                    "latest": "1.5.3",
+                    "url": "https://example.com/setup-1.5.3.exe",
+                    "notes": "stale copy",
+                },
+                MANIFEST_URLS[1]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                    "notes": "authoritative",
+                },
+            }
+        )
+        info = check_for_update(current="1.5.3", opener=opener)
+        self.assertEqual(info.version, "1.6.0")
+        self.assertEqual(info.url, "https://example.com/setup-1.6.0.exe")
+        self.assertEqual(info.notes, "authoritative")
+
+    def test_keeps_the_newest_version_when_the_first_mirror_is_ahead(self):
+        opener = FakeOpener(
+            {
+                MANIFEST_URLS[0]: {
+                    "latest": "1.7.0",
+                    "url": "https://example.com/setup-1.7.0.exe",
+                },
+                MANIFEST_URLS[1]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                },
+            }
+        )
+        self.assertEqual(
+            check_for_update(current="1.5.4", opener=opener).version, "1.7.0"
+        )
+
+    def test_stays_quiet_when_every_mirror_is_behind(self):
+        opener = FakeOpener(
+            {
+                MANIFEST_URLS[0]: {
+                    "latest": "1.5.3",
+                    "url": "https://example.com/setup-1.5.3.exe",
+                },
+                MANIFEST_URLS[1]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                },
+            }
+        )
+        self.assertIsNone(check_for_update(current="1.6.0", opener=opener))
 
     def test_survives_broken_json(self):
         opener = FakeOpener(b"{not json")
