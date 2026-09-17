@@ -232,14 +232,19 @@ def _user(row):
     }
 
 
-def create_user(username, password):
-    """Register an account. Raises StoreError if the name is taken."""
+def _clean_username(username):
     username = (username or "").strip()
     if not USERNAME_PATTERN.match(username):
         raise StoreError(
             "username_invalid",
             "use 3-32 letters, digits, underscores, dots or dashes",
         )
+    return username
+
+
+def create_user(username, password):
+    """Register an account. Raises StoreError if the name is taken."""
+    username = _clean_username(username)
     if len(password or "") < MIN_PASSWORD_LENGTH:
         raise StoreError(
             "password_too_short",
@@ -263,6 +268,28 @@ def create_user(username, password):
                 "SELECT * FROM users WHERE id = ?", (cursor.lastrowid,)
             ).fetchone()
         )
+
+
+def set_username(user_id, username):
+    """Change an account's login name.
+
+    Nothing else moves: tokens, balances and history all hang off the user id,
+    so a corrected name changes only what somebody types to sign in. That is
+    also why this is a fix for a typo rather than anything to be nervous about.
+    """
+    username = _clean_username(username)
+    with transaction() as conn:
+        try:
+            cursor = conn.execute(
+                "UPDATE users SET username = ? WHERE id = ?",
+                (username, user_id),
+            )
+        except sqlite3.IntegrityError as error:
+            raise StoreError(
+                "username_taken", "that username is already registered"
+            ) from error
+        if cursor.rowcount == 0:
+            raise StoreError("no_such_user", "no user with that id")
 
 
 def verify_login(username, password):

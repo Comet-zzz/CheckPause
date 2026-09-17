@@ -141,6 +141,17 @@ def cmd_set_password(args):
     ))
 
 
+def cmd_rename(args):
+    user = _who(args.username)
+    try:
+        store.set_username(user["id"], args.new_username)
+    except store.StoreError as error:
+        sys.exit("{}: {}".format(error.code, error.message))
+    print("{} is now {}".format(user["username"], args.new_username.strip()))
+    print("  balance unchanged     {}".format(store.balance_of(user["id"])))
+    print("  sessions stay signed in (they follow the account, not the name)")
+
+
 def cmd_sweep(_args):
     swept = store.sweep_stale_holds()
     if not swept:
@@ -192,6 +203,13 @@ def build_parser():
     password.add_argument("username")
     password.add_argument("password", nargs="?", default="")
     password.set_defaults(run=cmd_set_password)
+
+    rename = sub.add_parser(
+        "rename-user", help="fix a username somebody mistyped"
+    )
+    rename.add_argument("username")
+    rename.add_argument("new_username")
+    rename.set_defaults(run=cmd_rename)
 
     sub.add_parser(
         "sweep", help="charge reservations abandoned by a crash"

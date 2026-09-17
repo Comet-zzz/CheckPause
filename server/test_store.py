@@ -259,6 +259,29 @@ class AccountTests(StoreTestCase):
         self.assertIsNotNone(store.verify_login("player", "brandnew1"))
         self.assertIsNone(store.verify_login("player", "hunter22"))
 
+    def test_a_username_can_be_corrected_without_moving_anything_else(self):
+        token = store.issue_token(self.user["id"])
+        self.fund(500)
+
+        store.set_username(self.user["id"], "corrected")
+
+        self.assertIsNone(store.find_user("player"))
+        self.assertEqual(store.find_user("corrected")["balance"], 500)
+        # A session follows the account, not the name.
+        self.assertEqual(store.user_for_token(token)["username"], "corrected")
+        self.assertIsNotNone(store.verify_login("corrected", "hunter22"))
+
+    def test_a_rename_cannot_take_a_name_that_is_in_use(self):
+        store.create_user("someone", "hunter22")
+        with self.assertRaises(store.StoreError) as caught:
+            store.set_username(self.user["id"], "SOMEONE")
+        self.assertEqual(caught.exception.code, "username_taken")
+
+    def test_a_rename_still_has_to_be_a_valid_name(self):
+        with self.assertRaises(store.StoreError) as caught:
+            store.set_username(self.user["id"], "no spaces")
+        self.assertEqual(caught.exception.code, "username_invalid")
+
     def test_a_disabled_account_cannot_sign_in_or_use_a_token(self):
         token = store.issue_token(self.user["id"])
         store.connection().execute(

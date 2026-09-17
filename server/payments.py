@@ -63,7 +63,7 @@ WAITING = """
 """
 
 PAID = """
-<p class="amount">{credits} 积分</p>
+<p class="amount">{credits} CP积分</p>
 <p>已到账，可以回到 CheckPause 继续使用了。</p>
 """
 
@@ -247,7 +247,7 @@ def pay_page(order_id: str):
     return _page(
         "CheckPause 充值",
         WAITING
-        + "<p>应付金额 ¥{:.2f}，{} 积分</p>".format(
+        + "<p>应付金额 ¥{:.2f}，{} CP积分</p>".format(
             order["amount_cents"] / 100, order["credits"]
         ),
         form,
