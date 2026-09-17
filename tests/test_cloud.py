@@ -257,5 +257,71 @@ class AccountTests(unittest.TestCase):
             cloud.sign_out("http://server", "tok")
 
 
+class TopUpTests(unittest.TestCase):
+    def test_the_packs_come_from_the_server(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            return FakeResponse(200, body=[{"yuan": 10, "credits": 1000}])
+
+        with mock.patch.object(cloud.httpx, "get", capture):
+            packs = cloud.fetch_packs("http://server")
+
+        self.assertEqual(seen["url"], "http://server/v1/pay/packs")
+        self.assertEqual(packs[0]["credits"], 1000)
+
+    def test_opening_an_order_sends_the_amount_and_the_token(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["json"] = kwargs.get("json")
+            seen["headers"] = kwargs.get("headers")
+            return FakeResponse(
+                200,
+                body={"order_id": "CP1", "pay_url": "http://s/pay/CP1"},
+            )
+
+        with mock.patch.object(cloud.httpx, "post", capture):
+            order = cloud.create_order("http://server", "tok", 30)
+
+        self.assertEqual(seen["url"], "http://server/v1/pay/orders")
+        self.assertEqual(seen["json"], {"yuan": 30})
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
+        self.assertTrue(order["pay_url"].endswith("CP1"))
+
+    def test_asking_about_an_order_sends_the_token(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["headers"] = kwargs.get("headers")
+            return FakeResponse(
+                200, body={"order_id": "CP1", "status": "paid", "balance": 1100}
+            )
+
+        with mock.patch.object(cloud.httpx, "get", capture):
+            status = cloud.order_status("http://server/", "tok", "CP1")
+
+        self.assertEqual(seen["url"], "http://server/v1/pay/orders/CP1")
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
+        self.assertEqual(status["status"], "paid")
+
+    def test_a_top_up_only_the_server_can_price(self):
+        # The client never sends a credit amount, only which pack it wants, so
+        # it cannot decide what its own money is worth.
+        sent = {}
+
+        def capture(url, **kwargs):
+            sent.update(kwargs.get("json") or {})
+            return FakeResponse(200, body={"order_id": "CP1"})
+
+        with mock.patch.object(cloud.httpx, "post", capture):
+            cloud.create_order("http://server", "tok", 10)
+
+        self.assertEqual(sorted(sent), ["yuan"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -1,3 +1,59 @@
+# v1.7.0 – Cloud Coaching
+
+> 新增**云端讲解**：不用自己填 API Key，注册一个账号、充点 CP积分就能用。云端用的是服务器上持续调教的提示词。
+>
+> **本地模式（自己填 Key）完全没变** —— 界面、操作、存档全都照旧。只有云端模式需要登录，你要是继续用本地模式，这次更新对你没有任何影响。
+>
+> 充值在「设置 → 云端账号」里：选金额 → 浏览器打开支付宝付款 → 回来余额已经到账。
+
+> A new **cloud coaching** mode: no API key of your own, just an account and some CP credits. It uses a prompt tuned on the server.
+>
+> **Local mode is untouched** - same interface, same controls, same saved games. Only cloud mode needs a sign-in, so if you stay on local mode this update changes nothing for you.
+>
+> Top up under Settings → Cloud account: pick an amount, pay in your browser, and the balance is there when you come back.
+
+---
+
+## 🎯 What's Changed
+
+### ☁️ 云端讲解
+- 设置里多了「AI 模式」选择：**本地模式**（自己填 API Key，和以前一样）或**云端模式**（用 CheckPause 的账号和提示词）。
+- 云端模式需要注册/登录。密码只用于登录，软件**不保存密码**，只保存一个可以随时吊销的令牌。
+- 充值：选金额 → 浏览器打开支付宝付款 → 余额自动到账，不用手动刷新。
+- 余额显示在「设置 → 云端账号」里，也直接显示在菜单上。
+- Settings gains an **AI mode** choice: local (your own API key, exactly as before) or cloud (a CheckPause account and prompt).
+- Cloud mode needs an account. The password is only used to sign in and is never stored; the app keeps a token that can be revoked instead.
+- Topping up: pick an amount, pay in the browser, and the balance is already there when you come back.
+- The balance shows in Settings → Cloud account, and in the menu.
+
+### 🔒 云端模式下不再显示用的是哪个模型
+- 以前那个模型输入框只是"变灰"、还留在屏幕上；现在**整个隐藏**，云端模式下屏幕上不会出现任何模型名字。
+- The model field used to be greyed out but still visible. In cloud mode the model and endpoint fields are now **hidden entirely**, so no model name appears on screen.
+
+### 💬 计费单位叫「CP积分」
+- 界面、错误提示、付款页面统一改成 **CP积分**（英文界面为 CP credits）。
+- The billing unit is now called **CP credits** everywhere it can be read.
+
+---
+
+## 📜 Full Changelog
+- feat(client): sign in to a cloud account and show the balance
+- feat(client): buy CP credits and watch the balance update by itself
+- feat(client): hide the provider fields in cloud mode
+- chore(i18n): call them CP credits
+- chore(version): bump the app version to 1.7.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。棋盘、引擎分析、存档、本地模式全部照旧。
+- 云端模式是新增的可选项，想用的时候在设置里切换即可。
+- No breaking changes. The board, engine analysis, saved games and local mode are all unchanged.
+- Cloud mode is new and optional; switch to it in Settings when you want it.
+
+---
+
 # v1.6.1 – Update Notifications Actually Arrive
 
 > 修好了一个**静默失效**的问题：更新提示一直没生效。软件读取版本信息时，会先访问一个国内能连上的加速源，而那份副本可能是**十几个小时前的**，于是软件以为"已经是最新版"，从不提示升级。**你的 1.5.4 和 1.6.0 很可能都没推送到老用户。** 现在改成两个来源都读、取版本号更高的那个。

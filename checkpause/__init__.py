@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 
 APP_NAME = "CheckPause"
-APP_VERSION = "1.6.1"
+APP_VERSION = "1.7.0"
 AUTHOR = "CometZZZ"
 COPYRIGHT_YEAR = "2026"
 GITHUB_URL = "https://github.com/Comet-zzz/CheckPause"
