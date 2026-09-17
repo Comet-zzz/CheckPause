@@ -7,7 +7,7 @@
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | ① | 服务能跑起来、外网能访问 | ✅ |
-| ② | 拼提示词 → 调 DeepSeek → 流式返回 | ✅ 本次完成 |
+| ② | 拼提示词 → 调上游模型 → 流式返回 | ✅ 本次完成 |
 | ③ | 账号 + 积分 + 充值 | 待做 |
 
 ## 接口
@@ -43,7 +43,7 @@
 
 | 文件 | 内容 | 必需 |
 | --- | --- | --- |
-| `env` | `DEEPSEEK_API_KEY` 等环境变量，由 systemd 加载 | ✅ |
+| `env` | `UPSTREAM_API_KEY` 等环境变量，由 systemd 加载 | ✅ |
 | `system_prompt.txt` | **调教好的系统提示词** | 建议 |
 | `user_template.txt` | 包住棋谱与引擎数据的模板，用 `{pgn}` 和 `{analysis}` 占位 | 可选 |
 
@@ -55,7 +55,7 @@
 # 密钥
 install -m 640 -o checkpause -g checkpause \
     /etc/checkpause/env.example /etc/checkpause/env
-nano /etc/checkpause/env          # 填入 DEEPSEEK_API_KEY
+nano /etc/checkpause/env          # 填入 UPSTREAM_API_KEY
 
 # 调教好的提示词（手工创建，永远不进 git）
 nano /etc/checkpause/system_prompt.txt
@@ -74,7 +74,7 @@ server/
 ├── app.py                      # 路由：状态页、健康检查、/v1/analyze
 ├── config.py                   # 读 /etc/checkpause 下的密钥与提示词
 ├── prompting.py                # 在服务端拼消息（含历史轮数限制）
-├── deepseek.py                 # 流式调用上游模型
+├── upstream.py                 # 流式调用上游模型
 ├── requirements.txt
 ├── test_app.py / test_analyze.py
 └── deploy/
@@ -103,7 +103,7 @@ $env:CHECKPAUSE_DB = "$env:TEMP\checkpause-dev.db"
 `CHECKPAUSE_DB` **在 Windows 上必须设**：默认值是 Linux 的
 `/var/lib/checkpause/checkpause.db`，不设的话本地会去建一个 `D:\var\lib\...`。
 
-没配 `DEEPSEEK_API_KEY` 时，状态页会显示 `"upstream_configured": false`，`/v1/analyze` 返回 502。
+没配 `UPSTREAM_API_KEY` 时，状态页会显示 `"upstream_configured": false`，`/v1/analyze` 返回 502。
 
 ## 部署
 

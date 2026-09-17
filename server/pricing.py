@@ -15,9 +15,9 @@ import math
 # table produced a given charge.
 PRICE_VERSION = "2026-09-17.1"
 
-# User-facing price, in credits per 1M tokens. One credit sells for CNY 0.01 and
-# costs roughly CNY 0.005 to deliver, so these are about twice the upstream peak
-# rates for deepseek-flash (USD 0.3/M in, USD 1.2/M out, at about 7.1 CNY/USD).
+# User-facing price, in credits per 1M tokens. One credit sells for CNY 0.01
+# and costs roughly CNY 0.005 to deliver, so these are about twice what the
+# upstream charges at its peak rate, converted at about 7.1 CNY/USD.
 #
 # Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, so users are
 # billed as if every request ran at peak. Off-peak upstream rates are half of

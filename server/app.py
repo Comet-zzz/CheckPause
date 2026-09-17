@@ -28,12 +28,12 @@ from pydantic import BaseModel, Field
 from server import (
     accounts,
     config,
-    deepseek,
     payments,
     pricing,
     prompting,
     site,
     store,
+    upstream,
 )
 
 SERVICE_NAME = "CheckPause Server"
@@ -90,7 +90,7 @@ def settle(hold_id, usage):
 async def billed(stream, usage, hold_id):
     """Relay the reply, then close the reservation it ran against."""
     try:
-        async for piece in deepseek.iter_text(stream, usage):
+        async for piece in upstream.iter_text(stream, usage):
             yield piece
     finally:
         try:
@@ -157,8 +157,8 @@ async def analyze(
         ) from error
 
     try:
-        stream = await deepseek.open_stream(messages)
-    except deepseek.UpstreamError as error:
+        stream = await upstream.open_stream(messages)
+    except upstream.UpstreamError as error:
         # Nothing was generated, so nothing is charged.
         store.refund_hold(hold_id, note="upstream refused the request")
         raise HTTPException(
@@ -167,6 +167,6 @@ async def analyze(
         ) from error
 
     return StreamingResponse(
-        billed(stream, deepseek.Usage(), hold_id),
+        billed(stream, upstream.Usage(), hold_id),
         media_type="text/plain; charset=utf-8",
     )

@@ -11,7 +11,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from server import config, deepseek, pricing, prompting, store
+from server import config, upstream, pricing, prompting, store
 from server.app import app
 
 
@@ -24,7 +24,7 @@ def fake_body(chunks):
 
 
 def fake_usage(chunks, input_tokens=0, output_tokens=0):
-    """Stand in for the upstream stream, reporting usage as DeepSeek does."""
+    """Stand in for the upstream stream, reporting usage the way it does."""
 
     def factory(stream, usage=None):
         async def generator():
@@ -231,9 +231,9 @@ class AnalyzeEndpointTests(unittest.TestCase):
 
     def stream(self, chunks, input_tokens=0, output_tokens=0):
         return mock.patch.object(
-            deepseek, "open_stream", mock.AsyncMock(return_value=object())
+            upstream, "open_stream", mock.AsyncMock(return_value=object())
         ), mock.patch.object(
-            deepseek,
+            upstream,
             "iter_text",
             fake_usage(chunks, input_tokens, output_tokens),
         )
@@ -286,9 +286,9 @@ class AnalyzeEndpointTests(unittest.TestCase):
         self.fund(100)
         reserved = self.reservation()
         with mock.patch.object(
-            deepseek, "open_stream", mock.AsyncMock(return_value=object())
+            upstream, "open_stream", mock.AsyncMock(return_value=object())
         ), mock.patch.object(
-            deepseek,
+            upstream,
             "iter_text",
             lambda stream, usage=None: fake_body(["half an answer"]),
         ):
@@ -305,9 +305,9 @@ class AnalyzeEndpointTests(unittest.TestCase):
     def test_a_refused_upstream_costs_nothing(self):
         self.fund(100)
         with mock.patch.object(
-            deepseek,
+            upstream,
             "open_stream",
-            mock.AsyncMock(side_effect=deepseek.UpstreamError("no API key")),
+            mock.AsyncMock(side_effect=upstream.UpstreamError("no API key")),
         ):
             response = self.post()
 

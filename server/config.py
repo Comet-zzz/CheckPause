@@ -76,15 +76,23 @@ def identity_policy():
 
 
 def api_key():
-    return os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    """The upstream provider's key. Read from the server, never logged."""
+    return os.environ.get("UPSTREAM_API_KEY", "").strip()
 
 
 def base_url():
-    return os.environ.get("DEEPSEEK_BASE_URL", "https://api.deepseek.com").strip()
+    """Where the upstream provider lives.
+
+    Deliberately without a default. A default here would name the provider this
+    service runs on, and the whole point of keeping it in the environment is
+    that it is the deployment's business rather than the repository's.
+    """
+    return os.environ.get("UPSTREAM_BASE_URL", "").strip()
 
 
 def model():
-    return os.environ.get("DEEPSEEK_MODEL", "deepseek-chat").strip()
+    """Which model to ask for. Named by the deployment, not by the code."""
+    return os.environ.get("UPSTREAM_MODEL", "").strip()
 
 
 def _positive_int(name, default):

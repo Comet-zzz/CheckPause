@@ -1,12 +1,14 @@
 """Streaming client for the upstream model.
 
-DeepSeek speaks the OpenAI protocol, so the official SDK is enough. Opening the
-stream and reading it are separated on purpose: a refused request should become
-a proper HTTP error before any bytes are sent, while a failure in the middle of
-a reply can only end the stream.
+The provider speaks the OpenAI protocol, so the official SDK is enough. Which
+provider that is happens to be this deployment's business and nobody else's, so
+it is read from the environment and never named here. Opening the stream and
+reading it are separated on purpose: a refused request should become a proper
+HTTP error before any bytes are sent, while a failure in the middle of a reply
+can only end the stream.
 
 Token counts are requested explicitly. Without ``stream_options`` the reply
-arrives with no usage at all, which leaves nothing to bill, and DeepSeek's
+arrives with no usage at all, which leaves nothing to bill, and this provider's
 placement of those counts differs from OpenAI's: it attaches them to the final
 content chunk instead of sending a bare usage-only chunk. Collecting usage
 before looking at ``choices`` handles both shapes.
@@ -47,7 +49,13 @@ def _client():
     key = config.api_key()
     if not key:
         raise UpstreamError("no upstream API key is configured on the server")
-    return AsyncOpenAI(api_key=key, base_url=config.base_url())
+    base_url = config.base_url()
+    if not base_url:
+        # Refusing beats falling back: the SDK has its own default address, and
+        # silently posting a paying customer's game to the wrong provider is a
+        # worse outcome than an error.
+        raise UpstreamError("no upstream base URL is configured on the server")
+    return AsyncOpenAI(api_key=key, base_url=base_url)
 
 
 async def open_stream(messages):
