@@ -154,14 +154,15 @@ class ChatWorker(QThread):
 
 
 class UpdateCheckWorker(QThread):
-    """Quietly looks for a newer release; emits only when one exists."""
+    """Looks for a newer release; reports the result and never raises."""
 
-    found = pyqtSignal(object)
+    checked = pyqtSignal(object)
+    failed = pyqtSignal()
 
     def run(self):
         try:
-            info = check_for_update()
+            info = check_for_update(strict=True)
         except Exception:
+            self.failed.emit()
             return
-        if info is not None:
-            self.found.emit(info)
+        self.checked.emit(info)
