@@ -30,12 +30,7 @@ from checkpause.data.profile import (
     set_theme,
     update_profile,
 )
-from checkpause.data.settings import (
-    get_api_config,
-    get_skipped_update,
-    save_api_config,
-    set_skipped_update,
-)
+from checkpause.data.settings import get_api_config, save_api_config
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
@@ -85,6 +80,8 @@ class MainWindow(QMainWindow):
         self._analysis_worker = None
         self._chat_worker = None
         self._update_worker = None
+        self._update_manual = False
+        self._skipped_update = ""
         self._module = "analysis"
 
         self._stack = QStackedWidget()
@@ -119,19 +116,53 @@ class MainWindow(QMainWindow):
         self.resize(1164, 726)
 
         # Delayed so the window is on screen before any prompt can appear.
-        QTimer.singleShot(2500, self._check_for_update)
+        self._update_timer = QTimer(self)
+        self._update_timer.setSingleShot(True)
+        self._update_timer.timeout.connect(self._check_for_update)
+        self._update_timer.start(2500)
 
-    def _check_for_update(self):
+    def _check_for_update(self, manual=False):
+        self._update_timer.stop()
+        if manual:
+            # A manual check ignores the "Later" choice made earlier this run.
+            self._skipped_update = ""
+            self._update_manual = True
+        if self._update_worker is not None and self._update_worker.isRunning():
+            return
+        if not manual:
+            self._update_manual = False
         worker = UpdateCheckWorker(self)
-        worker.found.connect(self._on_update_found)
+        worker.checked.connect(self._on_update_checked)
+        worker.failed.connect(self._on_update_failed)
         self._update_worker = worker
         worker.start()
 
-    def _on_update_found(self, info):
-        if info.version == get_skipped_update():
+    def _on_update_checked(self, info):
+        manual = self._update_manual
+        self._update_manual = False
+        if info is None:
+            if manual:
+                QMessageBox.information(
+                    self,
+                    t("action_check_update", self._language),
+                    t("update_none", self._language),
+                )
+            return
+        # "Later" only lasts until the app closes; the next launch asks again.
+        if info.version == self._skipped_update:
             return
         if not show_update_dialog(self, self._language, info):
-            set_skipped_update(info.version)
+            self._skipped_update = info.version
+
+    def _on_update_failed(self):
+        if not self._update_manual:
+            return
+        self._update_manual = False
+        QMessageBox.warning(
+            self,
+            t("action_check_update", self._language),
+            t("update_failed", self._language),
+        )
 
     def _build_main_view(self):
         self._analysis_view = self._build_analysis_view()
@@ -274,10 +305,16 @@ class MainWindow(QMainWindow):
             self._board_actions[name] = action
 
         self._menu_help = menubar.addMenu("")
+        self._act_check_update = QAction(self)
+        self._act_check_update.triggered.connect(
+            lambda: self._check_for_update(manual=True)
+        )
         self._act_about = QAction(self)
         self._act_about.triggered.connect(
             lambda: show_about(self, self._language)
         )
+        self._menu_help.addAction(self._act_check_update)
+        self._menu_help.addSeparator()
         self._menu_help.addAction(self._act_about)
 
     def _set_chrome_visible(self, visible):
@@ -325,6 +362,7 @@ class MainWindow(QMainWindow):
         self._act_api_settings.setText(t("action_api_settings", self._language))
         self._act_language.setText(t("action_change_language", self._language))
         self._act_delete.setText(t("action_delete_data", self._language))
+        self._act_check_update.setText(t("action_check_update", self._language))
         self._act_about.setText(t("action_about", self._language))
 
         self._menu_personalization.setTitle(
@@ -598,6 +636,10 @@ class MainWindow(QMainWindow):
         if not confirm_close_dialog(self, self._language):
             event.ignore()
             return
+        self._update_timer.stop()
+        if self._update_worker and self._update_worker.isRunning():
+            self._update_worker.terminate()
+            self._update_worker.wait(1000)
         if self._analysis_worker and self._analysis_worker.isRunning():
             self._analysis_worker.requestInterruption()
             self._analysis_worker.wait(3000)

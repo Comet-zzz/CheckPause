@@ -69,6 +69,7 @@ MESSAGES = {
     "action_open_pgn": "Open PGN file...",
     "action_change_language": "Change language",
     "action_delete_data": "Delete user data...",
+    "action_check_update": "Check for updates",
     "action_about": "About",
     "about_title": "About CheckPause",
     "about_text": "CheckPause Alpha\nThis chess analysis tool combines game-tree search with natural language generation to help players understand their own decision-making biases.",
@@ -83,6 +84,8 @@ MESSAGES = {
     "update_available": "CheckPause {version} is available; you are running {current}.",
     "update_download": "Download",
     "update_later": "Later",
+    "update_none": "You are running the latest version.",
+    "update_failed": "Could not check for updates. Check your network connection and try again.",
 
     "welcome_title": "Welcome to CheckPause",
     "welcome_intro": "First-time setup. Please set your username and interface language",

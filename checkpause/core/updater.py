@@ -34,6 +34,10 @@ class UpdateInfo:
     notes: str = ""
 
 
+class UpdateCheckError(RuntimeError):
+    """Raised in strict mode when the manifest cannot be fetched."""
+
+
 def parse_version(text):
     """Turn "1.5.1" into (1, 5, 1); unparsable pieces count as 0."""
     parts = []
@@ -73,10 +77,17 @@ def fetch_manifest(opener=None):
     return None
 
 
-def check_for_update(current=APP_VERSION, opener=None):
-    """Return UpdateInfo when a newer release exists, otherwise None."""
+def check_for_update(current=APP_VERSION, opener=None, strict=False):
+    """Return UpdateInfo when a newer release exists, otherwise None.
+
+    Failures are silent by default; strict mode raises UpdateCheckError
+    when no mirror answers, which manual checks use to tell being offline
+    apart from being up to date.
+    """
     manifest = fetch_manifest(opener)
     if not manifest:
+        if strict:
+            raise UpdateCheckError("no manifest could be fetched")
         return None
 
     latest = str(manifest.get("latest") or "").strip()

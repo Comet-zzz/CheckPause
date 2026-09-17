@@ -3,6 +3,7 @@ import unittest
 
 from checkpause.core.updater import (
     MANIFEST_URLS,
+    UpdateCheckError,
     UpdateInfo,
     check_for_update,
     is_newer,
@@ -114,6 +115,19 @@ class CheckForUpdateTests(unittest.TestCase):
     def test_survives_being_offline(self):
         opener = FakeOpener(OSError("offline"))
         self.assertIsNone(check_for_update(current="1.5.0", opener=opener))
+
+    def test_strict_mode_raises_when_offline(self):
+        opener = FakeOpener(OSError("offline"))
+        with self.assertRaises(UpdateCheckError):
+            check_for_update(current="1.5.0", opener=opener, strict=True)
+
+    def test_strict_mode_still_reports_being_current(self):
+        opener = FakeOpener(
+            {"latest": "1.5.0", "url": "https://example.com/setup.exe"}
+        )
+        self.assertIsNone(
+            check_for_update(current="1.5.0", opener=opener, strict=True)
+        )
 
 
 if __name__ == "__main__":

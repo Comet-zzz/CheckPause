@@ -69,6 +69,7 @@ MESSAGES = {
     "action_open_pgn": "打开 PGN 文件...",
     "action_change_language": "更改语言",
     "action_delete_data": "删除用户数据...",
+    "action_check_update": "检查更新",
     "action_about": "关于",
     "about_title": "关于 CheckPause",
     "about_text": "CheckPause Alpha\n将博弈树搜索与自然语言生成相结合的分析工具，用于辅助用户理解自己的决策偏差。",
@@ -83,6 +84,8 @@ MESSAGES = {
     "update_available": "发现新版本 {version}，你当前使用的是 {current}。",
     "update_download": "前往下载",
     "update_later": "稍后",
+    "update_none": "当前已是最新版本。",
+    "update_failed": "检查更新失败，请检查网络连接后重试。",
 
     "welcome_title": "欢迎使用 CheckPause",
     "welcome_intro": "首次使用，请设置你的用户名和界面语言",
