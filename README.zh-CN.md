@@ -2,7 +2,7 @@
 
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.4/CheckPause_Setup_1.5.4.exe)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.6.0/CheckPause_Setup_1.6.0.exe)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -29,7 +29,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ### Windows 用户
 
-1. 从文末「下载」获取 `CheckPause_Setup_1.5.4.exe`；
+1. 从文末「下载」获取 `CheckPause_Setup_1.6.0.exe`；
 2. 双击运行安装包，按提示完成安装（无需管理员权限，可勾选创建桌面快捷方式）；
 3. 从桌面或开始菜单启动 CheckPause，首次使用会要求设置用户名和界面语言；
 4. 打开「设置 → API 设置...」填写 API Key（默认 DeepSeek，可改成任意 OpenAI 兼容接口）；
@@ -146,10 +146,10 @@ python -m unittest discover -s tests -v   # 单元测试
 
 ## ⬇️ 下载
 
-**最新版：CheckPause v1.5.4（Windows x64）**
+**最新版：CheckPause v1.6.0（Windows x64）**
 
-- 📦 [CheckPause_Setup_1.5.4.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.5.4/CheckPause_Setup_1.5.4.exe)（107.6 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`23C5C74A7929A263D277B49725C93BEC15A4D039C987EBF11B27CC498ED35E41`
+- 📦 [CheckPause_Setup_1.6.0.exe](https://github.com/Comet-zzz/CheckPause/releases/download/v1.6.0/CheckPause_Setup_1.6.0.exe)（113.8 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 
