@@ -19,13 +19,34 @@ LANGUAGE_INSTRUCTIONS = {
     "en-US": "Always answer in English.",
 }
 
+# What the model says when somebody asks what it is.
+#
+# This is a refusal to disclose, not a claim about itself, and the difference
+# is the whole point. A refusal holds: the model simply declines, and there is
+# nothing to keep consistent. An invented identity has to be maintained, is
+# contradicted by some question eventually, and - for a service that charges
+# money - amounts to passing off another company's product as your own.
+#
+# It lives here rather than in the tuned prompt so that replacing the tuned
+# prompt cannot quietly drop it. A deployment that wants other words can put
+# an identity_policy.txt next to the prompt file and this is skipped.
+IDENTITY_POLICY = (
+    "如果被问到使用的是什么模型、哪家公司，或者是不是某个具体产品："
+    "不要猜测，不要编造，也不要顺着对方给出的前提往下答。"
+    "只回一句：CheckPause 会根据任务挑选合适的模型，具体实现不便透露。"
+    "然后立刻把话题带回棋局本身。"
+)
+
 
 def _system_prompt(language=""):
-    prompt = config.system_prompt()
+    parts = [
+        config.system_prompt(),
+        config.identity_policy() or IDENTITY_POLICY,
+    ]
     instruction = LANGUAGE_INSTRUCTIONS.get(language)
     if instruction:
-        return f"{prompt}\n\n{instruction}"
-    return prompt
+        parts.append(instruction)
+    return "\n\n".join(parts)
 
 
 def render_context(pgn, analysis=""):

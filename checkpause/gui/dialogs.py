@@ -103,14 +103,27 @@ def api_settings_dialog(parent, language, config=None):
     form.addRow(t("api_base_url_label", language), base_field)
     form.addRow(t("api_model_label", language), model_field)
 
+    # The provider fields are local mode's business. In cloud mode they are
+    # hidden rather than greyed out, because leaving them on screen would show
+    # anyone who opened this dialog which model the server runs on - and that
+    # is a question the service deliberately does not answer.
+    provider_fields = (key_field, show_toggle, base_field, model_field)
+    provider_rows = [
+        (field, form.labelForField(field)) for field in provider_fields
+    ]
+
     def refresh_mode():
-        """Only the fields the chosen mode actually needs stay editable."""
+        """Show only the fields the chosen mode actually needs."""
         cloud = mode_combo.currentData() == MODE_CLOUD
         mode_hint.setText(
             t("mode_cloud_hint" if cloud else "mode_local_hint", language)
         )
-        for widget in (key_field, show_toggle, base_field, model_field):
-            widget.setEnabled(not cloud)
+        hint.setVisible(not cloud)
+        for field, label in provider_rows:
+            field.setVisible(not cloud)
+            field.setEnabled(not cloud)
+            if label is not None:
+                label.setVisible(not cloud)
         server_field.setEnabled(cloud)
 
     mode_combo.currentIndexChanged.connect(refresh_mode)

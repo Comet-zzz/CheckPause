@@ -66,6 +66,15 @@ def using_placeholder_prompt():
     return not _read("system_prompt.txt")
 
 
+def identity_policy():
+    """Deployment-specific wording for the model-disclosure rule.
+
+    Empty unless somebody wants different words from the built-in one in
+    ``prompting``.
+    """
+    return _read("identity_policy.txt")
+
+
 def api_key():
     return os.environ.get("DEEPSEEK_API_KEY", "").strip()
 

@@ -98,10 +98,41 @@ class BuildMessagesTests(unittest.TestCase):
 
     def test_puts_the_tuned_prompt_first_and_the_game_second(self):
         messages = prompting.build_messages("1. e4", "e4: +0.3")
-        self.assertEqual(messages[0], {"role": "system", "content": "TUNED PROMPT"})
+        self.assertEqual(messages[0]["role"], "system")
+        self.assertTrue(messages[0]["content"].startswith("TUNED PROMPT"))
         self.assertEqual(messages[1]["role"], "user")
         self.assertIn("1. e4", messages[1]["content"])
         self.assertIn("e4: +0.3", messages[1]["content"])
+
+    def test_always_carries_the_rule_about_what_model_it_is(self):
+        system = prompting.build_messages("1. e4")[0]["content"]
+        self.assertIn(prompting.IDENTITY_POLICY, system)
+
+    def test_the_rule_survives_the_tuned_prompt_being_replaced(self):
+        # The reason it is not in the prompt file: swapping the tuned prompt
+        # must not be able to quietly drop it.
+        (pathlib.Path(self._temp.name) / "system_prompt.txt").write_text(
+            "A completely different prompt.", encoding="utf-8"
+        )
+
+        system = prompting.build_messages("1. e4")[0]["content"]
+
+        self.assertIn("A completely different prompt.", system)
+        self.assertIn(prompting.IDENTITY_POLICY, system)
+
+    def test_a_deployment_can_supply_its_own_wording(self):
+        (pathlib.Path(self._temp.name) / "identity_policy.txt").write_text(
+            "DEFLECT", encoding="utf-8"
+        )
+        system = prompting.build_messages("1. e4")[0]["content"]
+        self.assertIn("DEFLECT", system)
+        self.assertNotIn(prompting.IDENTITY_POLICY, system)
+
+    def test_the_language_instruction_comes_after_everything_else(self):
+        system = prompting.build_messages("1. e4", language="zh-CN")[0]["content"]
+        self.assertTrue(
+            system.endswith(prompting.LANGUAGE_INSTRUCTIONS["zh-CN"])
+        )
 
     def test_appends_the_conversation(self):
         history = [
@@ -146,9 +177,10 @@ class BuildMessagesTests(unittest.TestCase):
         messages = prompting.build_messages("1. e4", "", [], "zh-CN")
         self.assertIn("Simplified Chinese", messages[0]["content"])
 
-    def test_leaves_the_prompt_alone_for_an_unknown_language(self):
-        messages = prompting.build_messages("1. e4", "", [], "fr-FR")
-        self.assertEqual(messages[0]["content"], "TUNED PROMPT")
+    def test_adds_no_language_instruction_for_an_unknown_language(self):
+        system = prompting.build_messages("1. e4", "", [], "fr-FR")[0]["content"]
+        for instruction in prompting.LANGUAGE_INSTRUCTIONS.values():
+            self.assertNotIn(instruction, system)
 
 
 class AnalyzeEndpointTests(unittest.TestCase):
