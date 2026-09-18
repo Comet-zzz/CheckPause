@@ -1,10 +1,28 @@
+import sys
+
 import chess.engine
 
-STOCKFISH_RELATIVE = (
-    "stockfish",
-    "stockfish",
-    "stockfish-windows-x86-64-universal.exe",
-)
+STOCKFISH_DIRECTORY = ("stockfish", "stockfish")
+
+_WINDOWS_ENGINE = "stockfish-windows-x86-64-universal.exe"
+
+# Stockfish ships one universal binary for macOS that covers both Apple
+# Silicon and Intel, and a plain "stockfish" on Linux.
+_MACOS_ENGINE = "stockfish-macos-universal"
+_LINUX_ENGINE = "stockfish"
+
+
+def stockfish_executable_name(platform_name=None):
+    """The bundled engine filename for ``platform_name`` (default: this OS)."""
+    platform_name = platform_name or sys.platform
+    if platform_name == "win32":
+        return _WINDOWS_ENGINE
+    if platform_name == "darwin":
+        return _MACOS_ENGINE
+    return _LINUX_ENGINE
+
+
+STOCKFISH_RELATIVE = STOCKFISH_DIRECTORY + (stockfish_executable_name(),)
 
 OPENING_BOOK_RELATIVE = ("assets", "opening_book.bin")
 

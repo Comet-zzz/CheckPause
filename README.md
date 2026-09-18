@@ -37,12 +37,19 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 > Analysis and board features work without an API key; only AI chat needs one.
 
+### macOS users
+
+1. Download the `.dmg` for your chip from the [Releases](https://github.com/Comet-zzz/CheckPause/releases) page (`macos-arm64` for Apple Silicon, `macos-x86_64` for Intel).
+2. Open the `.dmg` and drag CheckPause into Applications.
+3. The build is unsigned and not notarized. On first launch, **right-click the icon → Open**, or allow it under System Settings → Privacy & Security → Open Anyway.
+4. From there the steps match Windows (set an API key, import a PGN, start analysis).
+
 ---
 
 ## ⚙️ Configuration and data
 
 - Settings → API settings... configures the API key, base URL, and model name; defaults to `https://api.deepseek.com` + `deepseek-flash`, and blank fields fall back to those defaults.
-- User data lives in `%APPDATA%\CheckPause\`: `profile.json` (username, language, theme, appearance, history) and `settings.json` (API config); legacy profiles migrate automatically.
+- User data lives in `%APPDATA%\CheckPause\` on Windows and `~/Library/Application Support/CheckPause/` on macOS: `profile.json` (username, language, theme, appearance, history) and `settings.json` (API config); legacy profiles migrate automatically.
 
 ---
 
@@ -63,6 +70,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe) (114.5 MB — ships with Stockfish, the opening book, piece assets, and a curated Lichess puzzle set)
 - SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF` (both links serve the identical file)
 - Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
+- **macOS**: download the `.dmg` from [Releases](https://github.com/Comet-zzz/CheckPause/releases) (`macos-arm64` for Apple Silicon, `macos-x86_64` for Intel) and drag it into Applications; it is unsigned, so on first launch right-click → Open.
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
 
 ---

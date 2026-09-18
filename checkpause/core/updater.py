@@ -9,6 +9,8 @@ None instead of raising, so being offline simply means "no update found".
 """
 
 import json
+import platform
+import sys
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib import request
@@ -39,6 +41,22 @@ MANIFEST_URLS = PRIMARY_MANIFEST_URLS + FALLBACK_MANIFEST_URLS
 # A tiny JSON manifest never legitimately needs longer; this only bounds the
 # wait for a mirror that is unreachable or black-holed.
 REQUEST_TIMEOUT = 4.0
+
+
+def platform_key(system=None, machine=None):
+    """A stable OS/architecture key used to pick the right download.
+
+    A release manifest carries a ``urls`` map keyed by these values, so one
+    version can offer a Windows installer and separate macOS disk images.
+    """
+    system = system or sys.platform
+    machine = (machine or platform.machine()).lower()
+    arm = machine in ("arm64", "aarch64")
+    if system == "win32":
+        return "windows-arm64" if arm else "windows-x86_64"
+    if system == "darwin":
+        return "macos-arm64" if arm else "macos-x86_64"
+    return "linux-arm64" if arm else "linux-x86_64"
 
 
 @dataclass(frozen=True)
@@ -101,10 +119,25 @@ def fetch_manifests(opener=None, urls=MANIFEST_URLS):
     return [manifest for manifest in manifests if manifest is not None]
 
 
-def _manifest_to_info(manifest, current):
+def _download_url(manifest, key):
+    """This platform's download URL, or "" when the manifest has none."""
+    urls = manifest.get("urls")
+    if isinstance(urls, dict):
+        url = str(urls.get(key) or "").strip()
+        if url:
+            return url
+    # The single ``url`` field, and the clients that read it, point at the
+    # Windows installer. Windows may fall back to it; a macOS client must not,
+    # or it would download an unusable .exe.
+    if key.startswith("windows"):
+        return str(manifest.get("url") or "").strip()
+    return ""
+
+
+def _manifest_to_info(manifest, current, key):
     """Build an UpdateInfo, or None when this manifest has nothing to offer."""
     latest = str(manifest.get("latest") or "").strip()
-    url = str(manifest.get("url") or "").strip()
+    url = _download_url(manifest, key)
     if not latest or not url or not is_newer(latest, current):
         return None
     return UpdateInfo(
@@ -114,11 +147,11 @@ def _manifest_to_info(manifest, current):
     )
 
 
-def _best_info(manifests, current):
+def _best_info(manifests, current, key):
     """The newest usable update across every manifest, or None."""
     best = None
     for manifest in manifests:
-        info = _manifest_to_info(manifest, current)
+        info = _manifest_to_info(manifest, current, key)
         if info is None:
             continue
         if best is None or is_newer(info.version, best.version):
@@ -126,7 +159,9 @@ def _best_info(manifests, current):
     return best
 
 
-def check_for_update(current=APP_VERSION, opener=None, strict=False, quick=False):
+def check_for_update(
+    current=APP_VERSION, opener=None, strict=False, quick=False, key=None
+):
     """Return the newest release any mirror knows about, otherwise None.
 
     Failures are silent by default; strict mode raises UpdateCheckError when no
@@ -148,4 +183,4 @@ def check_for_update(current=APP_VERSION, opener=None, strict=False, quick=False
         if strict:
             raise UpdateCheckError("no manifest could be fetched")
         return None
-    return _best_info(manifests, current)
+    return _best_info(manifests, current, key or platform_key())

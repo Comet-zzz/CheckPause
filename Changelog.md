@@ -1,3 +1,23 @@
+# Unreleased – macOS 支持
+
+> **新增 macOS 版（Apple Silicon 与 Intel），功能与 Windows 版一致。** 通过 GitHub Actions 在 macOS runner 上打包，产出 `.dmg`；引擎使用 Stockfish 的 macOS universal 二进制。
+>
+> **Adds a macOS build (Apple Silicon and Intel) with feature parity to Windows.** It is produced by GitHub Actions on macOS runners and shipped as a `.dmg`, bundling Stockfish's macOS universal binary.
+>
+> 未签名、未公证，首次打开需右键 → 打开。此改动不影响 Windows 版。
+
+---
+
+## 🛠️ Full Changelog
+- feat(macos): platform-aware Stockfish executable path
+- feat(macos): cross-platform PyInstaller spec with a `.app` bundle and `.icns` icon
+- feat(macos): GitHub Actions workflow building arm64 and x86_64 `.dmg` images
+- feat(updater): pick the download URL from the manifest's per-platform `urls` map
+- feat(macos): store user data in `~/Library/Application Support/CheckPause/`
+- fix(updater): never offer the Windows installer to a macOS client
+
+---
+
 # v1.7.2 – Icon Fix
 
 > **修复安装后应用图标显示为 Python 默认图标的问题。** 1.7.2 修复了 Windows 应用启动图标以及开始菜单、桌面快捷方式图标。
