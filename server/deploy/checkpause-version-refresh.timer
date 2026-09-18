@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh the CheckPause version manifest mirror periodically
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=2min
+AccuracySec=30s
+
+[Install]
+WantedBy=timers.target

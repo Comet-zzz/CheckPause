@@ -78,10 +78,13 @@ server/
 ├── requirements.txt
 ├── test_app.py / test_analyze.py
 └── deploy/
-    ├── install.sh              # 一键部署（幂等）
-    ├── checkpause.service      # systemd
-    ├── nginx-checkpause.conf   # nginx
-    └── env.example             # env 模板
+    ├── install.sh                         # 一键部署（幂等）
+    ├── checkpause.service                 # systemd
+    ├── checkpause-version-refresh.service # 刷新版本清单（oneshot）
+    ├── checkpause-version-refresh.timer   # 每 2 分钟触发一次
+    ├── refresh-version-json.sh            # 拉 version.json 到 /srv/downloads
+    ├── nginx-checkpause.conf              # nginx
+    └── env.example                        # env 模板
 ```
 
 ## 本地自测
@@ -127,6 +130,9 @@ bash /srv/checkpause/server/deploy/install.sh
 | **密钥与提示词** | **`/etc/checkpause/`** |
 | **积分账本（SQLite）** | **`/var/lib/checkpause/checkpause.db`** |
 | 服务单元 | `/etc/systemd/system/checkpause.service` |
+| 版本清单刷新 | `/etc/systemd/system/checkpause-version-refresh.{service,timer}` |
+| **版本清单文件** | **`/srv/downloads/version.json`**（nginx 在 `/version.json` 发出去） |
+| 安装包镜像目录 | `/srv/downloads/` |
 | nginx 站点 | `/etc/nginx/sites-available/checkpause` |
 
 ```bash
@@ -134,6 +140,21 @@ systemctl status checkpause      # 活着没
 journalctl -u checkpause -n 50   # 日志
 systemctl restart checkpause     # 重启（改完提示词用它）
 ```
+
+### 版本清单镜像（客户端检查更新用的）
+
+客户端先请求 `http://43.108.99.244/version.json`，nginx 直接发
+`/srv/downloads/version.json`。这个文件由 `checkpause-version-refresh.timer`
+每 2 分钟从 GitHub 拉一次（原子替换，失败保留旧文件）。
+
+```bash
+systemctl list-timers checkpause-version-refresh.timer   # 下次什么时候跑
+systemctl status checkpause-version-refresh.service      # 上次成功没
+curl -s http://127.0.0.1/version.json                    # 现在发的是哪一版
+```
+
+**发新版后确认一下**：这个文件停在旧版本时，手动检查更新会信它，
+于是"发了新版但没人收到提示"（v1.6.1 那个 bug 的翻版）。
 
 ## 账号与积分
 

@@ -99,6 +99,22 @@ log "Download directory /srv/downloads"
 install -d -m 755 -o root -g root /srv/downloads
 echo "    release installers go here; nginx mirrors them at /download/"
 
+# The client checks /version.json here before anything else, so the update
+# dialog appears without waiting on GitHub. The file is only a mirror: it is
+# refreshed from the repository on a timer, and a failed refresh leaves the
+# previous copy for the client's fallbacks to correct.
+log "Version manifest mirror"
+install -m 755 "$APP_DIR/server/deploy/refresh-version-json.sh" \
+    /usr/local/bin/checkpause-refresh-version
+install -m 644 "$APP_DIR/server/deploy/checkpause-version-refresh.service" \
+    /etc/systemd/system/checkpause-version-refresh.service
+install -m 644 "$APP_DIR/server/deploy/checkpause-version-refresh.timer" \
+    /etc/systemd/system/checkpause-version-refresh.timer
+systemctl daemon-reload
+systemctl enable --now checkpause-version-refresh.timer >/dev/null
+# Seed the file now so the next client check does not have to fall back.
+systemctl start checkpause-version-refresh.service || true
+
 # The unit sets UMask so new files are private, but a ledger created before
 # that existed keeps its old mode, and SQLite reuses the write-ahead log and
 # the shared-memory file it finds. They hold the same password hashes and

@@ -1,0 +1,8 @@
+[Unit]
+Description=Refresh the CheckPause version manifest mirror
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/checkpause-refresh-version
