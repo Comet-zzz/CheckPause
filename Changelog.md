@@ -49,11 +49,11 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 # v1.7.1 – Instant Update Checks
 
-> **「检查更新」不再卡几秒**：以前要排队等两个 GitHub 镜像，其中一个在国内经常连不上，于是每次都要干等超时。现在改成同时问，并且优先问我们自己的服务器，点一下几乎立刻出结果。
+> **「检查更新」不再需要等待超时**：此前两个 GitHub 镜像依次请求，其中一个在国内时常无法连接，每次检查都要耗尽它的超时时间。现在改为并发请求，并优先查询自建服务器，点击后基本可立即得到结果。
 >
 > 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
 
-> **"Check for updates" no longer stalls.** The old code asked two GitHub mirrors one after another, and one of them is frequently unreachable from mainland China, so every check paid its timeout. Now they are queried at the same time and our own server is asked first, so the answer shows up right away.
+> The "Check for updates" action no longer waits on a timeout. The previous code queried two GitHub mirrors in sequence, one of which is often unreachable from mainland China, so every check consumed that timeout before returning. Both are now queried concurrently, with the project's own server checked first, so the result appears almost immediately.
 >
 > A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
 
@@ -62,14 +62,14 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 ## 🎯 What's Changed
 
 ### ⚡ 检查更新更快
-- 两个 GitHub 镜像改成**同时**请求，耗时从"两个相加"变成"取最慢的那个"。
-- 新增**自家服务器**作为第一来源（`http://43.108.99.244/version.json`）：国内访问快，而且读的是磁盘文件，没有 CDN 缓存会藏版本。
-- 手动点「检查更新」时**只信主源**，答了就弹窗；主源连不上才退回 GitHub。
-- 开机后台那次检查仍然三个源都问、取版本号最高的 —— 它是发现"主源变旧"的保险。
-- The two GitHub mirrors are now queried **concurrently**, so the wait is the slowest mirror instead of their sum.
-- A **primary mirror on our own server** is consulted first: fast from China, and read straight from disk, so no CDN cache can hide a release.
-- A manual check **trusts the primary** and shows the result as soon as it answers; the GitHub mirrors are only a fallback when the server is unreachable.
-- The launch-time background check still compares all three mirrors and keeps the highest version.
+- 两个 GitHub 镜像改为**并发**请求，等待时间由两者之和缩短为其中较慢的一个。
+- 新增**自建服务器**作为首要来源（`http://43.108.99.244/version.json`）：国内访问速度快，且直接读取磁盘文件，不存在 CDN 缓存导致的版本滞后。
+- 手动「检查更新」**以主源为准**，主源返回即显示结果；仅在主源不可达时回退到 GitHub 镜像。
+- 开机后的后台检查仍会查询全部三个来源并取最高版本，用于发现主源文件过期的情况。
+- The two GitHub mirrors are now queried **concurrently**, so the wait is that of the slowest one rather than their sum.
+- A **primary source on the project's own server** is consulted first: fast to reach from China, and read directly from disk, so no CDN cache can hold a release back.
+- A manual check **trusts the primary source** and shows its answer as soon as it arrives, falling back to the GitHub mirrors only when the server cannot be reached.
+- The background check at launch still queries all three sources and keeps the highest version, which is how a stale primary manifest would be detected.
 
 ### 🖥 服务器
 - nginx 新增 `/version.json`，由 `checkpause-version-refresh.timer` 每 2 分钟从仓库刷新（原子替换，失败保留旧文件）。
@@ -89,44 +89,44 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 - 无破坏性变更。
 - No breaking changes.
-- ⚠️ 服务器需重新部署（`git pull` + `install.sh`）后主源才会存在；已经装了 1.7.0 的用户要更新到本版本，才能享受到"点了就弹"。
-- ⚠️ The server must be redeployed (`git pull` + `install.sh`) for the primary mirror to exist, and users still on 1.7.0 need this release to get the instant check.
+- ⚠️ 服务器需先重新部署（`git pull` + `install.sh`），主源才会生效；仍在使用 1.7.0 的用户需升级到本版本，才能获得即点即得的检查结果。
+- ⚠️ The server must be redeployed (`git pull` + `install.sh`) before the primary source exists, and users still on 1.7.0 need this release to get the instant result.
 
 ---
 
 # v1.7.0 – Cloud Coaching
 
-> 新增**云端讲解**：不用自己填 API Key，注册一个账号、充点 CP积分就能用。云端用的是服务器上持续调教的提示词。
+> 新增**云端讲解**：无需自行填写 API Key，注册账号并充值 CP积分即可使用。云端采用服务器上持续调校的提示词。
 >
-> **本地模式（自己填 Key）完全没变** —— 界面、操作、存档全都照旧。只有云端模式需要登录，你要是继续用本地模式，这次更新对你没有任何影响。
+> **本地模式（自行填写 Key）完全不变** —— 界面、操作与存档均保持原样。仅云端模式需要登录；若继续使用本地模式，本次更新不会带来任何影响。
 >
-> 充值在「设置 → 云端账号」里：选金额 → 浏览器打开支付宝付款 → 回来余额已经到账。
+> 充值入口位于「设置 → 云端账号」：选择金额 → 浏览器打开支付宝完成付款 → 返回后余额已经到账。
 
 > A new **cloud coaching** mode: no API key of your own, just an account and some CP credits. It uses a prompt tuned on the server.
 >
-> **Local mode is untouched** - same interface, same controls, same saved games. Only cloud mode needs a sign-in, so if you stay on local mode this update changes nothing for you.
+> **Local mode is unchanged** — the interface, the controls and saved games all stay as they are. Only cloud mode requires a sign-in, so if you stay on local mode this release changes nothing for you.
 >
-> Top up under Settings → Cloud account: pick an amount, pay in your browser, and the balance is there when you come back.
+> Top up under Settings → Cloud account: choose an amount, pay in your browser, and the balance is already there when you return.
 
 ---
 
 ## 🎯 What's Changed
 
 ### ☁️ 云端讲解
-- 设置里多了「AI 模式」选择：**本地模式**（自己填 API Key，和以前一样）或**云端模式**（用 CheckPause 的账号和提示词）。
-- 云端模式需要注册/登录。密码只用于登录，软件**不保存密码**，只保存一个可以随时吊销的令牌。
-- 充值：选金额 → 浏览器打开支付宝付款 → 余额自动到账，不用手动刷新。
-- 余额显示在「设置 → 云端账号」里，也直接显示在菜单上。
+- 设置中新增「AI 模式」选项：**本地模式**（自行填写 API Key，与以往一致）或**云端模式**（使用 CheckPause 账号与提示词）。
+- 云端模式需要注册/登录。密码仅用于登录，软件**不保存密码**，只保存一个可随时吊销的令牌。
+- 充值流程：选择金额 → 浏览器打开支付宝付款 → 余额自动到账，无需手动刷新。
+- 余额显示于「设置 → 云端账号」，同时显示在菜单中。
 - Settings gains an **AI mode** choice: local (your own API key, exactly as before) or cloud (a CheckPause account and prompt).
-- Cloud mode needs an account. The password is only used to sign in and is never stored; the app keeps a token that can be revoked instead.
-- Topping up: pick an amount, pay in the browser, and the balance is already there when you come back.
-- The balance shows in Settings → Cloud account, and in the menu.
+- Cloud mode requires an account. The password is used only to sign in and is never stored; the app keeps a revocable token instead.
+- Topping up: choose an amount, pay in the browser, and the balance arrives automatically, with no manual refresh.
+- The balance appears under Settings → Cloud account and in the menu.
 
 ### 🔒 云端模式下不再显示用的是哪个模型
-- 以前那个模型输入框只是"变灰"、还留在屏幕上；现在**整个隐藏**，云端模式下屏幕上不会出现任何模型名字。
+- 此前模型输入框仅置灰、仍留在界面上；现在**完全隐藏**，云端模式下界面不会出现任何模型名称。
 - The model field used to be greyed out but still visible. In cloud mode the model and endpoint fields are now **hidden entirely**, so no model name appears on screen.
 
-### 💬 计费单位叫「CP积分」
+### 💬 计费单位改为「CP积分」
 - 界面、错误提示、付款页面统一改成 **CP积分**（英文界面为 CP credits）。
 - The billing unit is now called **CP credits** everywhere it can be read.
 
@@ -143,8 +143,8 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ## ⚠️ Breaking Changes
 
-- 无破坏性变更。棋盘、引擎分析、存档、本地模式全部照旧。
-- 云端模式是新增的可选项，想用的时候在设置里切换即可。
+- 无破坏性变更。棋盘、引擎分析、存档与本地模式均保持原样。
+- 云端模式为新增的可选项，需要时在设置中切换即可。
 - No breaking changes. The board, engine analysis, saved games and local mode are all unchanged.
 - Cloud mode is new and optional; switch to it in Settings when you want it.
 
@@ -152,7 +152,7 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 # v1.6.1 – Update Notifications Actually Arrive
 
-> 修好了一个**静默失效**的问题：更新提示一直没生效。软件读取版本信息时，会先访问一个国内能连上的加速源，而那份副本可能是**十几个小时前的**，于是软件以为"已经是最新版"，从不提示升级。**你的 1.5.4 和 1.6.0 很可能都没推送到老用户。** 现在改成两个来源都读、取版本号更高的那个。
+> 修复了一处**静默失效**的问题：更新提示始终未能触发。软件读取版本信息时，会优先访问一个国内可用的加速源，而该副本可能滞后**十几个小时**，导致软件误判为"已是最新版本"而不再提示升级。**1.5.4 与 1.6.0 很可能因此未能推送给老用户。** 现在两个来源都会读取，并采用版本号更高的一个。
 >
 > Fixes a silent failure: update notifications never fired. The app read its version manifest from a China-friendly CDN first, and that copy could be many hours stale, so the app believed it was already current and stayed quiet. Releases 1.5.4 and 1.6.0 most likely never reached existing users. Both sources are now consulted and the higher version wins.
 
@@ -161,14 +161,14 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 ## 🎯 What's Changed
 
 ### 🔔 更新提示真的会弹了
-- 之前：只读**第一个**能连上的来源。那个来源可能缓存着十几小时前的旧版本号 → 软件误以为"已是最新" → 不提示。
-- 现在：**两个来源都读**，取版本号更高的那个。任何一个源过期，都不会再掩盖新版本。
+- 此前只读取**第一个**可连接的来源；该来源可能缓存着十几个小时前的版本号，软件据此误判为"已是最新"，因此不给出提示。
+- 现在**两个来源都会读取**，并取版本号更高的一个；任一来源过期，都不会再掩盖新版本。
 
 - Before: only the **first** reachable source was read. That source could serve a version number many hours old, so the app concluded it was current and stayed quiet.
 - Now: **both sources are read** and the higher version wins, so a stale copy can no longer hide a release.
 
 ### 🧪 补了三个测试
-- 专门覆盖"一个源过期、另一个源是新版"这种情况，包括这次真实踩到的场景。
+- 新增的三个测试覆盖"一个来源过期、另一个来源为新版本"的情形，其中包括本次实际遇到的场景。
 
 - Three tests now cover the case where one mirror is stale and the other is current, including the exact situation that caused this release.
 
@@ -183,7 +183,7 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ## ⚠️ Breaking Changes
 
-- 无破坏性变更。但请注意：**这个修复只有装上它之后才生效** —— 在此之前，软件仍然看不到新版本。
+- 无破坏性变更。但需注意：**该修复仅在安装本版本后生效**；在此之前，软件仍无法发现新版本。
 
 - No breaking changes. One caveat: the fix only takes effect once installed. Until then the app still cannot see new releases.
 
