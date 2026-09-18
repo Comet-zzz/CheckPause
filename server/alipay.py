@@ -20,15 +20,29 @@ import logging
 
 from alipay.aop.api.AlipayClientConfig import AlipayClientConfig
 from alipay.aop.api.DefaultAlipayClient import DefaultAlipayClient
+from alipay.aop.api.domain.AlipayTradeCloseModel import AlipayTradeCloseModel
+from alipay.aop.api.domain.AlipayTradeFastpayRefundQueryModel import (
+    AlipayTradeFastpayRefundQueryModel,
+)
 from alipay.aop.api.domain.AlipayTradePagePayModel import (
     AlipayTradePagePayModel,
 )
 from alipay.aop.api.domain.AlipayTradeQueryModel import AlipayTradeQueryModel
+from alipay.aop.api.domain.AlipayTradeRefundModel import AlipayTradeRefundModel
+from alipay.aop.api.request.AlipayTradeCloseRequest import (
+    AlipayTradeCloseRequest,
+)
+from alipay.aop.api.request.AlipayTradeFastpayRefundQueryRequest import (
+    AlipayTradeFastpayRefundQueryRequest,
+)
 from alipay.aop.api.request.AlipayTradePagePayRequest import (
     AlipayTradePagePayRequest,
 )
 from alipay.aop.api.request.AlipayTradeQueryRequest import (
     AlipayTradeQueryRequest,
+)
+from alipay.aop.api.request.AlipayTradeRefundRequest import (
+    AlipayTradeRefundRequest,
 )
 from alipay.aop.api.util.SignatureUtils import (
     get_sign_content,
@@ -138,6 +152,22 @@ def notification_is_paid(params):
     return not any(params.get(marker) for marker in REFUND_MARKERS)
 
 
+def _execute(request, action):
+    """Run a server-side call and decode the JSON body it answers with."""
+    try:
+        raw = _client().execute(request)
+    except AlipayError:
+        raise
+    except Exception as error:
+        log.warning("%s failed: %s", action, error)
+        raise AlipayError(str(error)) from error
+
+    try:
+        return json.loads(raw)
+    except ValueError as error:
+        raise AlipayError("unreadable response from alipay") from error
+
+
 def query_trade(order_id):
     """Ask the gateway about an order.
 
@@ -149,17 +179,45 @@ def query_trade(order_id):
     model = AlipayTradeQueryModel()
     model.out_trade_no = order_id
     request.biz_model = model
+    return _execute(request, "trade query for {}".format(order_id))
 
-    try:
-        raw = _client().execute(request)
-    except Exception as error:
-        log.warning("trade query failed for %s: %s", order_id, error)
-        raise AlipayError(str(error)) from error
 
-    try:
-        return json.loads(raw)
-    except ValueError as error:
-        raise AlipayError("unreadable response from alipay") from error
+def refund(order_id, amount_yuan, out_request_no, reason=""):
+    """Send money back for a paid order.
+
+    ``out_request_no`` is the idempotency key: a retry after a timeout has to
+    reuse it and the same amount, or it becomes a second refund.
+    """
+    request = AlipayTradeRefundRequest()
+    model = AlipayTradeRefundModel()
+    model.out_trade_no = order_id
+    model.refund_amount = amount_yuan
+    model.out_request_no = out_request_no
+    if reason:
+        model.refund_reason = reason
+    request.biz_model = model
+    return _execute(request, "refund for {}".format(order_id))
+
+
+def query_refund(order_id, out_request_no):
+    """Ask what became of a refund the gateway accepted but did not confirm."""
+    request = AlipayTradeFastpayRefundQueryRequest()
+    model = AlipayTradeFastpayRefundQueryModel()
+    model.out_trade_no = order_id
+    model.out_request_no = out_request_no
+    request.biz_model = model
+    return _execute(
+        request, "refund query for {}".format(out_request_no)
+    )
+
+
+def close_trade(order_id):
+    """Close an order the buyer never paid, so it cannot be paid later."""
+    request = AlipayTradeCloseRequest()
+    model = AlipayTradeCloseModel()
+    model.out_trade_no = order_id
+    request.biz_model = model
+    return _execute(request, "close for {}".format(order_id))
 
 
 def trade_is_paid(payload):
@@ -169,3 +227,32 @@ def trade_is_paid(payload):
     if payload.get("code") != "10000":
         return False
     return payload.get("trade_status") in PAID_STATUSES
+
+
+def refund_accepted(payload):
+    """Accepted is not the same as completed: only ``fund_change`` says the
+    money moved, and anything else has to be confirmed with a refund query."""
+    if not isinstance(payload, dict):
+        return False
+    return payload.get("code") == "10000"
+
+
+def refund_changed_funds(payload):
+    if not isinstance(payload, dict):
+        return False
+    return payload.get("code") == "10000" and payload.get("fund_change") == "Y"
+
+
+def refund_is_complete(payload):
+    if not isinstance(payload, dict):
+        return False
+    return (
+        payload.get("code") == "10000"
+        and payload.get("refund_status") == "REFUND_SUCCESS"
+    )
+
+
+def close_succeeded(payload):
+    if not isinstance(payload, dict):
+        return False
+    return payload.get("code") == "10000"

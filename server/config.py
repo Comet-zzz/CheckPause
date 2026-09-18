@@ -203,7 +203,13 @@ def alipay_settings():
         # notify_url when there is no public HTTPS address yet, provided the
         # trade query fallback is implemented - and it is.
         "notify_url": os.environ.get("AIPAY_NOTIFY_URL", "").strip(),
-        "return_url": os.environ.get("AIPAY_RETURN_URL", "").strip(),
+        # The synchronous return lands on a real GET route in this service.
+        # Sync parameters are only a hint about where to look: the page asks
+        # the gateway, so a forged return cannot pretend to be a payment.
+        "return_url": (
+            os.environ.get("AIPAY_RETURN_URL", "").strip()
+            or public_url().rstrip("/") + "/v1/pay/return"
+        ),
         # Checked against the notification so a stranger's app_id cannot be
         # used to pay into this account.
         "seller_id": os.environ.get("AIPAY_SELLER_ID", "").strip(),

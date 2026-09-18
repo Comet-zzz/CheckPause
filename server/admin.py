@@ -20,8 +20,9 @@ import argparse
 import getpass
 import sys
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 
-from server import config, store
+from server import alipay, config, store
 
 REASONS = {
     "topup": "purchase",
@@ -197,6 +198,120 @@ def cmd_sweep(_args):
         ))
 
 
+def _order(order_id):
+    order = store.order(order_id)
+    if order is None:
+        sys.exit("no order with id {!r}".format(order_id))
+    return order
+
+
+def _yuan_to_cents(text):
+    try:
+        amount = Decimal(str(text))
+    except InvalidOperation:
+        sys.exit("not an amount: {!r}".format(text))
+    if amount <= 0:
+        sys.exit("the amount must be positive")
+    cents = int((amount * 100).to_integral_value())
+    if Decimal(cents) != amount * 100:
+        sys.exit("at most two decimal places")
+    return cents
+
+
+def _gateway_or_exit():
+    if not config.alipay_settings()["enabled"]:
+        sys.exit("alipay is not configured on this server")
+
+
+def cmd_refund(args):
+    """Send a buyer their money back for a paid order.
+
+    The refund row is written before the call, so a timeout leaves a record to
+    reconcile instead of an unnoticed refund. A retry must reuse the same
+    ``--out-request-no``; that is what keeps it from becoming a second refund.
+    """
+    _gateway_or_exit()
+    order = _order(args.order_id)
+    cents = _yuan_to_cents(args.yuan)
+    try:
+        record = store.open_refund(
+            order["id"], cents, out_request_no=args.out_request_no or None,
+            note=args.reason,
+        )
+    except store.StoreError as error:
+        sys.exit("{}: {}".format(error.code, error.message))
+
+    try:
+        payload = alipay.refund(
+            order["id"],
+            "{:.2f}".format(cents / 100),
+            record["out_request_no"],
+            args.reason,
+        )
+    except alipay.AlipayError as error:
+        sys.exit("gateway refused: {}".format(error))
+
+    if alipay.refund_changed_funds(payload):
+        store.settle_refund(
+            record["out_request_no"], "success", payload.get("trade_no", "")
+        )
+        print("refunded CNY {:.2f} for {}".format(cents / 100, order["id"]))
+    elif alipay.refund_accepted(payload):
+        store.settle_refund(
+            record["out_request_no"], "pending", payload.get("trade_no", "")
+        )
+        print("refund accepted but not confirmed; check it with:")
+        print("  .venv/bin/python -m server.admin refund-status {} {}".format(
+            order["id"], record["out_request_no"]
+        ))
+    else:
+        store.settle_refund(record["out_request_no"], "failed")
+        sys.exit("refund not accepted: {} - {}".format(
+            payload.get("sub_code"), payload.get("sub_msg")
+        ))
+    print("  request no            {}".format(record["out_request_no"]))
+
+
+def cmd_refund_status(args):
+    _gateway_or_exit()
+    order = _order(args.order_id)
+    record = store.refund(args.out_request_no)
+    if record is None or record["order_id"] != order["id"]:
+        sys.exit("no such refund on that order")
+    try:
+        payload = alipay.query_refund(order["id"], args.out_request_no)
+    except alipay.AlipayError as error:
+        sys.exit("gateway refused: {}".format(error))
+
+    if alipay.refund_is_complete(payload):
+        store.settle_refund(
+            args.out_request_no, "success", payload.get("trade_no", "")
+        )
+        print("refund complete: CNY {}".format(
+            payload.get("refund_amount", "?")
+        ))
+        return
+    print("refund status: {}".format(payload.get("refund_status") or "unknown"))
+    print("  keep this request no  {}".format(args.out_request_no))
+
+
+def cmd_close_order(args):
+    _gateway_or_exit()
+    order = _order(args.order_id)
+    if order["status"] == "paid":
+        sys.exit("a paid order cannot be closed")
+    try:
+        payload = alipay.close_trade(order["id"])
+    except alipay.AlipayError as error:
+        sys.exit("gateway refused: {}".format(error))
+    if not alipay.close_succeeded(payload):
+        sys.exit("close not accepted: {} - {}".format(
+            payload.get("sub_code"), payload.get("sub_msg")
+        ))
+    closed = store.close_order(order["id"])
+    print("{} is now {}".format(closed["id"], closed["status"]))
+
+
 def build_parser():
     parser = argparse.ArgumentParser(
         prog="python -m server.admin",
@@ -255,6 +370,32 @@ def build_parser():
     sub.add_parser(
         "sweep", help="charge reservations abandoned by a crash"
     ).set_defaults(run=cmd_sweep)
+
+    refund = sub.add_parser(
+        "refund", help="send a buyer their money back for a paid order"
+    )
+    refund.add_argument("order_id")
+    refund.add_argument("yuan")
+    refund.add_argument("--reason", default="")
+    refund.add_argument(
+        "--out-request-no",
+        default="",
+        help="reuse to retry the same refund instead of making a new one",
+    )
+    refund.set_defaults(run=cmd_refund)
+
+    refund_status = sub.add_parser(
+        "refund-status", help="confirm a refund the gateway did not settle"
+    )
+    refund_status.add_argument("order_id")
+    refund_status.add_argument("out_request_no")
+    refund_status.set_defaults(run=cmd_refund_status)
+
+    close_order = sub.add_parser(
+        "close-order", help="close an order the buyer never paid"
+    )
+    close_order.add_argument("order_id")
+    close_order.set_defaults(run=cmd_close_order)
 
     return parser
 

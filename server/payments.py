@@ -297,6 +297,35 @@ def pay_page(order_id: str):
     )
 
 
+@router.get("/v1/pay/return", response_class=HTMLResponse)
+def return_page(out_trade_no: str = ""):
+    """Where Alipay sends the buyer's browser after the cashier.
+
+    The query string is not evidence - it can be edited - so nothing here
+    treats it as payment. The order is looked up and confirmed with the
+    gateway, exactly as the status endpoint does.
+    """
+    order = store.order(out_trade_no)
+    if order is None:
+        return _page("订单不存在", "<p>没有找到对应的订单。</p>")
+
+    order = _confirm_with_gateway(order)
+
+    if order["status"] == "paid":
+        return _page(
+            "已支付",
+            PAID.format(credits=order["credits"])
+            + "<p>可以回到 CheckPause 继续使用了。</p>",
+        )
+
+    return _page(
+        "正在确认支付结果",
+        "<p>还没有查到这笔付款。付款成功后余额会自动到账，"
+        "请稍候回到 CheckPause 查看；如果已经付款但没有到账，"
+        "可以刷新本页或联系客服。</p>",
+    )
+
+
 @router.post("/v1/pay/notify")
 async def notify(request: Request):
     """Alipay's asynchronous notification.

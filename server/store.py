@@ -102,6 +102,22 @@ CREATE TABLE IF NOT EXISTS orders (
 );
 
 CREATE INDEX IF NOT EXISTS orders_by_user ON orders(user_id, id);
+
+-- One row per refund attempt. ``out_request_no`` is the id the gateway sees
+-- and the key that makes asking twice safe: a retry reuses it and the gateway
+-- answers with the original result instead of refunding twice.
+CREATE TABLE IF NOT EXISTS refunds (
+    out_request_no TEXT PRIMARY KEY,
+    order_id       TEXT NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+    amount_cents   INTEGER NOT NULL CHECK (amount_cents > 0),
+    status         TEXT NOT NULL DEFAULT 'pending',
+    trade_no       TEXT NOT NULL DEFAULT '',
+    note           TEXT NOT NULL DEFAULT '',
+    created_at     TEXT NOT NULL,
+    updated_at     TEXT
+);
+
+CREATE INDEX IF NOT EXISTS refunds_by_order ON refunds(order_id, created_at);
 """
 
 
@@ -777,3 +793,136 @@ def mark_order_paid(
                 "SELECT * FROM orders WHERE id = ?", (order_id,)
             ).fetchone()
         )
+
+
+def close_order(order_id):
+    """Mark an unpaid order closed. A paid order may not be closed this way."""
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE id = ?", (order_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_order", "no order with that id")
+        current = _order(row)
+        if current["status"] == "paid":
+            raise StoreError(
+                "order_paid", "a paid order cannot be closed"
+            )
+        if current["status"] != "closed":
+            conn.execute(
+                "UPDATE orders SET status = 'closed' WHERE id = ?", (order_id,)
+            )
+    return order(order_id)
+
+
+# --- refunds ---------------------------------------------------------------
+
+
+def _refund(row):
+    if row is None:
+        return None
+    return {
+        "out_request_no": row["out_request_no"],
+        "order_id": row["order_id"],
+        "amount_cents": row["amount_cents"],
+        "status": row["status"],
+        "trade_no": row["trade_no"],
+        "note": row["note"],
+        "created_at": row["created_at"],
+        "updated_at": row["updated_at"],
+    }
+
+
+def refunded_cents(order_id):
+    """How much of an order has already gone back for certain."""
+    with _lock:
+        row = connection().execute(
+            "SELECT COALESCE(SUM(amount_cents), 0) AS total FROM refunds"
+            " WHERE order_id = ? AND status = 'success'",
+            ((order_id or "").strip(),),
+        ).fetchone()
+    return int(row["total"])
+
+
+def refunds_for_order(order_id):
+    with _lock:
+        rows = connection().execute(
+            "SELECT * FROM refunds WHERE order_id = ? ORDER BY created_at",
+            ((order_id or "").strip(),),
+        ).fetchall()
+    return [_refund(row) for row in rows]
+
+
+def refund(out_request_no):
+    with _lock:
+        row = connection().execute(
+            "SELECT * FROM refunds WHERE out_request_no = ?",
+            ((out_request_no or "").strip(),),
+        ).fetchone()
+    return _refund(row)
+
+
+def open_refund(order_id, amount_cents, out_request_no=None, note=""):
+    """Register an intended refund before the gateway is asked.
+
+    Writing the row first means a crash between the call and the answer leaves
+    a record to reconcile against, rather than a refund nobody knows about.
+    """
+    order_id = (order_id or "").strip()
+    amount_cents = int(amount_cents)
+    if amount_cents <= 0:
+        raise StoreError("bad_amount", "a refund must be positive")
+    out_request_no = out_request_no or "RF" + secrets.token_hex(8).upper()
+
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM orders WHERE id = ?", (order_id,)
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_order", "no order with that id")
+        current = _order(row)
+        if current["status"] != "paid":
+            raise StoreError(
+                "order_not_paid", "only a paid order can be refunded"
+            )
+        already = conn.execute(
+            "SELECT COALESCE(SUM(amount_cents), 0) AS total FROM refunds"
+            " WHERE order_id = ? AND status = 'success'",
+            (order_id,),
+        ).fetchone()["total"]
+        if int(already) + amount_cents > current["amount_cents"]:
+            raise StoreError(
+                "refund_too_much",
+                "the refunds would exceed what was paid",
+            )
+        existing = conn.execute(
+            "SELECT 1 FROM refunds WHERE out_request_no = ?",
+            (out_request_no,),
+        ).fetchone()
+        if existing is not None:
+            raise StoreError(
+                "duplicate_reference", "that refund id was already used"
+            )
+        conn.execute(
+            "INSERT INTO refunds (out_request_no, order_id, amount_cents,"
+            " note, created_at) VALUES (?, ?, ?, ?, ?)",
+            (out_request_no, order_id, amount_cents, note, _now()),
+        )
+    return refund(out_request_no)
+
+
+def settle_refund(out_request_no, status, trade_no=""):
+    """Record what the gateway said about a refund. Safe to repeat."""
+    with transaction() as conn:
+        row = conn.execute(
+            "SELECT * FROM refunds WHERE out_request_no = ?",
+            (out_request_no,),
+        ).fetchone()
+        if row is None:
+            raise StoreError("no_such_refund", "no refund with that id")
+        conn.execute(
+            "UPDATE refunds SET status = ?, trade_no = ?, updated_at = ?"
+            " WHERE out_request_no = ?",
+            (status, trade_no, _now(), out_request_no),
+        )
+    return refund(out_request_no)
