@@ -41,6 +41,7 @@ jobs:
           set -euo pipefail
           curl -fL -o /tmp/stockfish.tar.gz "$STOCKFISH_URL"
           echo "$STOCKFISH_SHA256  /tmp/stockfish.tar.gz" | shasum -a 256 -c -
+          mkdir -p stockfish
           tar -xzf /tmp/stockfish.tar.gz -C stockfish
           test -f stockfish/stockfish/stockfish-macos-universal
           chmod +x stockfish/stockfish/stockfish-macos-universal
