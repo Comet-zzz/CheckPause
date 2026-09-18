@@ -2,7 +2,7 @@
 
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
+[![Windows Installer](https://img.shields.io/badge/Windows-Installer-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
 [![macOS M-series](https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-M-series.dmg)
 [![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-Intel.dmg)
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
