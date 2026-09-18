@@ -7,8 +7,9 @@
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | ① | 服务能跑起来、外网能访问 | ✅ |
-| ② | 拼提示词 → 调上游模型 → 流式返回 | ✅ 本次完成 |
-| ③ | 账号 + 积分 + 充值 | 待做 |
+| ② | 拼提示词 → 调上游模型 → 流式返回 | ✅ |
+| ③ | 账号 + 积分 + 充值 | ✅ 沙箱 + **生产真付均已通过** |
+| ④ | 公网 HTTPS `notify_url` / 域名 | ⬜ 靠交易查询兜底，能到账 |
 
 ## 接口
 
@@ -202,6 +203,35 @@ cd /srv/checkpause
 
 **备份**：`/var/lib/checkpause/checkpause.db` 里是全部余额和密码哈希，丢了就全没了。
 
-## 第 ③ 阶段剩下的部分
+## 支付（支付宝 AI 网页应用收款）
 
-充值对接（支付宝 Vibe Pay）。账本本身已经能用，手动加积分的流程今天就可以收款。
+桌面客户端不需要变成网页应用：它只用浏览器打开 `/pay/{order_id}`，那一页由本服务渲染
+支付宝签名好的表单。**付款成功以验签通知或 `alipay.trade.query` 为准**，同步回跳不算数。
+
+| 文件 | 作用 |
+| --- | --- |
+| `alipay.py` | 下单表单（`page_execute`）/ 通知验签 / 查单 / 退款 / 退款查询 / 关单 |
+| `payments.py` | 价格挡位、订单、付款页、`/v1/pay/notify`、`/v1/pay/return`、状态端点 |
+| `store.py` | `orders` 表 + `mark_order_paid`（幂等入账） |
+
+配置读 `/etc/checkpause/env`：
+
+```
+AIPAY_APP_ID / AIPAY_PRIVATE_PKCS_KEY / AIPAY_ALIPAY_PUBLIC_KEY / AIPAY_GATEWAY
+AIPAY_NOTIFY_URL / AIPAY_RETURN_URL / AIPAY_SELLER_ID   # 都可留空
+```
+
+- **`AIPAY_PRIVATE_PKCS_KEY` 必须是 PKCS#1（控制台标"非 JAVA 语言私钥"）**；
+  塞 Java 的 PKCS#8 会在签名时报 `int() argument must be ... not 'Sequence'`
+- 没有公网 HTTPS 时**省略** `notify_url`（不要传占位 URL），靠交易查询兜底
+- 沙箱网关 `https://openapi-sandbox.dl.alipaydev.com/gateway.do`，
+  生产 `https://openapi.alipay.com/gateway.do`
+
+**2026-09-18 生产真付一笔 ¥1 成功入账**（交易号 `2026091822001471611438397651`）。
+剩下的只是补公网 HTTPS `notify_url`，让到账更即时。
+
+开单（客户端发版前用这个收款，比手动加积分好）：
+
+```bash
+.venv/bin/python -m server.admin open-order <用户名> <元>
+```
