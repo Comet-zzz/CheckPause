@@ -1,15 +1,51 @@
 # v1.7.2 – Icon Fix
 
-> **修复应用图标显示为 Python 默认图标的问题。** 新版本 1.7.1 在安装后图标显示异常，点一下几乎立刻出结果，不再干等国内连不上的镜像。
+> **修复安装后应用图标显示为 Python 默认图标的问题。** 1.7.2 修复了 Windows 应用启动图标以及开始菜单、桌面快捷方式图标。
+>
+> **Fixes the issue where the installed Windows application showed the default Python icon.** Version 1.7.2 fixes the application icon and the icons used by Start Menu and desktop shortcuts.
+>
+> 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
+>
+> A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
 
 ---
 
 ## 🎯 What's Changed
 
-### 图标修复
-- 在 `run_gui.py` 中 `QApplication` 創建後立即設置窗口图标，直接使用嵌入的 `.ico` 文件
-- `app_icon()` 添加對 SVG 渲染失敗的 Fallback，使用 `.ico` 文件
-- 修复 Inno Setup 安裝包中快捷方式图标路径 (`{app}\_internal\assets\app.ico`)
+### 🖥️ 应用图标修复
+- 启动时明确设置 CheckPause 应用图标。
+- SVG 图标加载失败时回退到内置 `app.ico`。
+- 修复开始菜单和桌面快捷方式使用的图标路径。
+- 安装包继续使用同一份应用图标资源。
+
+- The CheckPause application icon is set explicitly at startup.
+- SVG loading falls back to the bundled `app.ico` when necessary.
+- Start Menu and desktop shortcuts now use the correct icon path.
+- The installer uses the same icon resource as the application.
+
+---
+
+## 🛠️ Full Changelog
+- fix(icon): set the application icon explicitly at startup
+- fix(icon): fall back to the bundled ICO when SVG rendering fails
+- fix(installer): point shortcuts at the bundled application icon
+- chore(version): bump the app version to 1.7.2
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+- 已安装 1.7.1 的用户直接安装本版本即可修复图标显示问题。
+
+- No breaking changes.
+- Users on 1.7.1 can install this version directly to fix the icon display issue.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.7.1...v1.7.2
+
+SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 # v1.7.1 – Instant Update Checks
 
