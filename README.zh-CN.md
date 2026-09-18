@@ -2,7 +2,7 @@
 
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
-[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.1/CheckPause_Setup_1.7.1.exe)
+[![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -29,7 +29,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ### Windows 用户
 
-1. 从文末「下载」获取 `CheckPause_Setup_1.7.1.exe`；
+1. 从文末「下载」获取 `CheckPause_Setup_1.7.2.exe`；
 2. 双击运行安装包，按提示完成安装（无需管理员权限，可勾选创建桌面快捷方式）；
 3. 从桌面或开始菜单启动 CheckPause，首次使用会要求设置用户名和界面语言；
 4. 打开「设置 → API 设置...」填写 API Key（默认 DeepSeek，可改成任意 OpenAI 兼容接口）；
@@ -57,11 +57,11 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ## ⬇️ 下载
 
-**最新版：CheckPause v1.7.1（Windows x64）**
+**最新版：CheckPause v1.7.2（Windows x64）**
 
-- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_1.7.1.exe](http://43.108.99.244/download/CheckPause_Setup_1.7.1.exe) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
-- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.1/CheckPause_Setup_1.7.1.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
-- SHA-256：`D8A3BF0B864B1AC509F07B48B9A484EBCC97BBAD8726D92464C2CDA58EC84C19`（两个链接是同一个文件，哈希一致）
+- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_1.7.2.exe](http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
+- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
+- SHA-256：`AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`（两个链接是同一个文件，哈希一致）
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 

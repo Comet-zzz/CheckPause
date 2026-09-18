@@ -98,4 +98,9 @@ def app_icon():
         pixmap = _pixmap("app_icon", size)
         if pixmap is not None:
             icon.addPixmap(pixmap)
+    if icon.isNull():
+        # Fallback to the bundled ICO file if SVG rendering failed.
+        fallback = QIcon(resource_path("assets", "app.ico"))
+        if not fallback.isNull():
+            icon = fallback
     return icon
