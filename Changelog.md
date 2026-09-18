@@ -1,3 +1,50 @@
+# v1.7.1 – Instant Update Checks
+
+> **「检查更新」不再卡几秒**：以前要排队等两个 GitHub 镜像，其中一个在国内经常连不上，于是每次都要干等超时。现在改成同时问，并且优先问我们自己的服务器，点一下几乎立刻出结果。
+>
+> 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
+
+> **"Check for updates" no longer stalls.** The old code asked two GitHub mirrors one after another, and one of them is frequently unreachable from mainland China, so every check paid its timeout. Now they are queried at the same time and our own server is asked first, so the answer shows up right away.
+>
+> A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
+
+---
+
+## 🎯 What's Changed
+
+### ⚡ 检查更新更快
+- 两个 GitHub 镜像改成**同时**请求，耗时从"两个相加"变成"取最慢的那个"。
+- 新增**自家服务器**作为第一来源（`http://43.108.99.244/version.json`）：国内访问快，而且读的是磁盘文件，没有 CDN 缓存会藏版本。
+- 手动点「检查更新」时**只信主源**，答了就弹窗；主源连不上才退回 GitHub。
+- 开机后台那次检查仍然三个源都问、取版本号最高的 —— 它是发现"主源变旧"的保险。
+- The two GitHub mirrors are now queried **concurrently**, so the wait is the slowest mirror instead of their sum.
+- A **primary mirror on our own server** is consulted first: fast from China, and read straight from disk, so no CDN cache can hide a release.
+- A manual check **trusts the primary** and shows the result as soon as it answers; the GitHub mirrors are only a fallback when the server is unreachable.
+- The launch-time background check still compares all three mirrors and keeps the highest version.
+
+### 🖥 服务器
+- nginx 新增 `/version.json`，由 `checkpause-version-refresh.timer` 每 2 分钟从仓库刷新（原子替换，失败保留旧文件）。
+- nginx serves `/version.json`, refreshed from the repository every 2 minutes by `checkpause-version-refresh.timer`.
+
+---
+
+## 📜 Full Changelog
+- fix(update): query every mirror at once instead of one after another
+- feat(update): check our own server first so a manual check answers at once
+- feat(server): mirror the version manifest from our own box
+- chore(version): bump the app version to 1.7.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+- No breaking changes.
+- ⚠️ 服务器需重新部署（`git pull` + `install.sh`）后主源才会存在；已经装了 1.7.0 的用户要更新到本版本，才能享受到"点了就弹"。
+- ⚠️ The server must be redeployed (`git pull` + `install.sh`) for the primary mirror to exist, and users still on 1.7.0 need this release to get the instant check.
+
+---
+
 # v1.7.0 – Cloud Coaching
 
 > 新增**云端讲解**：不用自己填 API Key，注册一个账号、充点 CP积分就能用。云端用的是服务器上持续调教的提示词。
