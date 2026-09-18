@@ -9,23 +9,36 @@ None instead of raising, so being offline simply means "no update found".
 """
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib import request
 
 from checkpause import APP_VERSION, GITHUB_URL
+from checkpause.data.settings import DEFAULT_SERVER_URL
 
 _REPO = GITHUB_URL.removeprefix("https://github.com/").strip("/")
 
-# Every mirror is consulted and the highest version wins. jsDelivr caches
-# branch URLs for many hours, so trusting whichever mirror answered first let a
-# stale copy hide a new release; raw.githubusercontent is authoritative but is
-# frequently unreachable from mainland China, which is why both are needed.
-MANIFEST_URLS = (
+# The project's own server is asked first. It is fast from mainland China and
+# serves the manifest straight from disk, with no cache that can hide a
+# release, so its answer is trustworthy on its own.
+PRIMARY_MANIFEST_URLS = (f"{DEFAULT_SERVER_URL}/version.json",)
+
+# The GitHub mirrors stay as fallbacks for the day the server is unreachable.
+# jsDelivr caches branch URLs for many hours, so trusting whichever mirror
+# answered first let a stale copy hide a new release; raw.githubusercontent is
+# authoritative but is frequently unreachable from mainland China. The
+# thorough check consults all three and keeps the highest version, which is
+# what catches a primary copy that has gone stale.
+FALLBACK_MANIFEST_URLS = (
     f"https://cdn.jsdelivr.net/gh/{_REPO}@main/version.json",
     f"https://raw.githubusercontent.com/{_REPO}/main/version.json",
 )
 
-REQUEST_TIMEOUT = 6.0
+MANIFEST_URLS = PRIMARY_MANIFEST_URLS + FALLBACK_MANIFEST_URLS
+
+# A tiny JSON manifest never legitimately needs longer; this only bounds the
+# wait for a mirror that is unreachable or black-holed.
+REQUEST_TIMEOUT = 4.0
 
 
 @dataclass(frozen=True)
@@ -65,18 +78,27 @@ def _default_opener(url):
         return response.read()
 
 
-def fetch_manifests(opener=None):
-    """Return every manifest that answered, in mirror order."""
+def _fetch_manifest(url, fetch):
+    """Return this mirror's manifest, or None when it cannot be used."""
+    try:
+        payload = json.loads(fetch(url).decode("utf-8"))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def fetch_manifests(opener=None, urls=MANIFEST_URLS):
+    """Return every manifest that answered, in the order the URLs were given.
+
+    Mirrors are queried at the same time: fetching them one after another made
+    the user wait for each mirror's timeout in turn, so a blocked raw.github
+    added its whole timeout to every check even though jsDelivr had already
+    answered.
+    """
     fetch = opener or _default_opener
-    manifests = []
-    for url in MANIFEST_URLS:
-        try:
-            payload = json.loads(fetch(url).decode("utf-8"))
-        except Exception:
-            continue
-        if isinstance(payload, dict):
-            manifests.append(payload)
-    return manifests
+    with ThreadPoolExecutor(max_workers=max(1, len(urls))) as pool:
+        manifests = pool.map(lambda url: _fetch_manifest(url, fetch), urls)
+    return [manifest for manifest in manifests if manifest is not None]
 
 
 def _manifest_to_info(manifest, current):
@@ -92,19 +114,8 @@ def _manifest_to_info(manifest, current):
     )
 
 
-def check_for_update(current=APP_VERSION, opener=None, strict=False):
-    """Return the newest release any mirror knows about, otherwise None.
-
-    Failures are silent by default; strict mode raises UpdateCheckError when no
-    mirror answers, which manual checks use to tell being offline apart from
-    being up to date.
-    """
-    manifests = fetch_manifests(opener)
-    if not manifests:
-        if strict:
-            raise UpdateCheckError("no manifest could be fetched")
-        return None
-
+def _best_info(manifests, current):
+    """The newest usable update across every manifest, or None."""
     best = None
     for manifest in manifests:
         info = _manifest_to_info(manifest, current)
@@ -113,3 +124,28 @@ def check_for_update(current=APP_VERSION, opener=None, strict=False):
         if best is None or is_newer(info.version, best.version):
             best = info
     return best
+
+
+def check_for_update(current=APP_VERSION, opener=None, strict=False, quick=False):
+    """Return the newest release any mirror knows about, otherwise None.
+
+    Failures are silent by default; strict mode raises UpdateCheckError when no
+    mirror answers, which manual checks use to tell being offline apart from
+    being up to date.
+
+    ``quick`` makes a manual check feel instant by trusting the project's own
+    server on its own and never waiting for the GitHub fallbacks to confirm an
+    "already up to date" answer. Those fallbacks are consulted only when the
+    server itself is unreachable. The background check stays thorough and
+    compares every mirror, which is what notices a primary copy gone stale.
+    """
+    manifests = fetch_manifests(
+        opener, PRIMARY_MANIFEST_URLS if quick else MANIFEST_URLS
+    )
+    if quick and not manifests:
+        manifests = fetch_manifests(opener, FALLBACK_MANIFEST_URLS)
+    if not manifests:
+        if strict:
+            raise UpdateCheckError("no manifest could be fetched")
+        return None
+    return _best_info(manifests, current)
