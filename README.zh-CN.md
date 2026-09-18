@@ -3,6 +3,8 @@
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
 [![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
+[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-arm64.dmg)
+[![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-x86_64.dmg)
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -70,7 +72,13 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
 - SHA-256：`AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`（两个链接是同一个文件，哈希一致）
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
-- **macOS**：从 [Releases](https://github.com/Comet-zzz/CheckPause/releases) 页下载 `.dmg`（`macos-arm64` 对应 Apple Silicon，`macos-x86_64` 对应 Intel），拖入「应用程序」；未签名，首次打开请右键 → 打开。
+
+**macOS 最新版：CheckPause v1.7.2**
+
+- 🚀 **国内加速下载（推荐）**：[Apple Silicon（M 系列）](http://43.108.99.244/download/CheckPause-1.7.2-macos-arm64.dmg)（131.8 MB）｜[Intel](http://43.108.99.244/download/CheckPause-1.7.2-macos-x86_64.dmg)（56.6 MB）
+- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/tag/v1.7.2)（发布页上有两个 `.dmg`）
+- SHA-256：Apple Silicon `6AF9E7EE680D5B7DA1069EC81ECEBAB393157683EA79A0F7E7035A55FD25E565`，Intel `E899195198C5F74D916C7D233AB69FB1EC2FF10109ECE6346512F13B60812155`
+- 打开 `.dmg`，把 CheckPause 拖进「应用程序」，首次打开请**右键点击图标 → 打开**（程序未签名、未公证）。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 
 ---
