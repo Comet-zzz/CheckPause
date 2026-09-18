@@ -252,14 +252,22 @@ class AccountWorker(QThread):
 
 
 class UpdateCheckWorker(QThread):
-    """Looks for a newer release; reports the result and never raises."""
+    """Looks for a newer release; reports the result and never raises.
+
+    A manual check passes ``quick`` so the dialog appears as soon as the
+    project's own server answers, instead of waiting on the GitHub mirrors.
+    """
 
     checked = Signal(object)
     failed = Signal()
 
+    def __init__(self, parent=None, quick=False):
+        super().__init__(parent)
+        self._quick = quick
+
     def run(self):
         try:
-            info = check_for_update(strict=True)
+            info = check_for_update(strict=True, quick=self._quick)
         except Exception:
             self.failed.emit()
             return

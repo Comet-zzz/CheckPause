@@ -151,7 +151,10 @@ class MainWindow(QMainWindow):
             return
         if not manual:
             self._update_manual = False
-        worker = UpdateCheckWorker(self)
+        # A manual check trusts the primary mirror and returns at once; the
+        # launch-time background check stays thorough and compares every
+        # mirror, which is what catches a stale primary copy.
+        worker = UpdateCheckWorker(self, quick=manual)
         worker.checked.connect(self._on_update_checked)
         worker.failed.connect(self._on_update_failed)
         self._update_worker = worker

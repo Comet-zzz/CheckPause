@@ -2,7 +2,9 @@ import json
 import unittest
 
 from checkpause.core.updater import (
+    FALLBACK_MANIFEST_URLS,
     MANIFEST_URLS,
+    PRIMARY_MANIFEST_URLS,
     UpdateCheckError,
     UpdateInfo,
     check_for_update,
@@ -102,7 +104,8 @@ class CheckForUpdateTests(unittest.TestCase):
             }
         )
         self.assertIsNotNone(check_for_update(current="1.5.0", opener=opener))
-        self.assertEqual(opener.calls, list(MANIFEST_URLS))
+        # Mirrors are fetched concurrently, so only the set is deterministic.
+        self.assertEqual(sorted(opener.calls), sorted(MANIFEST_URLS))
 
     def test_prefers_the_newer_manifest_when_a_mirror_is_stale(self):
         # The bug behind v1.6.1: jsDelivr served a cached manifest two versions
@@ -182,6 +185,80 @@ class CheckForUpdateTests(unittest.TestCase):
         self.assertIsNone(
             check_for_update(current="1.5.0", opener=opener, strict=True)
         )
+
+
+class QuickCheckTests(unittest.TestCase):
+    """A manual check trusts the project's own server and must not wait on GitHub."""
+
+    def test_the_primary_mirror_comes_first(self):
+        self.assertEqual(MANIFEST_URLS[0], PRIMARY_MANIFEST_URLS[0])
+        self.assertEqual(
+            list(MANIFEST_URLS),
+            list(PRIMARY_MANIFEST_URLS) + list(FALLBACK_MANIFEST_URLS),
+        )
+
+    def test_quick_answers_from_the_primary_and_skips_the_fallbacks(self):
+        opener = FakeOpener(
+            {
+                PRIMARY_MANIFEST_URLS[0]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                },
+                FALLBACK_MANIFEST_URLS[0]: {
+                    "latest": "1.7.0",
+                    "url": "https://example.com/setup-1.7.0.exe",
+                },
+                FALLBACK_MANIFEST_URLS[1]: OSError("blocked"),
+            }
+        )
+        info = check_for_update(current="1.5.0", opener=opener, quick=True)
+        self.assertEqual(info.version, "1.6.0")
+        # The slow fallbacks were never even asked.
+        self.assertEqual(opener.calls, [PRIMARY_MANIFEST_URLS[0]])
+
+    def test_quick_falls_back_when_the_primary_is_down(self):
+        opener = FakeOpener(
+            {
+                PRIMARY_MANIFEST_URLS[0]: OSError("down"),
+                FALLBACK_MANIFEST_URLS[0]: OSError("blocked"),
+                FALLBACK_MANIFEST_URLS[1]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                },
+            }
+        )
+        info = check_for_update(current="1.5.0", opener=opener, quick=True)
+        self.assertEqual(info.version, "1.6.0")
+        self.assertEqual(sorted(opener.calls), sorted(MANIFEST_URLS))
+
+    def test_quick_trusts_the_primary_up_to_date_answer(self):
+        # This is the whole point of quick mode: "you are current" is answered
+        # by the uncached primary instead of waiting for the fallbacks. The
+        # thorough check still catches a primary whose copy went stale.
+        opener = FakeOpener(
+            {
+                PRIMARY_MANIFEST_URLS[0]: {
+                    "latest": "1.5.0",
+                    "url": "https://example.com/setup-1.5.0.exe",
+                },
+                FALLBACK_MANIFEST_URLS[0]: {
+                    "latest": "1.6.0",
+                    "url": "https://example.com/setup-1.6.0.exe",
+                },
+                FALLBACK_MANIFEST_URLS[1]: OSError("blocked"),
+            }
+        )
+        self.assertIsNone(
+            check_for_update(current="1.5.0", opener=opener, quick=True)
+        )
+        self.assertEqual(
+            check_for_update(current="1.5.0", opener=opener).version, "1.6.0"
+        )
+
+    def test_quick_still_raises_in_strict_mode_when_nothing_answers(self):
+        opener = FakeOpener(OSError("offline"))
+        with self.assertRaises(UpdateCheckError):
+            check_for_update(current="1.5.0", opener=opener, strict=True, quick=True)
 
 
 if __name__ == "__main__":
