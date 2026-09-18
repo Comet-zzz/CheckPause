@@ -3,8 +3,8 @@
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
 [![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-arm64.dmg)
-[![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-x86_64.dmg)
+[![macOS M-series](https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-M-series.dmg)
+[![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-Intel.dmg)
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
@@ -41,7 +41,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### macOS users
 
-1. Download the `.dmg` for your chip from the [Releases](https://github.com/Comet-zzz/CheckPause/releases) page (`macos-arm64` for Apple Silicon, `macos-x86_64` for Intel).
+1. Download the `.dmg` for your chip from the [Releases](https://github.com/Comet-zzz/CheckPause/releases) page (`M-series` for Apple Silicon, `Intel` for Intel Macs).
 2. Open the `.dmg` and drag CheckPause into Applications.
 3. The build is unsigned and not notarized. On first launch, **right-click the icon → Open**, or allow it under System Settings → Privacy & Security → Open Anyway.
 4. From there the steps match Windows (set an API key, import a PGN, start analysis).
@@ -75,7 +75,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 **Latest: CheckPause v1.7.2 (macOS)**
 
-- 🚀 **Fast mirror (recommended in China)**: [Apple Silicon (M series)](http://43.108.99.244/download/CheckPause-1.7.2-macos-arm64.dmg) (131.8 MB) · [Intel](http://43.108.99.244/download/CheckPause-1.7.2-macos-x86_64.dmg) (56.6 MB)
+- 🚀 **Fast mirror (recommended in China)**: [M-series](http://43.108.99.244/download/CheckPause-1.7.2-macOS-M-series.dmg) (131.8 MB) · [Intel](http://43.108.99.244/download/CheckPause-1.7.2-macOS-Intel.dmg) (56.6 MB)
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v1.7.2) (both `.dmg` files on the release page)
 - SHA-256: arm64 `6AF9E7EE680D5B7DA1069EC81ECEBAB393157683EA79A0F7E7035A55FD25E565`, Intel `E899195198C5F74D916C7D233AB69FB1EC2FF10109ECE6346512F13B60812155`
 - Open the `.dmg`, drag CheckPause into Applications, then **right-click the icon → Open** the first time (the build is unsigned and not notarized).

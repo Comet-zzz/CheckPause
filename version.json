@@ -3,8 +3,8 @@
   "url": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
   "urls": {
     "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.7.2-macos-arm64.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.7.2-macos-x86_64.dmg"
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.7.2-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.7.2-macOS-Intel.dmg"
   },
   "notes": "修复应用图标显示为 Python 默认图标的问题。"
 }

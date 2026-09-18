@@ -16,9 +16,9 @@ jobs:
       matrix:
         include:
           - runner: macos-14
-            arch: arm64
+            label: M-series
           - runner: macos-15-intel
-            arch: x86_64
+            label: Intel
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -80,7 +80,7 @@ jobs:
         id: dmg
         run: |
           set -euo pipefail
-          name="CheckPause-${{ steps.version.outputs.value }}-macos-${{ matrix.arch }}"
+          name="CheckPause-${{ steps.version.outputs.value }}-macOS-${{ matrix.label }}"
           stage="$(mktemp -d)"
           cp -R dist/CheckPause.app "$stage/"
           ln -s /Applications "$stage/Applications"
@@ -90,7 +90,7 @@ jobs:
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CheckPause-macos-${{ matrix.arch }}
+          name: CheckPause-macOS-${{ matrix.label }}
           path: ${{ steps.dmg.outputs.path }}
           if-no-files-found: error
 
