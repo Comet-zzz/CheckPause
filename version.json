@@ -1,5 +1,8 @@
 {
   "latest": "1.7.2",
   "url": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
+  "urls": {
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe"
+  },
   "notes": "修复应用图标显示为 Python 默认图标的问题。"
 }

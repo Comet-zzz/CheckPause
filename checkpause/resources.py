@@ -28,7 +28,14 @@ def _stockfish_candidates():
     yield resource_path(*STOCKFISH_RELATIVE)
 
     if getattr(sys, "frozen", False):
-        yield os.path.join(os.path.dirname(sys.executable), *STOCKFISH_RELATIVE)
+        executable_dir = os.path.dirname(sys.executable)
+        yield os.path.join(executable_dir, *STOCKFISH_RELATIVE)
+        if sys.platform == "darwin":
+            # A .app bundle keeps collected data under Contents/Frameworks
+            # (what _MEIPASS points at); Resources is the fallback layout.
+            contents_dir = os.path.dirname(executable_dir)
+            yield os.path.join(contents_dir, "Resources", *STOCKFISH_RELATIVE)
+            yield os.path.join(contents_dir, "Frameworks", *STOCKFISH_RELATIVE)
 
     yield os.path.join(BASE_DIR, *STOCKFISH_RELATIVE)
 

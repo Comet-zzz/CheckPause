@@ -1,2 +1,3 @@
 pyinstaller
+pillow  # tools/make_icns.py (regenerating assets/app.icns)
 zstandard  # tools/build_puzzles.py (regenerating the bundled sample)

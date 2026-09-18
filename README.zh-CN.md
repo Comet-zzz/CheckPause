@@ -37,12 +37,19 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 > 没有配置 API 也能正常分析和看棋，只是 AI 对话不可用。
 
+### macOS 用户
+
+1. 从 [Releases](https://github.com/Comet-zzz/CheckPause/releases) 页下载对应芯片的 `.dmg`（Apple Silicon 用 `macos-arm64`，Intel 用 `macos-x86_64`）；
+2. 打开 `.dmg`，把 CheckPause 拖进「应用程序」；
+3. 程序未签名/未公证，首次打开请**右键点击图标 → 打开**，或到「系统设置 → 隐私与安全性」点「仍要打开」；
+4. 之后的使用步骤与 Windows 相同（设置 API Key、导入 PGN、开始分析）。
+
 ---
 
 ## ⚙️ 配置与数据
 
 - 应用内「设置 → API 设置...」可配置 **API Key**、**接口地址（Base URL）** 与 **模型名称**；默认 `https://api.deepseek.com` + `deepseek-flash`，留空自动回退默认值。
-- 用户数据保存在 `%APPDATA%\CheckPause\`：`profile.json`（用户名、语言、主题、外观、历史记录）与 `settings.json`（API 配置），旧版一并迁移。
+- 用户数据：Windows 在 `%APPDATA%\CheckPause\`，macOS 在 `~/Library/Application Support/CheckPause/`，内含 `profile.json`（用户名、语言、主题、外观、历史记录）与 `settings.json`（API 配置），旧版一并迁移。
 
 ---
 
@@ -63,6 +70,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)（114.5 MB，已内置 Stockfish、开局库、棋子资源与 Lichess 精选题集）
 - SHA-256：`AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`（两个链接是同一个文件，哈希一致）
 - 双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
+- **macOS**：从 [Releases](https://github.com/Comet-zzz/CheckPause/releases) 页下载 `.dmg`（`macos-arm64` 对应 Apple Silicon，`macos-x86_64` 对应 Intel），拖入「应用程序」；未签名，首次打开请右键 → 打开。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 
 ---

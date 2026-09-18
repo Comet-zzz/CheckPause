@@ -10,6 +10,7 @@ from checkpause.core.updater import (
     check_for_update,
     is_newer,
     parse_version,
+    platform_key,
 )
 
 
@@ -259,6 +260,89 @@ class QuickCheckTests(unittest.TestCase):
         opener = FakeOpener(OSError("offline"))
         with self.assertRaises(UpdateCheckError):
             check_for_update(current="1.5.0", opener=opener, strict=True, quick=True)
+
+
+class PlatformKeyTests(unittest.TestCase):
+    def test_windows_maps_to_x86_64_and_arm64(self):
+        self.assertEqual(platform_key("win32", "AMD64"), "windows-x86_64")
+        self.assertEqual(platform_key("win32", "ARM64"), "windows-arm64")
+
+    def test_macos_maps_to_x86_64_and_arm64(self):
+        self.assertEqual(platform_key("darwin", "x86_64"), "macos-x86_64")
+        self.assertEqual(platform_key("darwin", "arm64"), "macos-arm64")
+
+
+class PlatformDownloadTests(unittest.TestCase):
+    """One manifest must be able to serve Windows and macOS at once."""
+
+    def _manifest(self):
+        return {
+            "latest": "1.7.3",
+            "url": "https://example.com/CheckPause_Setup_1.7.3.exe",
+            "urls": {
+                "windows-x86_64": "https://example.com/CheckPause_Setup_1.7.3.exe",
+                "macos-arm64": "https://example.com/CheckPause-1.7.3-arm64.dmg",
+                "macos-x86_64": "https://example.com/CheckPause-1.7.3-x64.dmg",
+            },
+        }
+
+    def test_macos_gets_the_disk_image(self):
+        opener = FakeOpener(self._manifest())
+        info = check_for_update(current="1.7.2", opener=opener, key="macos-arm64")
+        self.assertEqual(info.url, "https://example.com/CheckPause-1.7.3-arm64.dmg")
+
+    def test_windows_gets_the_installer(self):
+        opener = FakeOpener(self._manifest())
+        info = check_for_update(
+            current="1.7.2", opener=opener, key="windows-x86_64"
+        )
+        self.assertEqual(
+            info.url, "https://example.com/CheckPause_Setup_1.7.3.exe"
+        )
+
+    def test_macos_stays_quiet_for_a_legacy_url_only_manifest(self):
+        # The old manifest's single url is a Windows .exe; offering it to a
+        # macOS client would send the user to an unusable file.
+        opener = FakeOpener(
+            {"latest": "1.7.3", "url": "https://example.com/setup.exe"}
+        )
+        self.assertIsNone(
+            check_for_update(current="1.7.2", opener=opener, key="macos-arm64")
+        )
+
+    def test_windows_still_reads_a_legacy_url_only_manifest(self):
+        opener = FakeOpener(
+            {"latest": "1.7.3", "url": "https://example.com/setup.exe"}
+        )
+        info = check_for_update(
+            current="1.7.2", opener=opener, key="windows-x86_64"
+        )
+        self.assertEqual(info.url, "https://example.com/setup.exe")
+
+    def test_macos_stays_quiet_when_its_key_is_absent(self):
+        opener = FakeOpener(
+            {
+                "latest": "1.7.3",
+                "url": "https://example.com/setup.exe",
+                "urls": {"windows-x86_64": "https://example.com/setup.exe"},
+            }
+        )
+        self.assertIsNone(
+            check_for_update(current="1.7.2", opener=opener, key="macos-arm64")
+        )
+
+    def test_windows_falls_back_to_url_when_the_map_omits_it(self):
+        opener = FakeOpener(
+            {
+                "latest": "1.7.3",
+                "url": "https://example.com/setup.exe",
+                "urls": {"macos-arm64": "https://example.com/setup.dmg"},
+            }
+        )
+        info = check_for_update(
+            current="1.7.2", opener=opener, key="windows-x86_64"
+        )
+        self.assertEqual(info.url, "https://example.com/setup.exe")
 
 
 if __name__ == "__main__":
