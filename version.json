@@ -1,5 +1,5 @@
 {
-  "latest": "1.7.1",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.7.1.exe",
-  "notes": "检查更新更快了：点一下几乎立刻出结果，不再干等国内连不上的镜像。这是一次小更新，其他功能没有变化。"
+  "latest": "1.7.2",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
+  "notes": "修复应用图标显示为 Python 默认图标的问题。"
 }

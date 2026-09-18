@@ -1,3 +1,16 @@
+# v1.7.2 – Icon Fix
+
+> **修复应用图标显示为 Python 默认图标的问题。** 新版本 1.7.1 在安装后图标显示异常，点一下几乎立刻出结果，不再干等国内连不上的镜像。
+
+---
+
+## 🎯 What's Changed
+
+### 图标修复
+- 在 `run_gui.py` 中 `QApplication` 創建後立即設置窗口图标，直接使用嵌入的 `.ico` 文件
+- `app_icon()` 添加對 SVG 渲染失敗的 Fallback，使用 `.ico` 文件
+- 修复 Inno Setup 安裝包中快捷方式图标路径 (`{app}\_internal\assets\app.ico`)
+
 # v1.7.1 – Instant Update Checks
 
 > **「检查更新」不再卡几秒**：以前要排队等两个 GitHub 镜像，其中一个在国内经常连不上，于是每次都要干等超时。现在改成同时问，并且优先问我们自己的服务器，点一下几乎立刻出结果。
