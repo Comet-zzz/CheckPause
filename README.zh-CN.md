@@ -3,8 +3,8 @@
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
 [![downloads](https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=downloads&color=blue)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause_Setup_1.7.2.exe)
-[![macOS Apple Silicon](https://img.shields.io/badge/macOS-Apple%20Silicon-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-arm64.dmg)
-[![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macos-x86_64.dmg)
+[![macOS M-series](https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-M-series.dmg)
+[![macOS Intel](https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/Comet-zzz/CheckPause/releases/download/v1.7.2/CheckPause-1.7.2-macOS-Intel.dmg)
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -41,7 +41,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ### macOS 用户
 
-1. 从 [Releases](https://github.com/Comet-zzz/CheckPause/releases) 页下载对应芯片的 `.dmg`（Apple Silicon 用 `macos-arm64`，Intel 用 `macos-x86_64`）；
+1. 从 [Releases](https://github.com/Comet-zzz/CheckPause/releases) 页下载对应芯片的 `.dmg`（M 系列选 `M-series`，Intel 选 `Intel`）；
 2. 打开 `.dmg`，把 CheckPause 拖进「应用程序」；
 3. 程序未签名/未公证，首次打开请**右键点击图标 → 打开**，或到「系统设置 → 隐私与安全性」点「仍要打开」；
 4. 之后的使用步骤与 Windows 相同（设置 API Key、导入 PGN、开始分析）。
@@ -75,7 +75,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 **macOS 最新版：CheckPause v1.7.2**
 
-- 🚀 **国内加速下载（推荐）**：[Apple Silicon（M 系列）](http://43.108.99.244/download/CheckPause-1.7.2-macos-arm64.dmg)（131.8 MB）｜[Intel](http://43.108.99.244/download/CheckPause-1.7.2-macos-x86_64.dmg)（56.6 MB）
+- 🚀 **国内加速下载（推荐）**：[M 系列](http://43.108.99.244/download/CheckPause-1.7.2-macOS-M-series.dmg)（131.8 MB）｜[Intel](http://43.108.99.244/download/CheckPause-1.7.2-macOS-Intel.dmg)（56.6 MB）
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/tag/v1.7.2)（发布页上有两个 `.dmg`）
 - SHA-256：Apple Silicon `6AF9E7EE680D5B7DA1069EC81ECEBAB393157683EA79A0F7E7035A55FD25E565`，Intel `E899195198C5F74D916C7D233AB69FB1EC2FF10109ECE6346512F13B60812155`
 - 打开 `.dmg`，把 CheckPause 拖进「应用程序」，首次打开请**右键点击图标 → 打开**（程序未签名、未公证）。
