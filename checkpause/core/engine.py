@@ -70,9 +70,12 @@ class StockfishAnalyzer:
 
     def analyze(self, pgn_text, language="zh-CN", on_progress=None,
                 on_move=None, should_stop=None):
-        board = chess.Board()
         game = chess.pgn.read_game(io.StringIO(pgn_text))
         if game is None:
+            return None, t("pgn_invalid", language), None
+        try:
+            board = game.board()
+        except ValueError:
             return None, t("pgn_invalid", language), None
         moves = list(game.mainline_moves())
         total_moves = len(moves)
@@ -93,13 +96,8 @@ class StockfishAnalyzer:
 
                 san = board.san(move)
 
-                if idx % 2 == 1:
-                    turn = (idx + 1) // 2
-                    color = "White"
-                else:
-                    turn = idx // 2
-                    color = "Black"
-                turn_desc = f"Turn {turn} {color}"
+                color = "White" if board.turn == chess.WHITE else "Black"
+                turn_desc = f"Turn {board.fullmove_number} {color}"
 
                 is_book = (
                     book_active

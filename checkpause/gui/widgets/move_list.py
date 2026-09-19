@@ -24,6 +24,8 @@ class MoveListWidget(QWidget):
         self._theme = "light"
         self._ply_count = 0
         self._current = 0
+        self._offset = 0
+        self._first_number = 1
 
         self._table = QTableWidget(0, 3)
         self._table.setHorizontalHeaderLabels(["#", "W", "B"])
@@ -47,7 +49,8 @@ class MoveListWidget(QWidget):
         game = chess.pgn.read_game(io.StringIO(pgn_text))
         if game is None:
             return False
-        board = game.board()
+        start = game.board()
+        board = start.copy()
         sans = []
         for move in game.mainline_moves():
             sans.append(board.san(move))
@@ -55,15 +58,18 @@ class MoveListWidget(QWidget):
         if not sans:
             return False
 
+        self._offset = 0 if start.turn == chess.WHITE else 1
+        self._first_number = start.fullmove_number
         self._ply_count = len(sans)
-        rows = (self._ply_count + 1) // 2
+        rows = (self._ply_count + 1 + self._offset) // 2
         self._table.clearContents()
         self._table.setRowCount(rows)
         for ply, san in enumerate(sans, start=1):
-            row = (ply - 1) // 2
-            col = 1 if ply % 2 == 1 else 2
-            if col == 1:
-                number = QTableWidgetItem(f"{row + 1}.")
+            index = ply - 1 + self._offset
+            row = index // 2
+            col = 1 if index % 2 == 0 else 2
+            if col == 1 or row == 0:
+                number = QTableWidgetItem(f"{self._first_number + row}.")
                 number.setTextAlignment(
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
                 )
@@ -83,6 +89,8 @@ class MoveListWidget(QWidget):
         self._table.setRowCount(0)
         self._ply_count = 0
         self._current = 0
+        self._offset = 0
+        self._first_number = 1
 
     def set_current_ply(self, ply):
         self._current = ply
@@ -100,8 +108,9 @@ class MoveListWidget(QWidget):
     def _item_for_ply(self, ply):
         if ply <= 0 or ply > self._ply_count:
             return None
-        row = (ply - 1) // 2
-        col = 1 if ply % 2 == 1 else 2
+        index = ply - 1 + self._offset
+        row = index // 2
+        col = 1 if index % 2 == 0 else 2
         return self._table.item(row, col)
 
     def _highlight_color(self):
@@ -125,8 +134,9 @@ class MoveListWidget(QWidget):
 
     def _on_click(self, row, col):
         if col == 0:
-            ply = row * 2 + 1
+            index = row * 2
         else:
-            ply = row * 2 + (1 if col == 1 else 2)
+            index = row * 2 + (0 if col == 1 else 1)
+        ply = index + 1 - self._offset
         if 1 <= ply <= self._ply_count:
             self.ply_selected.emit(ply)

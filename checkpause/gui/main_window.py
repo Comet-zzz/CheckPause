@@ -1,3 +1,4 @@
+import chess
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
@@ -204,6 +205,11 @@ class MainWindow(QMainWindow):
 
     def _build_analysis_view(self):
         self.board = BoardWidget()
+        self.board.set_edit_available(True)
+        self.board.set_interactive(True, None)
+        self.board.move_requested.connect(self._on_analysis_move_requested)
+        self.board.line_changed.connect(self._on_line_changed)
+        self.board.position_applied.connect(self._on_position_applied)
 
         self.analysis_page = AnalysisPage()
         self.chat_page = ChatPage()
@@ -427,6 +433,9 @@ class MainWindow(QMainWindow):
     def _start_analysis(self, pgn):
         if self._analysis_worker and self._analysis_worker.isRunning():
             return
+        if self.board.is_editing():
+            self.analysis_page.set_status(t("edit_finish_first", self._language))
+            return
         ok, err = self.board.load_pgn(pgn)
         if not ok:
             self.analysis_page.set_status(
@@ -437,6 +446,8 @@ class MainWindow(QMainWindow):
         self._current_pgn = pgn
         self._results = []
         self.board.set_results([])
+        self.board.set_interactive(False)
+        self.board.set_edit_enabled(False)
         self.analysis_page.show_moves(pgn)
         self.analysis_page.set_accuracy(None)
         self.analysis_page.set_progress(0)
@@ -464,6 +475,38 @@ class MainWindow(QMainWindow):
             t("status_analyzing", self._language, percent=percent)
         )
         self.board.goto(index)
+
+    def _on_analysis_move_requested(self, from_square, to_square):
+        if self._analysis_worker is not None:
+            return
+        self.board.play_move(from_square, to_square)
+
+    def _on_line_changed(self, replaced):
+        if replaced:
+            self._clear_analysis_results()
+        self._refresh_analysis_line(
+            t("status_line_changed", self._language)
+        )
+
+    def _on_position_applied(self, fen):
+        self._clear_analysis_results()
+        self._refresh_analysis_line(
+            t("status_position_applied", self._language), show_moves=False
+        )
+
+    def _clear_analysis_results(self):
+        self._results = []
+        self.board.set_results([])
+        self.analysis_page.set_accuracy(None)
+        self.analysis_page.set_progress(0)
+
+    def _refresh_analysis_line(self, status=None, show_moves=True):
+        self._current_pgn = self.board.line_pgn()
+        self.analysis_page.set_pgn(self._current_pgn)
+        if show_moves:
+            self.analysis_page.show_moves(self._current_pgn)
+        if status is not None:
+            self.analysis_page.set_status(status)
 
     def _on_analysis_done(self, results, accuracy):
         self._results = results
@@ -499,6 +542,8 @@ class MainWindow(QMainWindow):
 
     def _on_analysis_finished(self):
         self.analysis_page.set_busy(False)
+        self.board.set_interactive(True, None)
+        self.board.set_edit_enabled(True)
         worker = self._analysis_worker
         self._analysis_worker = None
         if worker is not None:
