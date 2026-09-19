@@ -81,6 +81,8 @@
 
 **Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.7.2...v1.8.0
 
+SHA-256: `978609890A2650B934DF66F7C7B1947BF6EF51327F6ABD3A5B4E48200C12B804`
+
 # v1.7.2 – Icon Fix
 
 > **修复安装后应用图标显示为 Python 默认图标的问题。** 1.7.2 修复了 Windows 应用启动图标以及开始菜单、桌面快捷方式图标。
