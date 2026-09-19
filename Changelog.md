@@ -1,10 +1,52 @@
-# Unreleased – macOS 支持
+# v1.8.0 – macOS and the Analysis Panel
 
-> **新增 macOS 版（Apple Silicon 与 Intel），功能与 Windows 版一致。** 通过 GitHub Actions 在 macOS runner 上打包，产出 `.dmg`；引擎使用 Stockfish 的 macOS universal 二进制。
+> **新增 macOS 版（Apple Silicon 与 Intel），分析工具升级为可编辑的分析面板。** macOS 版功能与 Windows 版一致，由 GitHub Actions 打包为 `.dmg`；分析面板新增走子动画与棋盘编辑，并支持从任意局面开始分析。
 >
-> **Adds a macOS build (Apple Silicon and Intel) with feature parity to Windows.** It is produced by GitHub Actions on macOS runners and shipped as a `.dmg`, bundling Stockfish's macOS universal binary.
+> **Adds a macOS build (Apple Silicon and Intel) and turns the analysis tool into an editable analysis panel.** The macOS build ships as a `.dmg` with feature parity to Windows; the analysis panel gains move animations and a board editor, and can analyze from any position.
 >
-> 未签名、未公证，首次打开需右键 → 打开。此改动不影响 Windows 版。
+> 未签名、未公证，首次打开需右键 → 打开。Windows 版的棋盘、分析、存档与两种 AI 模式均照旧。
+
+---
+
+## 🎯 What's Changed
+
+### 🍎 macOS 版
+- 新增 **macOS 版（Apple Silicon 与 Intel）**，功能与 Windows 版一致；通过 GitHub Actions 在 macOS runner 上打包，产出 `.dmg`。
+- 引擎使用 **Stockfish 的 macOS universal 二进制**，单个文件同时覆盖 M 系列与 Intel。
+- 用户数据保存在 `~/Library/Application Support/CheckPause/`（Windows 仍为 `%APPDATA%\CheckPause\`）。
+- 更新清单新增按平台区分的下载地址；macOS 客户端不会再被推送 `.exe`。
+
+- A **macOS build (Apple Silicon and Intel)** with feature parity to Windows, produced by GitHub Actions on macOS runners and shipped as a `.dmg`.
+- Bundles Stockfish's **macOS universal binary**, one file covering both M-series and Intel.
+- User data lives in `~/Library/Application Support/CheckPause/` on macOS (`%APPDATA%\CheckPause\` on Windows).
+- The update manifest now carries per-platform download URLs, so a macOS client is never offered a `.exe`.
+
+### ♟️ 分析面板：走子动画
+- 分析回放、上一步/下一步与棋步列表点击现在都有**平滑的走子动画**，与对弈、谜题两个模块一致。
+- 前进与后退都有动画：吃子淡入淡出、易位时车一起移动、退回升变时显示原来的兵。
+
+- Analysis playback, the prev/next buttons and the move list now **animate every move**, matching the play and puzzle modules.
+- Animations run in both directions: captures fade, castling carries the rook, and stepping back through a promotion shows the pawn again.
+
+### ✏️ 分析面板：棋盘编辑
+- 新增**编辑棋盘**按钮：棋子调色板与擦除；拖动可移动棋子，右键或拖出棋盘可删除。
+- 可设置**走子方、易位权、吃过路兵**（只列出当前局面下合法的吃过路兵格）。
+- **初始局面 / 清空棋盘 / 复制 FEN / 应用 / 取消**，应用后的局面成为新的分析起点。
+
+- A new **Edit board** mode with a piece palette and eraser; drag a piece to move it, right-click or drag it off the board to delete.
+- **Side to move, castling rights and en passant** can be set; only legal en passant squares are offered.
+- **Start position, clear board, copy FEN, apply and cancel**; the applied position becomes the new starting point for analysis.
+
+### 🧩 分析面板：自己走子、从任意局面分析
+- 可以直接在分析棋盘上**走棋**（双方、含升变），续在棋谱后面，或从任意一步**分支出新变化**；改写棋谱时会重置旧的分析结果。
+- 分析引擎现在识别 PGN 的 **`SetUp` / `FEN` 头**，编辑出来的局面（或自带 FEN 的棋谱）可以直接分析。
+- 棋步列表支持**黑方先走**的局面，列编号与手数正确。
+- 侧栏的「分析工具」改名为「面板」（英文界面 "Panel"），位置与功能不变。
+
+- You can **play moves on the analysis board itself** (both sides, promotions included), continuing the game or **branching from any move**; rewriting the line resets the previous results.
+- The engine now honours a PGN's **`SetUp` / `FEN` headers**, so edited positions (and games that carry a FEN) can be analyzed directly.
+- The move list handles positions where **Black moves first**, with the correct columns and move numbers.
+- The sidebar module "Analysis" is now labelled "Panel"; its position and contents are unchanged.
 
 ---
 
@@ -12,11 +54,32 @@
 - feat(macos): platform-aware Stockfish executable path
 - feat(macos): cross-platform PyInstaller spec with a `.app` bundle and `.icns` icon
 - feat(macos): GitHub Actions workflow building arm64 and x86_64 `.dmg` images
-- feat(updater): pick the download URL from the manifest's per-platform `urls` map
 - feat(macos): store user data in `~/Library/Application Support/CheckPause/`
+- feat(updater): pick the download URL from the manifest's per-platform `urls` map
 - fix(updater): never offer the Windows installer to a macOS client
+- feat(analysis): animate move navigation in both directions
+- feat(analysis): add a board editor with a piece palette, turn, castling and en passant
+- feat(analysis): play legal moves on the analysis board and branch the line
+- feat(engine): analyze from a PGN's `SetUp`/`FEN` starting position
+- feat(move-list): support positions where Black moves first
+- chore(i18n): call the analysis module "Panel"
+- chore(version): bump the app version to 1.8.0
 
 ---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。Windows 版的棋盘、引擎分析、存档与两种 AI 模式均保持原样。
+- macOS 包未签名、未公证，首次打开需右键 → 打开，或到「系统设置 → 隐私与安全性」点「仍要打开」。
+- 侧栏入口「分析工具」已改名为「面板」，位置不变。
+
+- No breaking changes. On Windows the board, engine analysis, saved games and both AI modes are unchanged.
+- The macOS build is unsigned and not notarized, so the first launch needs right-click → Open, or "Open Anyway" under System Settings → Privacy & Security.
+- The sidebar entry "Analysis" is now labelled "Panel"; its position is unchanged.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.7.2...v1.8.0
 
 # v1.7.2 – Icon Fix
 
