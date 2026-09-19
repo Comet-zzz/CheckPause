@@ -1,10 +1,10 @@
 {
-  "latest": "1.7.2",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
+  "latest": "1.8.0",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.0.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.7.2.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.7.2-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.7.2-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.0.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.0-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.0-macOS-Intel.dmg"
   },
-  "notes": "修复应用图标显示为 Python 默认图标的问题。"
+  "notes": "新增 macOS 版；分析面板新增走子动画与棋盘编辑，并支持从任意局面开始分析。"
 }
