@@ -73,6 +73,22 @@ QSlider::handle:horizontal {
 QSlider::handle:horizontal:hover {
     background-color: #2f6bbd;
 }
+#boardEditBar QToolButton {
+    background-color: #ffffff;
+    border: 1px solid #d6d9de;
+    border-radius: 4px;
+    padding: 1px;
+}
+#boardEditBar QToolButton:hover {
+    background-color: #eef1f5;
+}
+#boardEditBar QToolButton:checked {
+    background-color: #cfe0f7;
+    border-color: #3a7bd5;
+}
+#boardEditBar QLabel {
+    color: #4a4d52;
+}
 """
 
 DARK_STYLESHEET = """
@@ -236,6 +252,22 @@ QSlider::handle:horizontal {
 }
 QSlider::handle:horizontal:hover {
     background-color: #4a8ae0;
+}
+#boardEditBar QToolButton {
+    background-color: #d9dce1;
+    border: 1px solid #4a4a4a;
+    border-radius: 4px;
+    padding: 1px;
+}
+#boardEditBar QToolButton:hover {
+    background-color: #eef1f5;
+}
+#boardEditBar QToolButton:checked {
+    background-color: #9fc3ef;
+    border-color: #3a7bd5;
+}
+#boardEditBar QLabel {
+    color: #b8bbc0;
 }
 """
 

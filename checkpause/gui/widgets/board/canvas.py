@@ -36,6 +36,9 @@ class _BoardCanvas(QWidget):
 
     def mousePressEvent(self, event):
         owner = self._owner
+        if owner._editable:
+            self._edit_press(event)
+            return
         if not owner._interactive:
             return
         if event.button() == Qt.MouseButton.RightButton:
@@ -67,6 +70,9 @@ class _BoardCanvas(QWidget):
 
     def mouseMoveEvent(self, event):
         owner = self._owner
+        if owner._editable:
+            self._edit_move(event)
+            return
         if not owner._interactive:
             return
         pos = event.position()
@@ -100,6 +106,9 @@ class _BoardCanvas(QWidget):
 
     def mouseReleaseEvent(self, event):
         owner = self._owner
+        if owner._editable:
+            self._edit_release(event)
+            return
         if not owner._interactive:
             return
         if event.button() != Qt.MouseButton.LeftButton:
@@ -133,6 +142,69 @@ class _BoardCanvas(QWidget):
             self._reset_press()
         self._update_cursor(square)
 
+    def _edit_press(self, event):
+        owner = self._owner
+        square = self._square_at(event.position())
+        if event.button() == Qt.MouseButton.RightButton:
+            if square is not None:
+                owner.edit_remove(square)
+            return
+        if event.button() != Qt.MouseButton.LeftButton:
+            return
+        if square is None:
+            return
+        self._press_pos = event.position()
+        self._press_square = square
+        self._drag_square = square
+        self._dragging = False
+        self._hover_square = square
+        owner.clear_selection()
+        if owner.piece_at(square) is not None:
+            owner._selected = square
+        self.update()
+
+    def _edit_move(self, event):
+        pos = event.position()
+        if self._press_square is None:
+            square = self._square_at(pos)
+            if square != self._hover_square:
+                self._hover_square = square
+                self.update()
+            self._update_cursor(square)
+            return
+        if not self._dragging:
+            delta = pos - self._press_pos
+            if (
+                delta.x() * delta.x() + delta.y() * delta.y()
+                > DRAG_THRESHOLD * DRAG_THRESHOLD
+            ):
+                self._dragging = True
+                self._drag_pos = pos
+                self.setCursor(Qt.CursorShape.ClosedHandCursor)
+        if self._dragging:
+            self._drag_pos = pos
+            self._hover_square = self._square_at(pos)
+            self.update()
+
+    def _edit_release(self, event):
+        owner = self._owner
+        origin = self._drag_square
+        square = self._square_at(event.position())
+        dragged = self._dragging
+        self._dragging = False
+        self._drag_pos = None
+        self.setCursor(Qt.CursorShape.ArrowCursor)
+        self._reset_press()
+        if dragged:
+            if origin is not None:
+                if square is None:
+                    owner.edit_remove(origin)
+                elif square != origin:
+                    owner.edit_move_piece(origin, square)
+        elif owner._edit_tool is not None and square is not None:
+            owner.edit_place(square)
+        self.update()
+
     def leaveEvent(self, event):
         if self._hover_square is not None:
             self._hover_square = None
@@ -157,6 +229,12 @@ class _BoardCanvas(QWidget):
 
     def _update_cursor(self, square):
         owner = self._owner
+        if owner._editable:
+            if square is not None:
+                self.setCursor(Qt.CursorShape.PointingHandCursor)
+            else:
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+            return
         if square is not None and (
             (owner._selected is not None and square in owner._targets)
             or owner.can_pick(square)
@@ -201,7 +279,7 @@ class _BoardCanvas(QWidget):
         light_color, dark_color = owner._square_colors()
 
         highlighted = set()
-        if owner._last_move is not None:
+        if owner._last_move is not None and not owner._editable:
             highlighted.add(owner._last_move.from_square)
             highlighted.add(owner._last_move.to_square)
 
@@ -211,6 +289,8 @@ class _BoardCanvas(QWidget):
         animation = owner._animation
         if animation is not None:
             hidden.add(animation["to"])
+            if animation["captured_piece"] is not None:
+                hidden.add(animation["captured_square"])
             if animation["rook"] is not None:
                 hidden.add(animation["rook"][1])
         if self._dragging and owner._selected is not None:
@@ -249,6 +329,7 @@ class _BoardCanvas(QWidget):
 
                 if (
                     self._dragging
+                    and not owner._editable
                     and sq == self._hover_square
                     and sq in owner._targets
                 ):
@@ -272,7 +353,7 @@ class _BoardCanvas(QWidget):
             self._draw_drag_return(painter, x0, y0, square, drag_return)
 
         best = owner._best_moves.get(owner._index)
-        if best:
+        if best and not owner._editable:
             arrow = QColor(palette["arrow"])
             arrow.setAlpha(200)
             self._draw_arrow(painter, best, x0, y0, square, arrow)
@@ -322,13 +403,15 @@ class _BoardCanvas(QWidget):
 
         captured = animation["captured_piece"]
         if captured is not None:
-            painter.save()
-            painter.setOpacity(max(0.0, 1.0 - eased))
-            captured_center = self._center_of(
-                animation["captured_square"], x0, y0, cell
-            )
-            self._draw_piece_at(painter, captured, captured_center, cell)
-            painter.restore()
+            opacity = eased if animation.get("fade_in") else 1.0 - eased
+            if opacity > 0.0:
+                painter.save()
+                painter.setOpacity(opacity)
+                captured_center = self._center_of(
+                    animation["captured_square"], x0, y0, cell
+                )
+                self._draw_piece_at(painter, captured, captured_center, cell)
+                painter.restore()
 
         start = self._center_of(animation["from"], x0, y0, cell)
         end = self._center_of(animation["to"], x0, y0, cell)
