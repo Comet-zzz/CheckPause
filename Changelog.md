@@ -10,7 +10,7 @@
 
 ## 🎯 What's Changed
 
-### 🍎 macOS 版
+### 🍎 macOS build
 - 新增 **macOS 版（Apple Silicon 与 Intel）**，功能与 Windows 版一致；通过 GitHub Actions 在 macOS runner 上打包，产出 `.dmg`。
 - 引擎使用 **Stockfish 的 macOS universal 二进制**，单个文件同时覆盖 M 系列与 Intel。
 - 用户数据保存在 `~/Library/Application Support/CheckPause/`（Windows 仍为 `%APPDATA%\CheckPause\`）。
@@ -21,14 +21,14 @@
 - User data lives in `~/Library/Application Support/CheckPause/` on macOS (`%APPDATA%\CheckPause\` on Windows).
 - The update manifest now carries per-platform download URLs, so a macOS client is never offered a `.exe`.
 
-### ♟️ 分析面板：走子动画
+### ♟️ Analysis panel: move animation
 - 分析回放、上一步/下一步与棋步列表点击现在都有**平滑的走子动画**，与对弈、谜题两个模块一致。
 - 前进与后退都有动画：吃子淡入淡出、易位时车一起移动、退回升变时显示原来的兵。
 
 - Analysis playback, the prev/next buttons and the move list now **animate every move**, matching the play and puzzle modules.
 - Animations run in both directions: captures fade, castling carries the rook, and stepping back through a promotion shows the pawn again.
 
-### ✏️ 分析面板：棋盘编辑
+### ✏️ Analysis panel: board editor
 - 新增**编辑棋盘**按钮：棋子调色板与擦除；拖动可移动棋子，右键或拖出棋盘可删除。
 - 可设置**走子方、易位权、吃过路兵**（只列出当前局面下合法的吃过路兵格）。
 - **初始局面 / 清空棋盘 / 复制 FEN / 应用 / 取消**，应用后的局面成为新的分析起点。
@@ -37,7 +37,7 @@
 - **Side to move, castling rights and en passant** can be set; only legal en passant squares are offered.
 - **Start position, clear board, copy FEN, apply and cancel**; the applied position becomes the new starting point for analysis.
 
-### 🧩 分析面板：自己走子、从任意局面分析
+### 🧩 Analysis panel: play moves and analyze any position
 - 可以直接在分析棋盘上**走棋**（双方、含升变），续在棋谱后面，或从任意一步**分支出新变化**；改写棋谱时会重置旧的分析结果。
 - 分析引擎现在识别 PGN 的 **`SetUp` / `FEN` 头**，编辑出来的局面（或自带 FEN 的棋谱）可以直接分析。
 - 棋步列表支持**黑方先走**的局面，列编号与手数正确。
@@ -97,7 +97,7 @@ SHA-256: `978609890A2650B934DF66F7C7B1947BF6EF51327F6ABD3A5B4E48200C12B804`
 
 ## 🎯 What's Changed
 
-### 🖥️ 应用图标修复
+### 🖥️ Application icon fix
 - 启动时明确设置 CheckPause 应用图标。
 - SVG 图标加载失败时回退到内置 `app.ico`。
 - 修复开始菜单和桌面快捷方式使用的图标路径。
@@ -137,7 +137,7 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 > **「检查更新」不再需要等待超时**：此前两个 GitHub 镜像依次请求，其中一个在国内时常无法连接，每次检查都要耗尽它的超时时间。现在改为并发请求，并优先查询自建服务器，点击后基本可立即得到结果。
 >
 > 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
-
+>
 > The "Check for updates" action no longer waits on a timeout. The previous code queried two GitHub mirrors in sequence, one of which is often unreachable from mainland China, so every check consumed that timeout before returning. Both are now queried concurrently, with the project's own server checked first, so the result appears almost immediately.
 >
 > A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
@@ -146,23 +146,25 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ## 🎯 What's Changed
 
-### ⚡ 检查更新更快
+### ⚡ Faster update checks
 - 两个 GitHub 镜像改为**并发**请求，等待时间由两者之和缩短为其中较慢的一个。
 - 新增**自建服务器**作为首要来源（`http://43.108.99.244/version.json`）：国内访问速度快，且直接读取磁盘文件，不存在 CDN 缓存导致的版本滞后。
 - 手动「检查更新」**以主源为准**，主源返回即显示结果；仅在主源不可达时回退到 GitHub 镜像。
 - 开机后的后台检查仍会查询全部三个来源并取最高版本，用于发现主源文件过期的情况。
+
 - The two GitHub mirrors are now queried **concurrently**, so the wait is that of the slowest one rather than their sum.
 - A **primary source on the project's own server** is consulted first: fast to reach from China, and read directly from disk, so no CDN cache can hold a release back.
 - A manual check **trusts the primary source** and shows its answer as soon as it arrives, falling back to the GitHub mirrors only when the server cannot be reached.
 - The background check at launch still queries all three sources and keeps the highest version, which is how a stale primary manifest would be detected.
 
-### 🖥 服务器
+### 🖥️ Server
 - nginx 新增 `/version.json`，由 `checkpause-version-refresh.timer` 每 2 分钟从仓库刷新（原子替换，失败保留旧文件）。
+
 - nginx serves `/version.json`, refreshed from the repository every 2 minutes by `checkpause-version-refresh.timer`.
 
 ---
 
-## 📜 Full Changelog
+## 🛠️ Full Changelog
 - fix(update): query every mirror at once instead of one after another
 - feat(update): check our own server first so a manual check answers at once
 - feat(server): mirror the version manifest from our own box
@@ -173,11 +175,16 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 ## ⚠️ Breaking Changes
 
 - 无破坏性变更。
-- No breaking changes.
 - ⚠️ 服务器需先重新部署（`git pull` + `install.sh`），主源才会生效；仍在使用 1.7.0 的用户需升级到本版本，才能获得即点即得的检查结果。
+
+- No breaking changes.
 - ⚠️ The server must be redeployed (`git pull` + `install.sh`) before the primary source exists, and users still on 1.7.0 need this release to get the instant result.
 
 ---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.7.0...v1.7.1
+
+SHA-256: `D8A3BF0B864B1AC509F07B48B9A484EBCC97BBAD8726D92464C2CDA58EC84C19`
 
 # v1.7.0 – Cloud Coaching
 
@@ -186,7 +193,7 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 > **本地模式（自行填写 Key）完全不变** —— 界面、操作与存档均保持原样。仅云端模式需要登录；若继续使用本地模式，本次更新不会带来任何影响。
 >
 > 充值入口位于「设置 → 云端账号」：选择金额 → 浏览器打开支付宝完成付款 → 返回后余额已经到账。
-
+>
 > A new **cloud coaching** mode: no API key of your own, just an account and some CP credits. It uses a prompt tuned on the server.
 >
 > **Local mode is unchanged** — the interface, the controls and saved games all stay as they are. Only cloud mode requires a sign-in, so if you stay on local mode this release changes nothing for you.
@@ -197,27 +204,30 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ## 🎯 What's Changed
 
-### ☁️ 云端讲解
+### ☁️ Cloud coaching
 - 设置中新增「AI 模式」选项：**本地模式**（自行填写 API Key，与以往一致）或**云端模式**（使用 CheckPause 账号与提示词）。
 - 云端模式需要注册/登录。密码仅用于登录，软件**不保存密码**，只保存一个可随时吊销的令牌。
 - 充值流程：选择金额 → 浏览器打开支付宝付款 → 余额自动到账，无需手动刷新。
 - 余额显示于「设置 → 云端账号」，同时显示在菜单中。
+
 - Settings gains an **AI mode** choice: local (your own API key, exactly as before) or cloud (a CheckPause account and prompt).
 - Cloud mode requires an account. The password is used only to sign in and is never stored; the app keeps a revocable token instead.
 - Topping up: choose an amount, pay in the browser, and the balance arrives automatically, with no manual refresh.
 - The balance appears under Settings → Cloud account and in the menu.
 
-### 🔒 云端模式下不再显示用的是哪个模型
+### 🔒 No model name shown in cloud mode
 - 此前模型输入框仅置灰、仍留在界面上；现在**完全隐藏**，云端模式下界面不会出现任何模型名称。
+
 - The model field used to be greyed out but still visible. In cloud mode the model and endpoint fields are now **hidden entirely**, so no model name appears on screen.
 
-### 💬 计费单位改为「CP积分」
+### 💬 Billing unit is now CP credits
 - 界面、错误提示、付款页面统一改成 **CP积分**（英文界面为 CP credits）。
+
 - The billing unit is now called **CP credits** everywhere it can be read.
 
 ---
 
-## 📜 Full Changelog
+## 🛠️ Full Changelog
 - feat(client): sign in to a cloud account and show the balance
 - feat(client): buy CP credits and watch the balance update by itself
 - feat(client): hide the provider fields in cloud mode
@@ -230,10 +240,15 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 - 无破坏性变更。棋盘、引擎分析、存档与本地模式均保持原样。
 - 云端模式为新增的可选项，需要时在设置中切换即可。
+
 - No breaking changes. The board, engine analysis, saved games and local mode are all unchanged.
 - Cloud mode is new and optional; switch to it in Settings when you want it.
 
 ---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.6.1...v1.7.0
+
+SHA-256: `5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`
 
 # v1.6.1 – Update Notifications Actually Arrive
 
@@ -245,14 +260,14 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ## 🎯 What's Changed
 
-### 🔔 更新提示真的会弹了
+### 🔔 Update notifications now fire
 - 此前只读取**第一个**可连接的来源；该来源可能缓存着十几个小时前的版本号，软件据此误判为"已是最新"，因此不给出提示。
 - 现在**两个来源都会读取**，并取版本号更高的一个；任一来源过期，都不会再掩盖新版本。
 
 - Before: only the **first** reachable source was read. That source could serve a version number many hours old, so the app concluded it was current and stayed quiet.
 - Now: **both sources are read** and the higher version wins, so a stale copy can no longer hide a release.
 
-### 🧪 补了三个测试
+### 🧪 Three new tests
 - 新增的三个测试覆盖"一个来源过期、另一个来源为新版本"的情形，其中包括本次实际遇到的场景。
 
 - Three tests now cover the case where one mirror is stale and the other is current, including the exact situation that caused this release.
@@ -274,6 +289,10 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 ---
 
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.6.0...v1.6.1
+
+SHA-256: `1A30C9C2E4C4DB2272B2B5BACFA3715401F5757138DF8AF7D143E1A59187674E`
+
 # v1.6.0 – PySide6 Migration
 
 > 界面的底层图形框架从 PyQt6 换成了 **PySide6** —— Qt 官方维护的那套绑定，采用 LGPL 许可。这不是一次功能更新：界面、操作、数据完全不变，升级后一切照旧，你不需要做任何额外的事。
@@ -289,12 +308,12 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 - The GUI toolkit moves from PyQt6 to PySide6. The two APIs are near-identical, so this is a straight swap underneath rather than a rewrite of any screen.
 
-### 🧩 界面和数据完全不变
+### 🧩 Interface and data unchanged
 - 布局、配色、字体、快捷键、棋子样式、谜题进度、统计数据、API 设置 —— **全部保持不变**。升级后第一次打开，看到的就是原来那个 CheckPause。
 
 - Layout, colours, fonts, shortcuts, piece sets, puzzle progress, statistics and API settings all stay exactly as they are. The first launch after upgrading looks like the CheckPause you already know.
 
-### 📦 安装包略微变大
+### 📦 A slightly larger installer
 - 从 107.6 MB 变成约 114 MB。原因是 PySide6 的打包工具会带上一批程序用不到的 Qt 组件（QML、Quick、PDF 等），后续版本会把它们排除掉。
 
 - The installer grows from 107.6 MB to roughly 114 MB, because PySide6's packaging pulls in Qt components the app never touches (QML, Quick, PDF and friends). A later release will trim them out.
@@ -315,6 +334,10 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 - No breaking changes. Install straight over the previous version; every setting, statistic and puzzle progress is preserved.
 
 ---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.5.4...v1.6.0
+
+SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 # v1.5.4 – Update Notifications and Clock Fixes
 
