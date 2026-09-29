@@ -55,4 +55,7 @@ output/
 
 # Local working notes, kept out of the public repository on purpose
 AGENTS.md
+PROJECT_MAP.md
+ARCHITECTURE.md
+DEV_NOTES.md
 .kilo/jetbrains.json
