@@ -21,3 +21,12 @@ BOARD_THEMES = {
     "coral": ("#fbe6d4", "#d08a5a"),
 }
 DEFAULT_BOARD_THEME = "blue"
+
+SOUND_SETS = (
+    "classic",
+    "wood",
+    "digital",
+)
+DEFAULT_SOUND_SET = "classic"
+SOUND_OFF = "off"
+SOUND_CHOICES = (SOUND_OFF,) + SOUND_SETS

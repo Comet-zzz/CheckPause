@@ -17,7 +17,10 @@ from checkpause.assets import (
     BOARD_THEMES,
     DEFAULT_BOARD_THEME,
     DEFAULT_PIECE_SET,
+    DEFAULT_SOUND_SET,
     PIECE_SETS,
+    SOUND_CHOICES,
+    SOUND_OFF,
 )
 from checkpause.config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
 from checkpause.core.engine import compact_analysis
@@ -28,6 +31,7 @@ from checkpause.data.profile import (
     set_board_theme,
     set_language,
     set_piece_set,
+    set_sound_set,
     set_theme,
     update_profile,
 )
@@ -88,6 +92,9 @@ class MainWindow(QMainWindow):
         )
         self._board_theme = (self.profile or {}).get(
             "board_theme", DEFAULT_BOARD_THEME
+        )
+        self._sound_set = (self.profile or {}).get(
+            "sound_set", DEFAULT_SOUND_SET
         )
         self._messages = []
         self._results = []
@@ -336,6 +343,21 @@ class MainWindow(QMainWindow):
             self._menu_board.addAction(action)
             self._board_actions[name] = action
 
+        self._menu_sound = self._menu_personalization.addMenu("")
+        self._sound_group = QActionGroup(self)
+        self._sound_group.setExclusive(True)
+        self._sound_actions = {}
+        for name in SOUND_CHOICES:
+            action = QAction(self)
+            action.setCheckable(True)
+            action.setChecked(name == self._sound_set)
+            action.triggered.connect(
+                lambda _checked, value=name: self._change_sound_set(value)
+            )
+            self._sound_group.addAction(action)
+            self._menu_sound.addAction(action)
+            self._sound_actions[name] = action
+
         self._menu_help = menubar.addMenu("")
         self._act_check_update = QAction(self)
         self._act_check_update.triggered.connect(
@@ -376,10 +398,12 @@ class MainWindow(QMainWindow):
         self._board_theme = self.profile.get(
             "board_theme", DEFAULT_BOARD_THEME
         )
+        self._sound_set = self.profile.get("sound_set", DEFAULT_SOUND_SET)
         self._act_light.setChecked(self._theme == LIGHT)
         self._act_dark.setChecked(self._theme == DARK)
         self._piece_actions[self._piece_set].setChecked(True)
         self._board_actions[self._board_theme].setChecked(True)
+        self._sound_actions[self._sound_set].setChecked(True)
         self._apply_theme()
         self._apply_board_preferences()
         self._enter_main()
@@ -403,6 +427,9 @@ class MainWindow(QMainWindow):
         )
         self._menu_pieces.setTitle(t("menu_pieces", self._language))
         self._menu_board.setTitle(t("menu_board", self._language))
+        self._menu_sound.setTitle(t("menu_sound", self._language))
+        for name, action in self._sound_actions.items():
+            action.setText(t("sound_" + name, self._language))
         for name, action in self._board_actions.items():
             action.setText(
                 t("board_theme_" + name, self._language)
@@ -474,7 +501,9 @@ class MainWindow(QMainWindow):
         self.analysis_page.set_status(
             t("status_analyzing", self._language, percent=percent)
         )
-        self.board.goto(index)
+        # The engine walks the game move by move; that is not the user
+        # playing, so it must not rattle off a sound for every ply.
+        self.board.goto(index, sound=False)
 
     def _on_analysis_move_requested(self, from_square, to_square):
         if self._analysis_worker is not None:
@@ -736,6 +765,13 @@ class MainWindow(QMainWindow):
         self.play_page.set_board_theme(self._board_theme)
         self.puzzle_page.set_piece_set(self._piece_set)
         self.puzzle_page.set_board_theme(self._board_theme)
+        self._apply_sound()
+
+    def _apply_sound(self):
+        enabled = self._sound_set != SOUND_OFF
+        for target in (self.board, self.play_page, self.puzzle_page):
+            target.set_sound_set(self._sound_set)
+            target.set_sound_enabled(enabled)
 
     def _change_theme(self, theme):
         if theme == self._theme:
@@ -756,6 +792,12 @@ class MainWindow(QMainWindow):
         if self.profile:
             self.profile = set_board_theme(self.profile, name)
         self.board.set_board_theme(name)
+
+    def _change_sound_set(self, name):
+        self._sound_set = name if name in SOUND_CHOICES else DEFAULT_SOUND_SET
+        self._apply_sound()
+        if self.profile:
+            self.profile = set_sound_set(self.profile, self._sound_set)
 
     def _open_api_settings(self):
         result = api_settings_dialog(
@@ -795,9 +837,11 @@ class MainWindow(QMainWindow):
         self._theme = LIGHT
         self._piece_set = DEFAULT_PIECE_SET
         self._board_theme = DEFAULT_BOARD_THEME
+        self._sound_set = DEFAULT_SOUND_SET
         self._act_light.setChecked(True)
         self._piece_actions[DEFAULT_PIECE_SET].setChecked(True)
         self._board_actions[DEFAULT_BOARD_THEME].setChecked(True)
+        self._sound_actions[DEFAULT_SOUND_SET].setChecked(True)
         self._apply_theme()
         self._apply_board_preferences()
         self._messages = []

@@ -3,7 +3,13 @@ import os
 from datetime import datetime
 
 from checkpause import BASE_DIR
-from checkpause.assets import DEFAULT_BOARD_THEME, DEFAULT_PIECE_SET
+from checkpause.assets import (
+    DEFAULT_BOARD_THEME,
+    DEFAULT_PIECE_SET,
+    DEFAULT_SOUND_SET,
+    SOUND_CHOICES,
+    SOUND_OFF,
+)
 from checkpause.data.paths import PROFILE_FILE, ensure_data_dir
 
 LEGACY_PROFILE_FILE = os.path.join(BASE_DIR, "profile.json")
@@ -14,6 +20,14 @@ def _normalize(profile):
     profile.setdefault("theme", "light")
     profile.setdefault("piece_set", DEFAULT_PIECE_SET)
     profile.setdefault("board_theme", DEFAULT_BOARD_THEME)
+    if "sound_set" not in profile:
+        # Migrate the on/off boolean used before sound sets existed.
+        profile["sound_set"] = (
+            SOUND_OFF if profile.get("sound") is False else DEFAULT_SOUND_SET
+        )
+    profile.pop("sound", None)
+    if profile["sound_set"] not in SOUND_CHOICES:
+        profile["sound_set"] = DEFAULT_SOUND_SET
     return profile
 
 
@@ -55,6 +69,7 @@ def create_profile(username, language="zh-CN"):
         "theme": "light",
         "piece_set": DEFAULT_PIECE_SET,
         "board_theme": DEFAULT_BOARD_THEME,
+        "sound_set": DEFAULT_SOUND_SET,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_games": 0,
         "history": [],
@@ -84,6 +99,12 @@ def set_piece_set(profile, piece_set):
 
 def set_board_theme(profile, board_theme):
     profile["board_theme"] = board_theme
+    save_profile(profile)
+    return profile
+
+
+def set_sound_set(profile, name):
+    profile["sound_set"] = name if name in SOUND_CHOICES else DEFAULT_SOUND_SET
     save_profile(profile)
     return profile
 

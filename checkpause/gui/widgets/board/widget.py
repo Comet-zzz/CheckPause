@@ -29,6 +29,7 @@ from checkpause.assets import (
     PIECE_SETS,
 )
 from checkpause.gui.icons import nav_icon
+from checkpause.gui.sound import SoundPlayer, move_sound_kind
 from checkpause.gui.theme import DARK
 from checkpause.gui.widgets.board.canvas import _BoardCanvas
 from checkpause.gui.widgets.board.constants import ANIMATION_MS, FRAME_MS
@@ -70,6 +71,7 @@ class BoardWidget(QWidget):
         self._edit_tool = None
         self._edit_backup = None
         self._nav_visible = True
+        self._sound = SoundPlayer()
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -372,7 +374,7 @@ class BoardWidget(QWidget):
         self._index = 0
         self.render()
 
-    def set_moves(self, moves, index=None, animate=False):
+    def set_moves(self, moves, index=None, animate=False, sound=True):
         self._end_edit()
         previous_count = len(self._moves)
         self._moves = list(moves)
@@ -387,7 +389,18 @@ class BoardWidget(QWidget):
             and self._index == len(self._moves)
             and len(self._moves) > previous_count
         ):
-            self._start_animation(self._moves[-1], forward=True)
+            self._start_animation(
+                self._moves[-1], forward=True, sound=sound
+            )
+
+    def set_sound_enabled(self, enabled):
+        self._sound.set_enabled(enabled)
+
+    def set_sound_set(self, name):
+        self._sound.set_set(name)
+
+    def _play_sound(self, move, forward=True):
+        self._sound.play(move_sound_kind(self._board, move, forward))
 
     def set_interactive(self, enabled, human_color=None):
         self._interactive = enabled
@@ -600,6 +613,7 @@ class BoardWidget(QWidget):
         if self._index < len(self._moves) and self._moves[self._index] == move:
             self._index += 1
             self.render()
+            self._play_sound(move, forward=True)
             self.index_changed.emit(self._index)
             return True
         replaced = self._index < len(self._moves)
@@ -607,6 +621,7 @@ class BoardWidget(QWidget):
         self._moves.append(move)
         self._index = len(self._moves)
         self.render()
+        self._play_sound(move, forward=True)
         self.line_changed.emit(replaced)
         self.index_changed.emit(self._index)
         return True
@@ -679,7 +694,7 @@ class BoardWidget(QWidget):
             return
         self.clear_selection()
 
-    def _start_animation(self, move, forward=True):
+    def _start_animation(self, move, forward=True, sound=True):
         board = self._board
         if forward:
             before = board.copy()
@@ -743,6 +758,8 @@ class BoardWidget(QWidget):
         }
         self._anim_timer.start()
         self._canvas.update()
+        if sound:
+            self._play_sound(move, forward)
 
     def start_drag_return(self, from_pos, square):
         piece = self._board.piece_at(square)
@@ -780,7 +797,7 @@ class BoardWidget(QWidget):
             self._anim_timer.stop()
         self._canvas.update()
 
-    def goto(self, index, animate=True):
+    def goto(self, index, animate=True, sound=True):
         if not self._moves or self._editable:
             return
         index = max(0, min(index, len(self._moves)))
@@ -791,7 +808,7 @@ class BoardWidget(QWidget):
         self.render()
         if animate and step in (1, -1):
             move = self._moves[index - 1] if step > 0 else self._moves[index]
-            self._start_animation(move, forward=step > 0)
+            self._start_animation(move, forward=step > 0, sound=sound)
         self.index_changed.emit(self._index)
 
     def first(self):
