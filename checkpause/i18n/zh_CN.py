@@ -100,8 +100,9 @@ MESSAGES = {
     "cloud_signin_required": "请先登录云端账号（设置 > 云端账号...）。",
     "cloud_username_taken": "这个用户名已经被注册了，换一个试试。",
     "cloud_username_invalid": "用户名只能是 3-32 个字母、数字、下划线、点或短横线。",
-    "cloud_password_too_short": "密码至少 6 位。",
+    "cloud_password_too_short": "密码至少 8 位。",
     "cloud_bad_credentials": "用户名或密码不对。",
+    "cloud_too_many_attempts": "尝试次数过多，请稍等一会儿再试。",
     "cloud_no_credit": "CP积分不足，请先充值。",
     "cloud_no_credit_detail": "CP积分不足：余额 {balance}，本次约需 {needed}。",
 

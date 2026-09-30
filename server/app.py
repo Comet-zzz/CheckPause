@@ -28,6 +28,7 @@ from pydantic import BaseModel, Field
 from server import (
     accounts,
     config,
+    guard,
     payments,
     pricing,
     prompting,
@@ -47,8 +48,10 @@ MAX_ANALYSIS_CHARS = 400_000
 @asynccontextmanager
 async def lifespan(_app):
     # A crash mid-request leaves a reservation that nothing will ever settle.
-    # Charging it keeps the ledger matching the balances.
+    # Charging it keeps the ledger matching the balances. Sessions past their
+    # deadline are dropped at the same time, so a restart tidies both.
     store.sweep_stale_holds()
+    store.purge_expired_tokens()
     yield
 
 
@@ -87,11 +90,26 @@ def settle(hold_id, usage):
     return store.settle_hold(hold_id, note="usage was never counted")
 
 
-async def billed(stream, usage, hold_id):
-    """Relay the reply, then close the reservation it ran against."""
+async def billed(stream, usage, hold_id, protected="", replacement=None):
+    """Relay the reply, then close the reservation it ran against.
+
+    The relay is where a reply that recites the tuned prompt is caught: the
+    guard holds a short tail back, so a copy is replaced before it is sent
+    rather than after. Everything else is passed through untouched.
+    """
+    screen = guard.PromptLeakGuard(
+        protected, replacement or guard.DEFAULT_REPLACEMENT
+    )
     try:
         async for piece in upstream.iter_text(stream, usage):
-            yield piece
+            emitted = screen.feed(piece)
+            if emitted:
+                yield emitted
+            if screen.leaked:
+                break
+        tail = screen.flush()
+        if tail:
+            yield tail
     finally:
         try:
             settle(hold_id, usage)
@@ -167,6 +185,14 @@ async def analyze(
         ) from error
 
     return StreamingResponse(
-        billed(stream, upstream.Usage(), hold_id),
+        billed(
+            stream,
+            upstream.Usage(),
+            hold_id,
+            config.system_prompt(),
+            prompting.LEAK_REPLIES.get(
+                request.language, prompting.DEFAULT_LEAK_REPLY
+            ),
+        ),
         media_type="text/plain; charset=utf-8",
     )

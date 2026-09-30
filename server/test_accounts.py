@@ -8,7 +8,7 @@ from unittest import mock
 
 from fastapi.testclient import TestClient
 
-from server import store
+from server import ratelimit, store
 from server.app import app
 
 
@@ -27,6 +27,9 @@ class AccountEndpointTests(unittest.TestCase):
         patcher.start()
         self.addCleanup(patcher.stop)
         self.addCleanup(store.close)
+        # The limiter is process-wide, so one test's attempts must not leak
+        # into the next one's allowance.
+        ratelimit.reset()
         self.client = TestClient(app)
 
     def sign_up(self, username="player", password="hunter22"):
@@ -73,6 +76,29 @@ class AccountEndpointTests(unittest.TestCase):
         self.assertEqual(
             response.json()["detail"]["code"], "password_too_short"
         )
+
+    def test_a_password_under_eight_characters_is_reported(self):
+        response = self.sign_up(password="seven77")
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"]["code"], "password_too_short"
+        )
+
+    def test_repeated_sign_in_attempts_are_rate_limited(self):
+        self.sign_up()
+
+        last = None
+        for _ in range(30):
+            last = self.client.post(
+                "/v1/accounts/login",
+                json={"username": "player", "password": "wrongone"},
+            )
+            if last.status_code == 429:
+                break
+
+        self.assertEqual(last.status_code, 429)
+        self.assertEqual(last.json()["detail"]["code"], "too_many_attempts")
+        self.assertIn("Retry-After", last.headers)
 
     def test_signing_in_returns_a_fresh_token(self):
         self.sign_up()

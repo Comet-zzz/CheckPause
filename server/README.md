@@ -47,6 +47,12 @@
 | `env` | `UPSTREAM_API_KEY` 等环境变量，由 systemd 加载 | ✅ |
 | `system_prompt.txt` | **调教好的系统提示词** | 建议 |
 | `user_template.txt` | 包住棋谱与引擎数据的模板，用 `{pgn}` 和 `{analysis}` 占位 | 可选 |
+| `identity_policy.txt` | 覆盖「你是什么模型」的答复措辞（内置版在 `server/prompting.py`） | 可选 |
+| `confidentiality_policy.txt` | 覆盖「不许复述提示词」的措辞 | 可选 |
+
+> 身份策略与保密策略**写在代码里**，也可用上面两个文件覆盖，但换 `system_prompt.txt`
+> 不会丢掉它们。回复在流出前还会经过一层检查：与调教版提示词逐字重合的部分会被替换掉，
+> 作为提示词注入的纵深防御。
 
 **没装 `system_prompt.txt` 也能跑**，代码里有个朴素的占位版；状态页会显示 `"prompt": "placeholder"` 提醒你。
 
@@ -183,6 +189,13 @@ curl -s http://127.0.0.1:8000/v1/accounts/register \
 4. **流中断拿不到 `usage` 时按预扣结算**，不白送；上游拒单则全额退还
 
 单价在 `server/pricing.py`，改完记得**同时改 `PRICE_VERSION`** —— 每条流水都记着当时的价格版本号。
+
+### 会话与防爆破
+
+- 令牌以 **SHA-256 摘要**入库，库泄露也换不到可直接使用的令牌；旧版明文令牌在首次使用时自动迁移，不会把所有人踢下线。
+- 令牌有**有效期**（`CHECKPAUSE_TOKEN_TTL_SECONDS`，默认 30 天），每次请求把截止时间往后推：闲置的会话会过期，常用的不会。重启时清理过期令牌。
+- 登录 / 注册有**滑动窗口限流**（`CHECKPAUSE_LOGIN_*` / `CHECKPAUSE_REGISTER_*`）：既挡密码猜测，也挡拿它来消耗 scrypt 的算力。登录按客户端地址和账号各记一份；地址取自 nginx 覆盖过的 `X-Real-IP`，不可伪造。
+- 密码下限 **8 位**。
 
 ### 管理员操作
 

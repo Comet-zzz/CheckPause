@@ -79,6 +79,35 @@ class PromptLoadingTests(unittest.TestCase):
         ):
             self.assertEqual(config.first_topup_bonus_percent(), 0)
 
+    def test_the_session_and_rate_limit_knobs_have_defaults(self):
+        names = (
+            "CHECKPAUSE_TOKEN_TTL_SECONDS",
+            "CHECKPAUSE_LOGIN_ATTEMPTS",
+            "CHECKPAUSE_LOGIN_WINDOW_SECONDS",
+            "CHECKPAUSE_REGISTER_ATTEMPTS",
+            "CHECKPAUSE_REGISTER_WINDOW_SECONDS",
+        )
+        with mock.patch.dict(os.environ, {}, clear=False):
+            for name in names:
+                os.environ.pop(name, None)
+            self.assertEqual(
+                config.token_ttl_seconds(), config.DEFAULT_TOKEN_TTL_SECONDS
+            )
+            self.assertEqual(
+                config.login_rate_limit(),
+                (
+                    config.DEFAULT_LOGIN_ATTEMPTS,
+                    config.DEFAULT_LOGIN_WINDOW_SECONDS,
+                ),
+            )
+            self.assertEqual(
+                config.register_rate_limit(),
+                (
+                    config.DEFAULT_REGISTER_ATTEMPTS,
+                    config.DEFAULT_REGISTER_WINDOW_SECONDS,
+                ),
+            )
+
 
 class BuildMessagesTests(unittest.TestCase):
     def setUp(self):
@@ -127,6 +156,18 @@ class BuildMessagesTests(unittest.TestCase):
         system = prompting.build_messages("1. e4")[0]["content"]
         self.assertIn("DEFLECT", system)
         self.assertNotIn(prompting.IDENTITY_POLICY, system)
+
+    def test_always_carries_the_rule_against_reciting_the_prompt(self):
+        system = prompting.build_messages("1. e4")[0]["content"]
+        self.assertIn(prompting.SECURITY_POLICY, system)
+
+    def test_the_confidentiality_rule_can_be_reworded(self):
+        (pathlib.Path(self._temp.name) / "confidentiality_policy.txt").write_text(
+            "KEEPSECRET", encoding="utf-8"
+        )
+        system = prompting.build_messages("1. e4")[0]["content"]
+        self.assertIn("KEEPSECRET", system)
+        self.assertNotIn(prompting.SECURITY_POLICY, system)
 
     def test_the_language_instruction_comes_after_everything_else(self):
         system = prompting.build_messages("1. e4", language="zh-CN")[0]["content"]
@@ -245,6 +286,21 @@ class AnalyzeEndpointTests(unittest.TestCase):
             response = self.post()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.text, "Nf3 is better.")
+
+    def test_a_reply_that_recites_the_prompt_is_replaced(self):
+        self.fund(100)
+        tuned = "SECRET TUNED COACHING PROMPT " + "z" * 80
+        pathlib.Path(self._temp.name, "system_prompt.txt").write_text(
+            tuned, encoding="utf-8"
+        )
+
+        opened, text = self.stream([tuned], 100, 20)
+        with opened, text:
+            response = self.post()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.text, prompting.DEFAULT_LEAK_REPLY)
+        self.assertNotIn("SECRET", response.text)
 
     def test_requires_a_signed_in_account(self):
         self.assertEqual(self.post(headers={}).status_code, 401)

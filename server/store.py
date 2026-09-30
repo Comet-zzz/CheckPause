@@ -31,11 +31,17 @@ import uuid
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 
+from server import config
+
 DEFAULT_DB_PATH = "/var/lib/checkpause/checkpause.db"
 
 USERNAME_PATTERN = re.compile(r"^[\w.-]{3,32}$")
-MIN_PASSWORD_LENGTH = 6
+MIN_PASSWORD_LENGTH = 8
 TOKEN_BYTES = 32
+
+# A session token is stored as a digest, so the database alone does not hand
+# out working keys. The prefix marks the format and keeps the value readable.
+TOKEN_HASH_PREFIX = "sha256:"
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS users (
@@ -52,7 +58,8 @@ CREATE TABLE IF NOT EXISTS tokens (
     token        TEXT PRIMARY KEY,
     user_id      INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     created_at   TEXT NOT NULL,
-    last_seen_at TEXT
+    last_seen_at TEXT,
+    expires_at   TEXT
 );
 
 -- Credits taken out of a balance while a request runs, so the same credits
@@ -167,9 +174,28 @@ def connection():
     fresh.execute("PRAGMA foreign_keys=ON")
     fresh.execute("PRAGMA busy_timeout=5000")
     fresh.executescript(SCHEMA)
+    _migrate(fresh)
     _connection = fresh
     _connection_path = path
     return fresh
+
+
+def _migrate(conn):
+    """Bring an existing database up to the current schema.
+
+    ``CREATE TABLE IF NOT EXISTS`` leaves an older table as it was, so a column
+    added after the first release has to be introduced here. Sessions that
+    predate the deadline column are given one rather than being left to live
+    forever.
+    """
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(tokens)")
+    }
+    if "expires_at" not in columns:
+        conn.execute("ALTER TABLE tokens ADD COLUMN expires_at TEXT")
+        conn.execute(
+            "UPDATE tokens SET expires_at = ?", (_token_deadline(),)
+        )
 
 
 def close():
@@ -372,33 +398,74 @@ def list_users():
 # --- sessions --------------------------------------------------------------
 
 
+def _token_key(token):
+    """The stored form of a session token: a digest, not the token."""
+    digest = hashlib.sha256(token.encode("utf-8")).hexdigest()
+    return TOKEN_HASH_PREFIX + digest
+
+
+def _token_deadline(moment=None):
+    """When a session granted now should lapse without further use."""
+    moment = moment or datetime.now(timezone.utc)
+    return (moment + timedelta(seconds=config.token_ttl_seconds())).isoformat(
+        timespec="seconds"
+    )
+
+
+def _token_row(conn, key):
+    return conn.execute(
+        "SELECT u.*, t.expires_at AS token_expires_at FROM tokens AS t"
+        " JOIN users AS u ON u.id = t.user_id WHERE t.token = ?",
+        (key,),
+    ).fetchone()
+
+
 def issue_token(user_id):
     token = secrets.token_urlsafe(TOKEN_BYTES)
     with transaction() as conn:
         conn.execute(
-            "INSERT INTO tokens (token, user_id, created_at) VALUES (?, ?, ?)",
-            (token, user_id, _now()),
+            "INSERT INTO tokens (token, user_id, created_at, expires_at)"
+            " VALUES (?, ?, ?, ?)",
+            (_token_key(token), user_id, _now(), _token_deadline()),
         )
     return token
 
 
 def user_for_token(token):
-    """The user behind a bearer token, or None. Touches last_seen_at."""
+    """The user behind a bearer token, or None.
+
+    A session in use is touched and pushed forward, so the deadline measures
+    idleness. A row written before tokens were hashed is adopted on first use
+    rather than signing everybody out when that changed, and an expired token
+    is dropped.
+    """
     token = (token or "").strip()
     if not token:
         return None
+    key = _token_key(token)
     with _lock:
         conn = connection()
-        row = conn.execute(
-            "SELECT * FROM users WHERE id ="
-            " (SELECT user_id FROM tokens WHERE token = ?)",
-            (token,),
-        ).fetchone()
+        row = _token_row(conn, key)
+        if row is None:
+            # A session from before tokens were stored hashed: adopt it so a
+            # deploy does not sign every user out.
+            row = _token_row(conn, token)
+            if row is not None:
+                conn.execute(
+                    "UPDATE tokens SET token = ? WHERE token = ?",
+                    (key, token),
+                )
         if row is not None:
-            conn.execute(
-                "UPDATE tokens SET last_seen_at = ? WHERE token = ?",
-                (_now(), token),
-            )
+            deadline = row["token_expires_at"]
+            if deadline and deadline <= _now():
+                conn.execute("DELETE FROM tokens WHERE token = ?", (key,))
+                row = None
+            else:
+                conn.execute(
+                    "UPDATE tokens SET last_seen_at = ?, expires_at = ?"
+                    " WHERE token = ?",
+                    (_now(), _token_deadline(), key),
+                )
     user = _user(row)
     if user is not None and not user["is_active"]:
         return None
@@ -406,8 +473,25 @@ def user_for_token(token):
 
 
 def revoke_token(token):
+    token = (token or "").strip()
+    if not token:
+        return
     with transaction() as conn:
-        conn.execute("DELETE FROM tokens WHERE token = ?", (token,))
+        conn.execute(
+            "DELETE FROM tokens WHERE token = ? OR token = ?",
+            (_token_key(token), token),
+        )
+
+
+def purge_expired_tokens():
+    """Drop sessions past their deadline; returns how many were removed."""
+    with transaction() as conn:
+        cursor = conn.execute(
+            "DELETE FROM tokens WHERE expires_at IS NOT NULL"
+            " AND expires_at <= ?",
+            (_now(),),
+        )
+        return cursor.rowcount
 
 
 # --- credits ---------------------------------------------------------------

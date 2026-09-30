@@ -9,6 +9,7 @@ import os
 import pathlib
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest import mock
 
 from server import pricing, store
@@ -249,6 +250,77 @@ class AccountTests(StoreTestCase):
         self.assertIsNone(store.user_for_token(token))
         self.assertIsNone(store.user_for_token("nonsense"))
         self.assertIsNone(store.user_for_token(""))
+
+    def test_a_token_is_kept_only_as_a_digest(self):
+        token = store.issue_token(self.user["id"])
+
+        stored = store.connection().execute(
+            "SELECT token FROM tokens WHERE user_id = ?", (self.user["id"],)
+        ).fetchone()["token"]
+
+        self.assertNotEqual(stored, token)
+        self.assertTrue(stored.startswith(store.TOKEN_HASH_PREFIX))
+        self.assertEqual(stored, store._token_key(token))
+
+    def test_an_expired_token_is_refused_and_removed(self):
+        token = store.issue_token(self.user["id"])
+        store.connection().execute(
+            "UPDATE tokens SET expires_at = ? WHERE user_id = ?",
+            ("2000-01-01T00:00:00+00:00", self.user["id"]),
+        )
+
+        self.assertIsNone(store.user_for_token(token))
+        remaining = store.connection().execute(
+            "SELECT COUNT(*) AS count FROM tokens WHERE user_id = ?",
+            (self.user["id"],),
+        ).fetchone()["count"]
+        self.assertEqual(remaining, 0)
+
+    def test_using_a_session_pushes_its_deadline_forward(self):
+        token = store.issue_token(self.user["id"])
+        soon = (
+            datetime.now(timezone.utc) + timedelta(seconds=1)
+        ).isoformat(timespec="seconds")
+        store.connection().execute(
+            "UPDATE tokens SET expires_at = ? WHERE user_id = ?",
+            (soon, self.user["id"]),
+        )
+
+        self.assertIsNotNone(store.user_for_token(token))
+
+        deadline = store.connection().execute(
+            "SELECT expires_at FROM tokens WHERE user_id = ?",
+            (self.user["id"],),
+        ).fetchone()["expires_at"]
+        self.assertGreater(deadline, soon)
+
+    def test_a_session_from_before_hashing_is_adopted(self):
+        raw = "a-session-token-from-an-older-release"
+        store.connection().execute(
+            "INSERT INTO tokens (token, user_id, created_at, expires_at)"
+            " VALUES (?, ?, ?, ?)",
+            (
+                raw,
+                self.user["id"],
+                "2026-01-01T00:00:00+00:00",
+                "2999-01-01T00:00:00+00:00",
+            ),
+        )
+
+        self.assertEqual(store.user_for_token(raw)["username"], "player")
+
+        stored = store.connection().execute(
+            "SELECT token FROM tokens WHERE user_id = ?", (self.user["id"],)
+        ).fetchone()["token"]
+        self.assertTrue(stored.startswith(store.TOKEN_HASH_PREFIX))
+
+    def test_expired_tokens_are_purged(self):
+        store.issue_token(self.user["id"])
+        store.connection().execute(
+            "UPDATE tokens SET expires_at = ?", ("2000-01-01T00:00:00+00:00",)
+        )
+
+        self.assertEqual(store.purge_expired_tokens(), 1)
 
     def test_resetting_a_password_signs_every_session_out(self):
         token = store.issue_token(self.user["id"])

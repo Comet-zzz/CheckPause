@@ -123,6 +123,67 @@ def first_topup_bonus_percent():
         return DEFAULT_FIRST_TOPUP_BONUS_PERCENT
 
 
+# --- sessions --------------------------------------------------------------
+
+# How long a session survives without being used. Each request pushes the
+# deadline forward, so a token in daily use keeps working while an idle one
+# lapses. A month is long enough to feel like "no sign-in" and short enough
+# that a leaked token is not a permanent key.
+DEFAULT_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
+
+
+def token_ttl_seconds():
+    """How long a sign-in lasts between uses."""
+    return _positive_int(
+        "CHECKPAUSE_TOKEN_TTL_SECONDS", DEFAULT_TOKEN_TTL_SECONDS
+    )
+
+
+def confidentiality_policy():
+    """Deployment wording for the rule against reciting the tuned prompt.
+
+    Empty unless somebody wants different words from the one built into
+    ``prompting``. Like the identity rule, it is kept out of the tuned prompt
+    file so replacing that file cannot quietly drop it.
+    """
+    return _read("confidentiality_policy.txt")
+
+
+# --- rate limits -----------------------------------------------------------
+
+# Signing in runs scrypt, so an endpoint that answers as fast as it is asked is
+# also a way to make the server spend real memory and CPU. These bounds cover
+# both password guessing and that cost: per client address, and - for sign-in -
+# per account, so guessing one name cannot be spread across many addresses.
+DEFAULT_LOGIN_ATTEMPTS = 10
+DEFAULT_LOGIN_WINDOW_SECONDS = 60
+DEFAULT_REGISTER_ATTEMPTS = 10
+DEFAULT_REGISTER_WINDOW_SECONDS = 3600
+
+
+def login_rate_limit():
+    """(attempts, window seconds) for sign-in, per address and per account."""
+    return (
+        _positive_int("CHECKPAUSE_LOGIN_ATTEMPTS", DEFAULT_LOGIN_ATTEMPTS),
+        _positive_int(
+            "CHECKPAUSE_LOGIN_WINDOW_SECONDS", DEFAULT_LOGIN_WINDOW_SECONDS
+        ),
+    )
+
+
+def register_rate_limit():
+    """(attempts, window seconds) for sign-up, per address."""
+    return (
+        _positive_int(
+            "CHECKPAUSE_REGISTER_ATTEMPTS", DEFAULT_REGISTER_ATTEMPTS
+        ),
+        _positive_int(
+            "CHECKPAUSE_REGISTER_WINDOW_SECONDS",
+            DEFAULT_REGISTER_WINDOW_SECONDS,
+        ),
+    )
+
+
 # --- payments --------------------------------------------------------------
 
 DEFAULT_ALIPAY_GATEWAY = "https://openapi.alipay.com/gateway.do"

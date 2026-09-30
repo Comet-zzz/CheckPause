@@ -8,10 +8,10 @@ Errors carry a short ``code`` so the client can pick its own wording instead of
 showing the server's English to a user.
 """
 
-from fastapi import APIRouter, Depends, Header, HTTPException
+from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from server import store
+from server import config, ratelimit, store
 
 router = APIRouter(tags=["accounts"])
 
@@ -65,6 +65,36 @@ def _reject(error):
     ) from error
 
 
+def _client_ip(request):
+    """The address to rate limit on.
+
+    The deployment sits behind nginx, which sets X-Real-IP to the peer it saw
+    and overwrites whatever arrived, so it is the one header a caller cannot
+    forge. The socket address is the fallback for a direct connection (as in
+    the tests).
+    """
+    forwarded = (request.headers.get("x-real-ip") or "").strip()
+    if forwarded:
+        return forwarded
+    return request.client.host if request.client else "unknown"
+
+
+def _too_many(retry_after):
+    raise HTTPException(
+        status_code=429,
+        detail={
+            "code": "too_many_attempts",
+            "message": "too many attempts; wait a moment and try again",
+        },
+        headers={"Retry-After": str(max(1, retry_after))},
+    )
+
+
+def _check_rate(name, key, limit, window):
+    if not ratelimit.allow(name, key, limit, window):
+        _too_many(ratelimit.retry_after(name, key, limit, window))
+
+
 def require_user(authorization: str = Header(default="")):
     """The account behind the bearer token, or a 401."""
     scheme, _, token = (authorization or "").partition(" ")
@@ -86,8 +116,11 @@ def require_user(authorization: str = Header(default="")):
 
 
 @router.post("/v1/accounts/register", response_model=Session)
-def register(credentials: Credentials):
+def register(credentials: Credentials, request: Request):
     """Create an account. New accounts start with no credits at all."""
+    _check_rate(
+        "register", _client_ip(request), *config.register_rate_limit()
+    )
     try:
         user = store.create_user(credentials.username, credentials.password)
     except store.StoreError as error:
@@ -96,7 +129,12 @@ def register(credentials: Credentials):
 
 
 @router.post("/v1/accounts/login", response_model=Session)
-def login(credentials: Credentials):
+def login(credentials: Credentials, request: Request):
+    limit, window = config.login_rate_limit()
+    _check_rate("login-address", _client_ip(request), limit, window)
+    account_key = (credentials.username or "").strip().lower()
+    if account_key:
+        _check_rate("login-account", account_key, limit, window)
     try:
         user = store.verify_login(credentials.username, credentials.password)
     except store.StoreError as error:
