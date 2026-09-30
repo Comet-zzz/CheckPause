@@ -100,8 +100,9 @@ MESSAGES = {
     "cloud_signin_required": "Sign in first (Settings > Cloud account...).",
     "cloud_username_taken": "That username is taken. Try another one.",
     "cloud_username_invalid": "Usernames are 3-32 letters, digits, underscores, dots or dashes.",
-    "cloud_password_too_short": "The password needs at least 6 characters.",
+    "cloud_password_too_short": "The password needs at least 8 characters.",
     "cloud_bad_credentials": "Wrong username or password.",
+    "cloud_too_many_attempts": "Too many attempts. Wait a moment and try again.",
     "cloud_no_credit": "Not enough CP credits. Please top up.",
     "cloud_no_credit_detail": "Not enough CP credits: balance {balance}, this request needs about {needed}.",
 

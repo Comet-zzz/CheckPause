@@ -34,6 +34,7 @@ ERROR_KEYS = {
     "missing_token": "cloud_signin_required",
     "unknown_token": "cloud_signin_required",
     "no_credits": "cloud_no_credit",
+    "too_many_attempts": "cloud_too_many_attempts",
 }
 
 
