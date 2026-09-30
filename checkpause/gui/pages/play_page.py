@@ -560,6 +560,12 @@ class PlayPage(QWidget):
     def set_board_theme(self, name):
         self.board.set_board_theme(name)
 
+    def set_sound_enabled(self, enabled):
+        self.board.set_sound_enabled(enabled)
+
+    def set_sound_set(self, name):
+        self.board.set_sound_set(name)
+
     def reset(self):
         self._session.human_color = chess.WHITE
         self._level_rating = PLAY_RATING_DEFAULT

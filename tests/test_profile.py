@@ -3,7 +3,12 @@ import tempfile
 import unittest
 from unittest import mock
 
-from checkpause.assets import DEFAULT_BOARD_THEME, DEFAULT_PIECE_SET
+from checkpause.assets import (
+    DEFAULT_BOARD_THEME,
+    DEFAULT_PIECE_SET,
+    DEFAULT_SOUND_SET,
+    SOUND_OFF,
+)
 from checkpause.data import profile
 
 
@@ -35,6 +40,33 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(loaded["language"], "en-US")
         self.assertEqual(loaded["piece_set"], DEFAULT_PIECE_SET)
         self.assertEqual(loaded["board_theme"], DEFAULT_BOARD_THEME)
+        self.assertEqual(loaded["sound_set"], DEFAULT_SOUND_SET)
+
+    def test_sound_set_can_be_changed_and_persists(self):
+        created = profile.create_profile("Tester")
+        profile.set_sound_set(created, SOUND_OFF)
+        self.assertEqual(profile.load_profile()["sound_set"], SOUND_OFF)
+        profile.set_sound_set(created, "wood")
+        self.assertEqual(profile.load_profile()["sound_set"], "wood")
+
+    def test_unknown_sound_set_falls_back_to_the_default(self):
+        created = profile.create_profile("Tester")
+        profile.set_sound_set(created, "nonsense")
+        self.assertEqual(profile.load_profile()["sound_set"], DEFAULT_SOUND_SET)
+
+    def test_legacy_profile_gets_the_default_sound_set(self):
+        legacy = os.path.join(self._tmp.name, "legacy.json")
+        with open(legacy, "w", encoding="utf-8") as handle:
+            handle.write('{"username": "Legacy"}')
+        self.assertEqual(profile.load_profile()["sound_set"], DEFAULT_SOUND_SET)
+
+    def test_boolean_sound_preference_is_migrated(self):
+        legacy = os.path.join(self._tmp.name, "legacy.json")
+        with open(legacy, "w", encoding="utf-8") as handle:
+            handle.write('{"username": "Legacy", "sound": false}')
+        loaded = profile.load_profile()
+        self.assertEqual(loaded["sound_set"], SOUND_OFF)
+        self.assertNotIn("sound", loaded)
 
     def test_update_profile_records_history(self):
         created = profile.create_profile("Tester")

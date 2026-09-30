@@ -26,7 +26,7 @@ a = Analysis(
         (STOCKFISH_EXE, os.path.join("stockfish", "stockfish")),
         ("assets", "assets"),
     ],
-    hiddenimports=[],
+    hiddenimports=["PySide6.QtMultimedia"],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

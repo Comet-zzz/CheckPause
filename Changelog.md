@@ -1,3 +1,54 @@
+# v1.8.1 – Move Sounds
+
+> **每一步走子都有音效了，并且可以像棋子、棋盘一样挑选音效风格。** 普通走子、吃子、将军、易位、升变各有不同的声音，在「对弈」「谜题」「面板」三处都会播放，默认开启；「个性化 → 音效」里可切换风格或关闭。所有音效由项目自行合成，不含任何第三方素材。
+>
+> **Every move now has a sound, and you can pick its style just like piece sets and board themes.** Quiet moves, captures, checks, castling and promotions each get their own sound, in Play, Puzzles and the analysis panel alike, on by default. Switch styles or turn it off under Personalization → Sound. Every clip is synthesised by the project itself, with no third-party assets.
+
+---
+
+## 🎯 What's New
+
+### 🔊 Move sounds
+- 走子播放音效：普通走子、吃子、将军、易位、升变各不相同，默认开启。
+- 三个模块统一生效：「对弈」「谜题」与「面板」都已接入，单步前后翻棋也有一致的声音。
+- 引擎跑分析时的自动回放**保持安静**，不会在分析过程中连着响一串。
+
+- Sounds play on every move: quiet moves, captures, checks, castling and promotions each have their own, on by default.
+- The Play, Puzzles and Panel modules all use them, and single-step navigation sounds consistent too.
+- The engine's automatic replay while analysing stays silent, so a long game is not rattled off sound after sound.
+
+### 🎛️ Selectable sound sets
+- 「个性化 → 音效」可在 **关闭 / 经典 / 木质 / 电子** 之间切换，与棋子、棋盘的选择方式一致，即时生效并记住。
+- 所有音效由 `tools/make_sounds.py` 程序合成（无第三方素材），因此没有任何版权归属问题。
+
+- Personalization → Sound offers **Off / Classic / Wood / Digital**, chosen the same way as piece sets and board themes, applied at once and remembered.
+- Every clip is synthesised by `tools/make_sounds.py` with no third-party assets, so there are no attribution requirements.
+
+---
+
+## 🛠️ Full Changelog
+- feat(sound): play a distinct sound for moves, captures, checks, castling and promotions
+- feat(sound): wire the sounds into Play, Puzzles and the analysis panel
+- feat(sound): add Off / Classic / Wood / Digital sets under Personalization
+- feat(tools): add `tools/make_sounds.py` to regenerate every clip
+- feat(i18n): add the sound menu strings in Chinese and English
+- fix(sound): keep the analysis replay silent
+- chore(version): bump the app version to 1.8.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。音效默认开启，可在「个性化 → 音效」里关闭。
+- 用户设置在 `profile.json` 中新增 `sound_set`；旧版本里的音效开关会自动迁移。
+
+- No breaking changes. Sound is on by default and can be turned off under Personalization → Sound.
+- The preference is stored as a new `sound_set` field in `profile.json`; the previous on/off choice is migrated automatically.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.0...v1.8.1
+
 # v1.8.0 – macOS and the Analysis Panel
 
 > **新增 macOS 版（Apple Silicon 与 Intel），分析工具升级为可编辑的分析面板。** macOS 版功能与 Windows 版一致，由 GitHub Actions 打包为 `.dmg`；分析面板新增走子动画与棋盘编辑，并支持从任意局面开始分析。
