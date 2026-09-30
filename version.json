@@ -1,10 +1,10 @@
 {
-  "latest": "1.8.0",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.0.exe",
+  "latest": "1.8.1",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.1.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.0.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.0-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.0-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.1.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.1-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.1-macOS-Intel.dmg"
   },
-  "notes": "新增 macOS 版；分析面板新增走子动画与棋盘编辑，并支持从任意局面开始分析。"
+  "notes": "新增走棋音效：普通走子、吃子、将军、易位、升变各有声音，「个性化 → 音效」可选关闭/经典/木质/电子，默认开启。"
 }
