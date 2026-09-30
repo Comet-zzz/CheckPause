@@ -34,8 +34,7 @@ Engine analysis:
 DEFAULT_MAX_ANSWER_TOKENS = 3000
 
 # Share of a first purchase handed back as bonus credits. Ten percent of a
-# CNY 10 top-up means 1100 credits for CNY 10, which trims the first sale's
-# margin from about 50% to about 45%. Zero switches the offer off.
+# CNY 10 top-up means 1100 credits for CNY 10. Zero switches the offer off.
 DEFAULT_FIRST_TOPUP_BONUS_PERCENT = 10
 
 
@@ -81,11 +80,10 @@ def api_key():
 
 
 def base_url():
-    """Where the upstream provider lives.
+    """Where the upstream provider lives. Supplied by the deployment.
 
-    Deliberately without a default. A default here would name the provider this
-    service runs on, and the whole point of keeping it in the environment is
-    that it is the deployment's business rather than the repository's.
+    There is no default on purpose: an unconfigured deployment must fail loudly
+    rather than quietly send traffic somewhere unintended.
     """
     return os.environ.get("UPSTREAM_BASE_URL", "").strip()
 

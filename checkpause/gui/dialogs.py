@@ -109,10 +109,9 @@ def api_settings_dialog(parent, language, config=None):
     form.addRow(t("api_base_url_label", language), base_field)
     form.addRow(t("api_model_label", language), model_field)
 
-    # The provider fields are local mode's business. In cloud mode they are
-    # hidden rather than greyed out, because leaving them on screen would show
-    # anyone who opened this dialog which model the server runs on - and that
-    # is a question the service deliberately does not answer.
+    # The provider fields belong to local mode only, so in cloud mode they are
+    # hidden rather than greyed out: they have no meaning there, and leaving
+    # them on screen would only invite a pointless edit.
     provider_fields = (key_field, show_toggle, base_field, model_field)
     provider_rows = [
         (field, form.labelForField(field)) for field in provider_fields

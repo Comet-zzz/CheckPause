@@ -15,15 +15,10 @@ import math
 # table produced a given charge.
 PRICE_VERSION = "2026-09-17.1"
 
-# User-facing price, in credits per 1M tokens. One credit sells for CNY 0.01
-# and costs roughly CNY 0.005 to deliver, so these are about twice what the
-# upstream charges at its peak rate, converted at about 7.1 CNY/USD.
-#
-# Peak hours are 01:00-04:00 and 06:00-10:00 UTC, Monday to Friday, so users are
-# billed as if every request ran at peak. Off-peak upstream rates are half of
-# peak, and inputs that hit the context cache are about fifty times cheaper than
-# a miss; both differences stay with the platform, which is why the real margin
-# lands above the 50% the two rates above imply.
+# User-facing price, in credits per 1M tokens. One credit sells for CNY 0.01.
+# Output is priced well above input because generating a reply is the more
+# expensive half of a request; the ratio itself is a business decision rather
+# than something derived here.
 INPUT_CREDITS_PER_MILLION = 400
 OUTPUT_CREDITS_PER_MILLION = 1600
 
