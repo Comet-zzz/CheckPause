@@ -9,7 +9,7 @@
 | ① | 服务能跑起来、外网能访问 | ✅ |
 | ② | 拼提示词 → 调上游模型 → 流式返回 | ✅ |
 | ③ | 账号 + 积分 + 充值 | ✅ 沙箱 + **生产真付均已通过** |
-| ④ | 公网 HTTPS `notify_url` / 域名 | 🟡 `checkpause.com` + HTTPS 已上线；`notify_url` 待接 |
+| ④ | 公网 HTTPS `notify_url` / 域名 | ✅ `checkpause.com` + HTTPS + `notify_url` 均已上线 |
 
 ## 接口
 
@@ -151,8 +151,9 @@ nginx 站点拆成三块，`install.sh` 负责安装，**重复执行不会把�
   ```
 
 - 私钥/账户在 `/etc/letsencrypt/`，**不在仓库**；续期后重载 nginx 由 timer 钩子负责。
-- 接支付宝 `notify_url` 时填 `https://checkpause.com/v1/pay/notify`，
-  回跳填 `https://checkpause.com/v1/pay/return`，写进 `/etc/checkpause/env` 后 `systemctl restart checkpause`。
+- 已接上的支付宝回调（写在 `/etc/checkpause/env`，改完 `systemctl restart checkpause`）：
+  `AIPAY_NOTIFY_URL=https://checkpause.com/v1/pay/notify`、
+  `AIPAY_RETURN_URL=https://checkpause.com/v1/pay/return`。
 
 ## 服务器上的位置
 
@@ -267,7 +268,8 @@ AIPAY_NOTIFY_URL / AIPAY_RETURN_URL / AIPAY_SELLER_ID   # 都可留空
   生产 `https://openapi.alipay.com/gateway.do`
 
 **2026-09-18 生产真付一笔 ¥1 成功入账**（交易号 `2026091822001471611438397651`）。
-剩下的只是补公网 HTTPS `notify_url`，让到账更即时。
+**2026-10-02**：`checkpause.com` + HTTPS 上线，`AIPAY_NOTIFY_URL` / `AIPAY_RETURN_URL`
+切换到域名（见上文「HTTPS / 域名」），到账不再只靠主动查单。
 
 开单（客户端发版前用这个收款，比手动加积分好）：
 
