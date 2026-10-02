@@ -1,3 +1,40 @@
+# v1.8.2 – HTTPS Cloud Endpoint
+
+> **云端模式改走 HTTPS 域名 `checkpause.com`。** 连接加密，不再依赖裸 IP；旧版本里保存的服务器地址会自动切到新域名，无需手动设置。本地模式（自带 Key）不受影响。
+>
+> **Cloud mode now talks to the HTTPS domain `checkpause.com`.** The connection is encrypted and no longer relies on a bare IP; an older install that saved the previous address is migrated automatically, so there is nothing to set by hand. Local mode (bring your own key) is unchanged.
+
+---
+
+## 🎯 What's Changed
+
+### 🔐 HTTPS cloud endpoint
+- 云端模式默认地址由 `http://43.108.99.244` 换成 `https://checkpause.com`，账号、充值、分析请求全程加密。
+- 设置里若保存过旧的裸 IP，会**自动视为未设置**并改用新域名；自定义的服务地址不受影响。
+
+- The cloud-mode default moved from `http://43.108.99.244` to `https://checkpause.com`, so sign-in, top-ups and analysis all travel over TLS.
+- A settings file holding the old bare IP is treated as unset and moves to the domain; a genuinely custom address is left untouched.
+
+---
+
+## 🛠️ Full Changelog
+- feat(cloud): default the server URL to https://checkpause.com
+- fix(settings): migrate a saved plain-HTTP IP to the HTTPS domain
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+- 旧地址会自动迁移；如需继续用自定义服务器地址，在设置中填写即可。
+
+- No breaking changes.
+- The previous address is migrated automatically; a custom server address still works if entered in settings.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.1...v1.8.2
+
 # v1.8.1 – Move Sounds
 
 > **每一步走子都有音效了，并且可以像棋子、棋盘一样挑选音效风格。** 普通走子、吃子、将军、易位、升变各有不同的声音，在「对弈」「谜题」「面板」三处都会播放，默认开启；「个性化 → 音效」里可切换风格或关闭。所有音效由项目自行合成，不含任何第三方素材。
