@@ -48,7 +48,7 @@ def load_index(base_dir=None):
     if not os.path.isfile(path):
         return []
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, ValueError):
         return []
@@ -71,7 +71,7 @@ def load_progress(base_dir=None):
     if not os.path.isfile(path):
         return {}
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             data = json.load(handle)
     except (OSError, ValueError):
         return {}
@@ -157,7 +157,7 @@ def load_favorites(base_dir=None):
         return []
     result = []
     try:
-        with open(path, "r", encoding="utf-8") as handle:
+        with open(path, encoding="utf-8") as handle:
             for line in handle:
                 line = line.strip()
                 if not line:
@@ -178,9 +178,7 @@ def save_favorites(entries, base_dir=None):
     os.makedirs(base, exist_ok=True)
     with open(favorites_path(base), "w", encoding="utf-8") as handle:
         for item in entries:
-            handle.write(
-                json.dumps(item, ensure_ascii=False, separators=(",", ":"))
-            )
+            handle.write(json.dumps(item, ensure_ascii=False, separators=(",", ":")))
             handle.write("\n")
 
 
@@ -248,11 +246,7 @@ def list_collections(base_dir=None):
 def is_builtin_hidden(base_dir=None):
     base = base_dir or PUZZLE_DIR
     for meta in load_index(base):
-        if (
-            isinstance(meta, dict)
-            and meta.get("id") == BUILTIN_ID
-            and meta.get("hidden")
-        ):
+        if isinstance(meta, dict) and meta.get("id") == BUILTIN_ID and meta.get("hidden"):
             return True
     return False
 
@@ -318,12 +312,10 @@ def iter_pgn_puzzles(text):
 def iter_puzzles(path):
     ext = os.path.splitext(path)[1].lower()
     if ext in CSV_EXTENSIONS:
-        with open(
-            path, "r", encoding="utf-8-sig", errors="replace", newline=""
-        ) as handle:
+        with open(path, encoding="utf-8-sig", errors="replace", newline="") as handle:
             yield from iter_lichess_csv(handle)
     elif ext in PGN_EXTENSIONS:
-        with open(path, "r", encoding="utf-8", errors="replace") as handle:
+        with open(path, encoding="utf-8", errors="replace") as handle:
             yield from iter_pgn_puzzles(handle.read())
     else:
         raise PuzzleImportError("unsupported_format")
@@ -346,9 +338,7 @@ def import_collection(path, name=None, progress=None, base_dir=None):
     try:
         with open(target, "w", encoding="utf-8") as out:
             for puzzle in iter_puzzles(path):
-                out.write(
-                    json.dumps(puzzle, ensure_ascii=False, separators=(",", ":"))
-                )
+                out.write(json.dumps(puzzle, ensure_ascii=False, separators=(",", ":")))
                 out.write("\n")
                 count += 1
                 if progress is not None and count % 200 == 0:
@@ -358,7 +348,7 @@ def import_collection(path, name=None, progress=None, base_dir=None):
         raise
     except Exception as exc:
         _remove_quietly(target)
-        raise PuzzleImportError("read_error", str(exc))
+        raise PuzzleImportError("read_error", str(exc)) from exc
     if count == 0:
         _remove_quietly(target)
         raise PuzzleImportError("empty")
