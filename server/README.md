@@ -177,7 +177,7 @@ systemctl restart checkpause     # 重启（改完提示词用它）
 
 ### 版本清单镜像（客户端检查更新用的）
 
-客户端先请求 `http://43.108.99.244/version.json`，nginx 直接发
+客户端先请求 `https://checkpause.com/version.json`（裸 IP 明文镜像仍可用），nginx 直接发
 `/srv/downloads/version.json`。这个文件由 `checkpause-version-refresh.timer`
 每 2 分钟从 GitHub 拉一次（原子替换，失败保留旧文件）。
 
