@@ -1,0 +1,9 @@
+# 提交前自动跑 ruff；不通过无法提交。
+# 首次使用：.venv\Scripts\python.exe -m pre_commit install
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.4.0
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

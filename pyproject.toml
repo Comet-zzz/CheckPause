@@ -1,0 +1,34 @@
+# 代码风格配置（只放工具配置，不做打包元数据；打包走 CheckPause.spec）
+# 约定与硬规则见 CODING.md，名字清单见 NAMING.md。
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = ["build", "dist", "stockfish", ".venv"]
+
+[tool.ruff.lint]
+# E/W 语法与空白、F 未使用导入/变量、I import 排序、N 命名规范、
+# UP 旧语法升级、B 常见陷阱、SIM 可简化写法、C90 圈复杂度
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "C90"]
+# SIM108 会诱导把清晰的 if/else 压成嵌套三元，方向相反，关掉
+ignore = ["SIM108"]
+
+[tool.ruff.lint.mccabe]
+# 超过 15 视为"该拆了"；现有超标函数见下方 baseline
+max-complexity = 15
+
+# 框架/语言约定导致的误报，按文件豁免（改动现有代码不便，先记录在此）
+[tool.ruff.lint.per-file-ignores]
+"checkpause/gui/**" = ["N802"]  # Qt 事件回调必须是 camelCase（closeEvent/paintEvent…）
+"checkpause/i18n/*.py" = ["N999"]  # 语言代码模块名 en_US / zh_CN 故意大写
+"server/app.py" = ["B008"]  # FastAPI 的 Depends(...) 参数默认值惯用法
+"server/accounts.py" = ["B008"]
+"server/payments.py" = ["B008"]
+# C901 baseline：这几个函数超标，待专门任务拆分；先冻结，只拦新债
+"checkpause/core/engine.py" = ["C901"]
+"checkpause/gui/dialogs.py" = ["C901"]
+"checkpause/gui/widgets/board/canvas.py" = ["C901"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

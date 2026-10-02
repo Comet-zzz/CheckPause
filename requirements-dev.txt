@@ -1,0 +1,4 @@
+# 开发工具（不进入安装包）
+# ruff 版本与 .pre-commit-config.yaml 的 ruff-pre-commit rev 保持一致
+ruff==0.4.0
+pre-commit
