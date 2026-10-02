@@ -103,9 +103,7 @@ def _positive_int(name, default):
 
 def max_answer_tokens():
     """Upper bound on one reply, so a request cannot cost without limit."""
-    return _positive_int(
-        "CHECKPAUSE_MAX_ANSWER_TOKENS", DEFAULT_MAX_ANSWER_TOKENS
-    )
+    return _positive_int("CHECKPAUSE_MAX_ANSWER_TOKENS", DEFAULT_MAX_ANSWER_TOKENS)
 
 
 def first_topup_bonus_percent():
@@ -113,11 +111,7 @@ def first_topup_bonus_percent():
     try:
         return max(
             0,
-            int(
-                os.environ.get(
-                    "CHECKPAUSE_FIRST_TOPUP_BONUS_PERCENT", ""
-                ).strip()
-            ),
+            int(os.environ.get("CHECKPAUSE_FIRST_TOPUP_BONUS_PERCENT", "").strip()),
         )
     except ValueError:
         return DEFAULT_FIRST_TOPUP_BONUS_PERCENT
@@ -134,9 +128,7 @@ DEFAULT_TOKEN_TTL_SECONDS = 30 * 24 * 60 * 60
 
 def token_ttl_seconds():
     """How long a sign-in lasts between uses."""
-    return _positive_int(
-        "CHECKPAUSE_TOKEN_TTL_SECONDS", DEFAULT_TOKEN_TTL_SECONDS
-    )
+    return _positive_int("CHECKPAUSE_TOKEN_TTL_SECONDS", DEFAULT_TOKEN_TTL_SECONDS)
 
 
 def confidentiality_policy():
@@ -165,18 +157,14 @@ def login_rate_limit():
     """(attempts, window seconds) for sign-in, per address and per account."""
     return (
         _positive_int("CHECKPAUSE_LOGIN_ATTEMPTS", DEFAULT_LOGIN_ATTEMPTS),
-        _positive_int(
-            "CHECKPAUSE_LOGIN_WINDOW_SECONDS", DEFAULT_LOGIN_WINDOW_SECONDS
-        ),
+        _positive_int("CHECKPAUSE_LOGIN_WINDOW_SECONDS", DEFAULT_LOGIN_WINDOW_SECONDS),
     )
 
 
 def register_rate_limit():
     """(attempts, window seconds) for sign-up, per address."""
     return (
-        _positive_int(
-            "CHECKPAUSE_REGISTER_ATTEMPTS", DEFAULT_REGISTER_ATTEMPTS
-        ),
+        _positive_int("CHECKPAUSE_REGISTER_ATTEMPTS", DEFAULT_REGISTER_ATTEMPTS),
         _positive_int(
             "CHECKPAUSE_REGISTER_WINDOW_SECONDS",
             DEFAULT_REGISTER_WINDOW_SECONDS,
@@ -213,15 +201,12 @@ def topup_packs():
     return packs or list(DEFAULT_TOPUP_PACKS)
 
 
-DEFAULT_PUBLIC_URL = "http://43.108.99.244"
+DEFAULT_PUBLIC_URL = "https://checkpause.com"
 
 
 def public_url():
     """Where buyers reach this server, used to build payment links."""
-    return (
-        os.environ.get("CHECKPAUSE_PUBLIC_URL", "").strip()
-        or DEFAULT_PUBLIC_URL
-    )
+    return os.environ.get("CHECKPAUSE_PUBLIC_URL", "").strip() or DEFAULT_PUBLIC_URL
 
 
 def sandbox_hint_enabled():
@@ -254,10 +239,7 @@ def alipay_settings():
         "app_id": app_id,
         "private_key": private_key,
         "alipay_public_key": alipay_public_key,
-        "gateway": (
-            os.environ.get("AIPAY_GATEWAY", "").strip()
-            or DEFAULT_ALIPAY_GATEWAY
-        ),
+        "gateway": (os.environ.get("AIPAY_GATEWAY", "").strip() or DEFAULT_ALIPAY_GATEWAY),
         # Both may be empty. The notification contract allows omitting
         # notify_url when there is no public HTTPS address yet, provided the
         # trade query fallback is implemented - and it is.
