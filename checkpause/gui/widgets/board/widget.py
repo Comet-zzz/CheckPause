@@ -113,12 +113,8 @@ class BoardWidget(QWidget):
 
         nav_row = QHBoxLayout()
         nav_row.addWidget(self._nav, 1)
-        left_spacer = QSpacerItem(
-            0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum
-        )
-        right_spacer = QSpacerItem(
-            0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum
-        )
+        left_spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
+        right_spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         self._nav_spacers = (left_spacer, right_spacer)
         nav_row.addItem(left_spacer)
         nav_row.addWidget(self._step_label)
@@ -164,9 +160,9 @@ class BoardWidget(QWidget):
                 button.setFixedSize(28, 28)
                 button.setIconSize(QSize(22, 22))
                 button.clicked.connect(
-                    lambda _checked=False, piece=chess.Piece(
-                        piece_type, color
-                    ): self._on_palette(piece)
+                    lambda _checked=False, piece_type=piece_type, color=color: (
+                        self._on_palette(chess.Piece(piece_type, color))
+                    )
                 )
                 self._palette_group.addButton(button)
                 self._palette_buttons[(color, piece_type)] = button
@@ -175,9 +171,7 @@ class BoardWidget(QWidget):
         self._erase_button.setCheckable(True)
         self._erase_button.setFixedSize(28, 28)
         self._erase_button.setIconSize(QSize(18, 18))
-        self._erase_button.clicked.connect(
-            lambda _checked=False: self._on_palette("erase")
-        )
+        self._erase_button.clicked.connect(lambda _checked=False: self._on_palette("erase"))
         self._palette_group.addButton(self._erase_button)
         pieces_row.addSpacing(10)
         pieces_row.addWidget(self._erase_button)
@@ -261,12 +255,8 @@ class BoardWidget(QWidget):
                 chess.KNIGHT: "piece_knight",
                 chess.PAWN: "piece_pawn",
             }[piece_type]
-            color_key = (
-                "play_side_white" if color == chess.WHITE else "play_side_black"
-            )
-            button.setToolTip(
-                t(color_key, language) + " " + t(name, language)
-            )
+            color_key = "play_side_white" if color == chess.WHITE else "play_side_black"
+            button.setToolTip(t(color_key, language) + " " + t(name, language))
         self._erase_button.setToolTip(t("edit_erase", language))
         self._edit_turn_label.setText(t("edit_turn_label", language))
         self._castling_label.setText(t("edit_castling_label", language))
@@ -290,9 +280,7 @@ class BoardWidget(QWidget):
 
     def _refresh_palette_icons(self):
         for (color, piece_type), button in self._palette_buttons.items():
-            pixmap = self._piece_pixmap(
-                chess.Piece(piece_type, color), 22
-            )
+            pixmap = self._piece_pixmap(chess.Piece(piece_type, color), 22)
             button.setIcon(QIcon(pixmap) if pixmap is not None else QIcon())
         self._erase_button.setIcon(QIcon(self._erase_pixmap()))
 
@@ -384,14 +372,8 @@ class BoardWidget(QWidget):
         else:
             self._index = max(0, min(index, len(self._moves)))
         self.render()
-        if (
-            animate
-            and self._index == len(self._moves)
-            and len(self._moves) > previous_count
-        ):
-            self._start_animation(
-                self._moves[-1], forward=True, sound=sound
-            )
+        if animate and self._index == len(self._moves) and len(self._moves) > previous_count:
+            self._start_animation(self._moves[-1], forward=True, sound=sound)
 
     def set_sound_enabled(self, enabled):
         self._sound.set_enabled(enabled)
@@ -576,8 +558,7 @@ class BoardWidget(QWidget):
             if board.piece_at(chess.square(file_index, pawn_rank)) != enemy_pawn:
                 continue
             if not any(
-                board.piece_at(chess.square(neighbour, pawn_rank))
-                == chess.Piece(chess.PAWN, turn)
+                board.piece_at(chess.square(neighbour, pawn_rank)) == chess.Piece(chess.PAWN, turn)
                 for neighbour in (file_index - 1, file_index + 1)
                 if 0 <= neighbour <= 7
             ):
@@ -598,10 +579,7 @@ class BoardWidget(QWidget):
         if piece is None:
             return False
         promotion = None
-        if (
-            piece.piece_type == chess.PAWN
-            and chess.square_rank(to_square) in (0, 7)
-        ):
+        if piece.piece_type == chess.PAWN and chess.square_rank(to_square) in (0, 7):
             promotion = self.promotion_choice(to_square, piece.color)
             if promotion is None:
                 self.clear_selection()
@@ -672,9 +650,7 @@ class BoardWidget(QWidget):
             return False
         self._selected = square
         self._targets = {
-            move.to_square
-            for move in self._board.legal_moves
-            if move.from_square == square
+            move.to_square for move in self._board.legal_moves if move.from_square == square
         }
         self._canvas.update()
         return True
@@ -725,16 +701,10 @@ class BoardWidget(QWidget):
         rook = None
         if (
             piece.piece_type == chess.KING
-            and abs(
-                chess.square_file(move.to_square)
-                - chess.square_file(move.from_square)
-            )
-            == 2
+            and abs(chess.square_file(move.to_square) - chess.square_file(move.from_square)) == 2
         ):
             rank = chess.square_rank(move.from_square)
-            if chess.square_file(move.to_square) > chess.square_file(
-                move.from_square
-            ):
+            if chess.square_file(move.to_square) > chess.square_file(move.from_square):
                 rook = (chess.square(7, rank), chess.square(5, rank))
             else:
                 rook = (chess.square(0, rank), chess.square(3, rank))
@@ -845,9 +815,7 @@ class BoardWidget(QWidget):
         code = color + piece.symbol().upper()
         cache_key = self._piece_set + ":" + code
         if cache_key not in self._piece_cache:
-            path = resource_path(
-                "assets", "pieces", self._piece_set, code + ".svg"
-            )
+            path = resource_path("assets", "pieces", self._piece_set, code + ".svg")
             renderer = None
             if os.path.isfile(path):
                 renderer = QSvgRenderer(path)
@@ -876,9 +844,7 @@ class BoardWidget(QWidget):
         return choice
 
     def _square_colors(self):
-        return BOARD_THEMES.get(
-            self._board_theme, BOARD_THEMES[DEFAULT_BOARD_THEME]
-        )
+        return BOARD_THEMES.get(self._board_theme, BOARD_THEMES[DEFAULT_BOARD_THEME])
 
     def _apply_nav_icons(self):
         for button, name in (
@@ -922,9 +888,7 @@ class BoardWidget(QWidget):
                 self._board = chess.Board()
             for move in self._moves[: self._index]:
                 self._board.push(move)
-            self._last_move = (
-                self._moves[self._index - 1] if self._index > 0 else None
-            )
+            self._last_move = self._moves[self._index - 1] if self._index > 0 else None
 
         self._canvas.update()
 
