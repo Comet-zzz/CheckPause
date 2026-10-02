@@ -8,16 +8,22 @@ DEFAULT_MODEL = "deepseek-flash"
 
 # Where the paid tier sends its requests. The client only ever sends raw
 # material here; the tuned prompt stays on the server.
-DEFAULT_SERVER_URL = "http://43.108.99.244"
+DEFAULT_SERVER_URL = "https://checkpause.com"
 
-MODE_LOCAL = "local"   # bring your own API key, straight to the provider
-MODE_CLOUD = "cloud"   # through the CheckPause server
+# The plain-HTTP IP this used before the domain existed. An install may have
+# saved it verbatim when the settings dialog was opened; treat it as "unset" so
+# upgrading moves to HTTPS instead of staying pinned to the old address. A
+# genuinely custom address is left alone.
+LEGACY_SERVER_URLS = ("http://43.108.99.244",)
+
+MODE_LOCAL = "local"  # bring your own API key, straight to the provider
+MODE_CLOUD = "cloud"  # through the CheckPause server
 
 
 def load_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
-            with open(SETTINGS_FILE, "r", encoding="utf-8") as handle:
+            with open(SETTINGS_FILE, encoding="utf-8") as handle:
                 data = json.load(handle)
                 if isinstance(data, dict):
                     return data
@@ -54,7 +60,10 @@ def get_ai_mode():
 
 
 def get_server_url():
-    return (load_settings().get("server_url") or "").strip() or DEFAULT_SERVER_URL
+    url = (load_settings().get("server_url") or "").strip()
+    if not url or url in LEGACY_SERVER_URLS:
+        return DEFAULT_SERVER_URL
+    return url
 
 
 def get_account():
