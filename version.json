@@ -1,10 +1,10 @@
 {
-  "latest": "1.8.1",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.1.exe",
+  "latest": "1.8.2",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.2.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.1.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.1-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.1-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.2.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.2-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.2-macOS-Intel.dmg"
   },
-  "notes": "新增走棋音效：普通走子、吃子、将军、易位、升变各有声音，「个性化 → 音效」可选关闭/经典/木质/电子，默认开启。"
+  "notes": "云端模式改走 HTTPS 域名 checkpause.com，连接全程加密；旧设置里的裸 IP 会自动迁移到新域名。"
 }
