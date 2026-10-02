@@ -9,7 +9,7 @@
 | ① | 服务能跑起来、外网能访问 | ✅ |
 | ② | 拼提示词 → 调上游模型 → 流式返回 | ✅ |
 | ③ | 账号 + 积分 + 充值 | ✅ 沙箱 + **生产真付均已通过** |
-| ④ | 公网 HTTPS `notify_url` / 域名 | ⬜ 靠交易查询兜底，能到账 |
+| ④ | 公网 HTTPS `notify_url` / 域名 | 🟡 `checkpause.com` + HTTPS 已上线；`notify_url` 待接 |
 
 ## 接口
 
@@ -127,6 +127,32 @@ bash /srv/checkpause/server/deploy/install.sh
 ```
 
 脚本会 `git pull`、刷新 venv、重建配置目录、重装 unit、重启服务，**重复执行安全**。
+
+### HTTPS / 域名（`checkpause.com`）
+
+nginx 站点拆成三块，`install.sh` 负责安装，**重复执行不会把证书配置冲掉**：
+
+| 文件 | 装到 | 作用 |
+| --- | --- | --- |
+| `nginx-checkpause-locations.conf` | `/etc/nginx/snippets/checkpause-locations.conf` | 两个 server 块共用的 location（版本清单 / 下载镜像 / 反代） |
+| `nginx-checkpause.conf` | `sites-available/checkpause` | 80 端口默认站：ACME 挑战 + `include` 上面的 snippet |
+| `nginx-checkpause-tls.conf` | `sites-available/checkpause-tls` | 443 端口 HTTPS；**只有证书存在时** install.sh 才启用 |
+
+- **不把 80 整体重定向到 HTTPS**：更新镜像走的是 IP 的明文 HTTP
+  （`http://43.108.99.244/version.json`、`/download/`），而证书只覆盖域名，
+  重定向会让所有已装客户端检查更新失败。
+- 证书用 apt 版 certbot 签发，`certbot.timer` 自动续期；首次签发：
+
+  ```bash
+  apt-get install -y certbot python3-certbot-nginx
+  mkdir -p /var/www/html
+  certbot certonly --webroot -w /var/www/html -d checkpause.com -d www.checkpause.com
+  bash /srv/checkpause/server/deploy/install.sh   # 再跑一次，启用 443 块
+  ```
+
+- 私钥/账户在 `/etc/letsencrypt/`，**不在仓库**；续期后重载 nginx 由 timer 钩子负责。
+- 接支付宝 `notify_url` 时填 `https://checkpause.com/v1/pay/notify`，
+  回跳填 `https://checkpause.com/v1/pay/return`，写进 `/etc/checkpause/env` 后 `systemctl restart checkpause`。
 
 ## 服务器上的位置
 

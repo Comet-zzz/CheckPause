@@ -129,10 +129,25 @@ systemctl enable "$SERVICE_NAME" >/dev/null
 systemctl restart "$SERVICE_NAME"
 
 log "nginx site"
+install -m 644 "$APP_DIR/server/deploy/nginx-checkpause-locations.conf" \
+    /etc/nginx/snippets/checkpause-locations.conf
 install -m 644 "$APP_DIR/server/deploy/nginx-checkpause.conf" \
     /etc/nginx/sites-available/checkpause
 ln -sf /etc/nginx/sites-available/checkpause /etc/nginx/sites-enabled/checkpause
 rm -f /etc/nginx/sites-enabled/default
+
+# HTTPS is layered on only when a certificate exists, so a first deploy on a
+# machine where certbot has not run yet still passes `nginx -t`. Issuing the
+# certificate is a one-off (see the TLS note in server/README.md); every later
+# deploy re-enables this block automatically.
+if [ -f /etc/letsencrypt/live/checkpause.com/fullchain.pem ]; then
+    install -m 644 "$APP_DIR/server/deploy/nginx-checkpause-tls.conf" \
+        /etc/nginx/sites-available/checkpause-tls
+    ln -sf /etc/nginx/sites-available/checkpause-tls /etc/nginx/sites-enabled/checkpause-tls
+else
+    rm -f /etc/nginx/sites-enabled/checkpause-tls
+fi
+
 nginx -t
 systemctl reload nginx
 
