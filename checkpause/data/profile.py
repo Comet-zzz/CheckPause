@@ -10,6 +10,11 @@ from checkpause.assets import (
     SOUND_CHOICES,
     SOUND_OFF,
 )
+from checkpause.config import (
+    DEFAULT_EVAL_DEPTH,
+    DEFAULT_HINT_ENABLED,
+    EVAL_DEPTH_OPTIONS,
+)
 from checkpause.data.paths import PROFILE_FILE, ensure_data_dir
 
 LEGACY_PROFILE_FILE = os.path.join(BASE_DIR, "profile.json")
@@ -28,6 +33,10 @@ def _normalize(profile):
     profile.pop("sound", None)
     if profile["sound_set"] not in SOUND_CHOICES:
         profile["sound_set"] = DEFAULT_SOUND_SET
+    profile.pop("eval_enabled", None)
+    profile.setdefault("hint_enabled", DEFAULT_HINT_ENABLED)
+    if profile.get("eval_depth") not in EVAL_DEPTH_OPTIONS:
+        profile["eval_depth"] = DEFAULT_EVAL_DEPTH
     return profile
 
 
@@ -40,11 +49,11 @@ def delete_profile():
 
 def load_profile():
     if os.path.exists(PROFILE_FILE):
-        with open(PROFILE_FILE, "r", encoding="utf-8") as handle:
+        with open(PROFILE_FILE, encoding="utf-8") as handle:
             return _normalize(json.load(handle))
 
     if os.path.exists(LEGACY_PROFILE_FILE):
-        with open(LEGACY_PROFILE_FILE, "r", encoding="utf-8") as handle:
+        with open(LEGACY_PROFILE_FILE, encoding="utf-8") as handle:
             profile = _normalize(json.load(handle))
         save_profile(profile)
         try:
@@ -70,6 +79,8 @@ def create_profile(username, language="zh-CN"):
         "piece_set": DEFAULT_PIECE_SET,
         "board_theme": DEFAULT_BOARD_THEME,
         "sound_set": DEFAULT_SOUND_SET,
+        "hint_enabled": DEFAULT_HINT_ENABLED,
+        "eval_depth": DEFAULT_EVAL_DEPTH,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_games": 0,
         "history": [],
@@ -105,6 +116,20 @@ def set_board_theme(profile, board_theme):
 
 def set_sound_set(profile, name):
     profile["sound_set"] = name if name in SOUND_CHOICES else DEFAULT_SOUND_SET
+    save_profile(profile)
+    return profile
+
+
+def set_hint_enabled(profile, enabled):
+    profile["hint_enabled"] = bool(enabled)
+    save_profile(profile)
+    return profile
+
+
+def set_eval_depth(profile, depth):
+    profile["eval_depth"] = (
+        depth if depth in EVAL_DEPTH_OPTIONS else DEFAULT_EVAL_DEPTH
+    )
     save_profile(profile)
     return profile
 

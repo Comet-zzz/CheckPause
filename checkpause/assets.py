@@ -22,11 +22,7 @@ BOARD_THEMES = {
 }
 DEFAULT_BOARD_THEME = "blue"
 
-SOUND_SETS = (
-    "classic",
-    "wood",
-    "digital",
-)
-DEFAULT_SOUND_SET = "classic"
+SOUND_SETS = ("digital",)
+DEFAULT_SOUND_SET = "digital"
 SOUND_OFF = "off"
 SOUND_CHOICES = (SOUND_OFF,) + SOUND_SETS

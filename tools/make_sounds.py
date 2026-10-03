@@ -98,77 +98,6 @@ def _arpeggio(freqs, blip_duration, gap, decay, gain):
     return out
 
 
-def _classic():
-    """Crisp and short: a sharp attack, a fast decay, almost no low body."""
-    move = _mix(
-        _tone(
-            1180.0, 980.0, 0.05, decay=44.0, gain=0.9, attack=0.12
-        ),
-        _click(duration=0.006, decay=260.0, gain=0.28),
-    )
-    return {
-        "move": move,
-        "capture": _mix(
-            _tone(
-                560.0,
-                430.0,
-                0.08,
-                decay=36.0,
-                gain=1.0,
-                harmonics=(1.0, 0.22),
-                attack=0.09,
-            ),
-            _click(duration=0.012, decay=150.0, gain=0.7),
-        ),
-        "check": _double(
-            _tone(
-                1480.0,
-                1560.0,
-                0.055,
-                decay=32.0,
-                gain=0.8,
-                attack=0.08,
-            ),
-            0.06,
-        ),
-        "castle": _double(move, 0.055),
-        "promote": _arpeggio(
-            (880.0, 1174.66, 1567.98), 0.055, 0.045, 32.0, 0.7
-        ),
-    }
-
-
-def _wood():
-    """Lower, knocks with a harder attack."""
-    move = _mix(
-        _tone(
-            210.0, 165.0, 0.09, decay=34.0, gain=0.9, harmonics=(1.0, 0.5, 0.3)
-        ),
-        _click(duration=0.014, decay=90.0, gain=0.5),
-    )
-    return {
-        "move": move,
-        "capture": _mix(
-            _tone(
-                150.0,
-                90.0,
-                0.15,
-                decay=26.0,
-                gain=1.0,
-                harmonics=(1.0, 0.6, 0.35),
-            ),
-            _click(duration=0.028, decay=60.0, gain=0.9),
-        ),
-        "check": _tone(
-            500.0, 840.0, 0.19, decay=9.0, gain=0.7, harmonics=(1.0, 0.3)
-        ),
-        "castle": _double(move, 0.075),
-        "promote": _arpeggio(
-            (392.0, 523.25, 659.25), 0.10, 0.065, 11.0, 0.6
-        ),
-    }
-
-
 def _digital():
     """Clean sine beeps, no body noise."""
     move = _mix(
@@ -192,8 +121,6 @@ def _digital():
 
 
 SETS = {
-    "classic": _classic,
-    "wood": _wood,
     "digital": _digital,
 }
 
