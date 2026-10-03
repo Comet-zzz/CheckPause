@@ -17,7 +17,7 @@ files to keep in sync, and they render fully offline.
 import json
 
 from fastapi import APIRouter
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 
 from server import config
 
@@ -330,8 +330,8 @@ _ICONS = {
 
 _STRINGS = {
     "zh": {
-        "title_home": "CheckPause - 国际象棋复盘工具",
-        "title_shop": "CheckPause - 定价",
+        "title_home": "CheckPause",
+        "title_shop": "CheckPause",
         "desc": "CheckPause 是一款国际象棋复盘工具：导入棋谱，逐着查看引擎评估与讲解，"
         "定位关键转折并理解更优选择。",
         "nav_home": "首页",
@@ -423,8 +423,8 @@ _STRINGS = {
         ],
     },
     "en": {
-        "title_home": "CheckPause - Chess Review and Training",
-        "title_shop": "CheckPause - Pricing",
+        "title_home": "CheckPause",
+        "title_shop": "CheckPause",
         "desc": "CheckPause is a chess review tool: import a game, step through "
         "the engine evaluation and notes, and see the better choices.",
         "nav_home": "Home",
@@ -561,10 +561,39 @@ def _page(title, description, lang, body):
         "<!doctype html>\n"
         f'<html lang="{html_lang}">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+        '<link rel="icon" type="image/svg+xml" href="/favicon.svg">\n'
         f'<meta name="description" content="{description}">\n'
         f"<title>{title}</title>\n"
         f"<style>{STYLE}</style>\n</head>\n<body>\n"
         f'<div class="wrap">\n{body}\n</div>\n</body>\n</html>\n'
+    )
+
+
+def _favicon_svg():
+    return (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">'
+        '<rect width="512" height="512" rx="116" fill="#111827"/>'
+        f"{_KING_MARK}</svg>"
+    )
+
+
+@router.get("/favicon.svg")
+def favicon():
+    """The tab icon: the same king mark as the application, as inline SVG."""
+    return Response(
+        _favicon_svg(),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
+    )
+
+
+@router.get("/favicon.ico")
+def favicon_ico():
+    """Browsers ask for this when no icon link is honoured; answer with the SVG."""
+    return Response(
+        _favicon_svg(),
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "public, max-age=86400"},
     )
 
 
