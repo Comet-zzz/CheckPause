@@ -1,10 +1,10 @@
 {
-  "latest": "1.8.2",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.2.exe",
+  "latest": "1.8.3",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.3.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.2.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.2-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.2-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.3.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.3-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.3-macOS-Intel.dmg"
   },
-  "notes": "云端模式改走 HTTPS 域名 checkpause.com，连接全程加密；旧设置里的裸 IP 会自动迁移到新域名。"
+  "notes": "棋盘上方新增 Stockfish 评估条，随局面平滑变化，可显示推荐着法箭头；音效精简为默认一种。"
 }
