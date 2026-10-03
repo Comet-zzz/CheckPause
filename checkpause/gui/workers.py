@@ -6,7 +6,11 @@ from checkpause.config import play_engine_settings
 from checkpause.core import cloud
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.cloud import CloudRequestError
-from checkpause.core.engine import StockfishAnalyzer, open_stockfish
+from checkpause.core.engine import (
+    StockfishAnalyzer,
+    open_stockfish,
+    read_score,
+)
 from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
@@ -101,6 +105,58 @@ class EngineMoveWorker(QThread):
             self.failed.emit(t("play_no_move", self.language))
             return
         self.move_ready.emit(result.move.uci())
+
+
+class LiveAnalysisWorker(QThread):
+    """Scores one position for the on-board evaluation bar.
+
+    Every request gets its own short-lived engine, so a slow search can never
+    stall navigation: the window keeps only the latest request in flight and
+    discards results whose token is stale.
+    """
+
+    evaluated = Signal(object)
+    failed = Signal(str)
+
+    def __init__(self, fen, depth, token, language="zh-CN", parent=None):
+        super().__init__(parent)
+        self.fen = fen
+        self.depth = depth
+        self.token = token
+        self.language = language
+
+    def run(self):
+        try:
+            engine = open_stockfish(get_stockfish_path(self.language))
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+
+        try:
+            info = engine.analyse(
+                chess.Board(self.fen), chess.engine.Limit(depth=self.depth)
+            )
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        finally:
+            try:
+                engine.quit()
+            except Exception:
+                # A shutdown failure must not hide the score we just read.
+                pass
+
+        margin, mate = read_score(info)
+        pv = info.get("pv") or []
+        best = pv[0].uci() if pv else None
+        self.evaluated.emit(
+            {
+                "token": self.token,
+                "best_move": best,
+                "margin": margin,
+                "mate": mate,
+            }
+        )
 
 
 class PuzzleImportWorker(QThread):

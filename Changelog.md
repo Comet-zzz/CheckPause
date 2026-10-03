@@ -1,3 +1,68 @@
+# v1.8.3 – Evaluation Bar & Cleaner Sounds
+
+> **棋盘上方新增 Stockfish 评估条，随局面平滑变化，可显示推荐着法箭头；音效精简为一种。** 面板模式下，棋盘上方的留白处会出现一条评估条，白黑占比实时反映双方优势，切换着法时带动画过渡。可在评估条下方勾选「显示推荐着法」，用半透明玻璃质感的箭头标出引擎最佳着法，并自由选择分析深度（10–22）。同时，音效只保留一种，原「电子」更名为「默认」。
+>
+> **A new Stockfish evaluation bar sits above the board, moving smoothly with each position, with an optional best-move arrow; and the move sounds are down to one.** In the Panel module a bar fills the empty space above the board, its white/black split tracking who stands better, and it animates on every step. Under it you can tick "Show best move" to draw the engine's choice as a frosted-glass arrow, and pick the analysis depth (10–22). The sound sets are now just one, with the old "Digital" renamed to "Default".
+
+---
+
+## 🎯 What's New
+
+### 📊 Live evaluation bar
+- 棋盘上方新增评估条：白色比例代表白方优势、黑色代表黑方，中线刻度标出均势，随引擎评分**平滑动画**过渡。
+- 评估条**始终显示**，不会挤占布局；`面板` 里的棋盘尺寸与 `对弈`、`谜题` 完全一致。
+- 引擎以背景线程分析当前局面，快速翻棋时只保留最新一次请求，不拖慢操作。
+
+- A bar above the board shows white's share in white and black's in black, a centre tick marking equality, animating smoothly to each engine score.
+- The bar is always on and takes no layout space, so the Panel board keeps exactly the same size as Play and Puzzles.
+- The engine scores the current position on a background thread; rapid navigation keeps only the latest request, so nothing feels stuck.
+
+### ✨ Best-move hint arrow
+- 评估条下方新增「显示推荐着法」开关与「深度」下拉（10–22），左右对称排布，选择即时生效并记住。
+- 勾选后，用**半透明玻璃质感**的箭头在棋盘上标出 Stockfish 推荐着法，浅格深格上都清晰。
+- 取消勾选只隐藏箭头，评估条照常更新。
+
+- Under the bar sit a "Show best move" switch and a "Depth" selector (10–22), laid out symmetrically, applied at once and remembered.
+- When ticked, the engine's choice is drawn as a **frosted-glass arrow**, readable on both light and dark squares.
+- Untick it to hide only the arrow; the bar keeps updating.
+
+### 🔊 One sound set
+- 音效精简为一种：移除「经典」「木质」，原「电子」更名为**「默认」**，可在「个性化 → 音效」里切换或关闭。
+- 旧档案里保存过已删除音效的，自动回落到默认。
+
+- The sound sets are reduced to one: Classic and Wood are gone, and Digital is renamed **Default**, still switchable or turned off under Personalization → Sound.
+- A profile that had saved a removed set falls back to the default automatically.
+
+---
+
+## 🛠️ Full Changelog
+- feat(board): draw a live Stockfish evaluation bar above the analysis board
+- feat(board): animate the evaluation bar between scores
+- feat(board): show the engine best move as a frosted-glass arrow
+- feat(board): add a hint toggle and depth selector under the bar
+- feat(engine): add score reading and evaluation-ratio helpers
+- feat(workers): add `LiveAnalysisWorker` for background position scoring
+- feat(data): remember the hint switch and analysis depth
+- feat(sound): keep only the default set and drop the classic/wood assets
+- refactor(sound): rename the digital set to the default set
+- chore(version): bump the app version to 1.8.3
+
+---
+
+## ⚠️ Breaking Changes
+
+- 评估功能默认开启；不需要箭头可在评估条下方取消「显示推荐着法」。
+- 音效只剩「默认」一种，自定义过的「经典」「木质」会回落到默认。
+- 用户设置新增 `hint_enabled` 与 `eval_depth`；`sound_set` 中已删除的取值会自动回落。
+
+- The evaluation feature is on by default; untick "Show best move" under the bar if you do not want the arrow.
+- Only the Default sound set remains; a saved Classic or Wood choice falls back to it.
+- The profile gains `hint_enabled` and `eval_depth`; a removed `sound_set` value falls back automatically.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.2...v1.8.3
+
 # v1.8.2 – HTTPS Cloud Endpoint
 
 > **云端模式改走 HTTPS 域名 `checkpause.com`。** 连接加密，不再依赖裸 IP；旧版本里保存的服务器地址会自动切到新域名，无需手动设置。本地模式（自带 Key）不受影响。

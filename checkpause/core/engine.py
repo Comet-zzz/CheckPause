@@ -1,10 +1,12 @@
 import io
 import os
 import subprocess
+
 import chess
-import chess.pgn
 import chess.engine
+import chess.pgn
 import chess.polyglot
+
 from checkpause.config import BOOK_MAX_PLIES, BOOK_MIN_WEIGHT, ENGINE_LIMIT
 from checkpause.i18n import t
 from checkpause.resources import get_opening_book_path, get_stockfish_path
@@ -18,6 +20,49 @@ def _popen_args():
 
 def open_stockfish(path):
     return chess.engine.SimpleEngine.popen_uci(path, **_popen_args())
+
+
+def read_score(info):
+    """Pull a white-point-of-view score out of an engine info dict.
+
+    Returns ``(margin, mate)``: a centipawn margin in white's favour, or a
+    signed mate-in-N count. Exactly one of the two is set; both are ``None``
+    when the engine reported no score at all.
+    """
+    score = info.get("score") if info else None
+    if score is None:
+        return None, None
+    score = score.white()
+    if score.is_mate():
+        return None, score.mate()
+    return score.score(), None
+
+
+def eval_ratio(margin, mate=None):
+    """White's share of the evaluation bar, as a 0..1 fraction.
+
+    Centipawns are mapped through a logistic curve so a one-pawn edge leans
+    the bar noticeably but only a rout pins it; a forced mate pins it fully.
+    """
+    if mate is not None:
+        if mate > 0:
+            return 1.0
+        if mate < 0:
+            return 0.0
+        return 0.5
+    if margin is None:
+        return 0.5
+    return 1.0 / (1.0 + 10.0 ** (-margin / 400.0))
+
+
+def format_eval(margin, mate=None):
+    """Render an evaluation the way a player reads it, e.g. ``+1.24``, ``M3``."""
+    if mate is not None:
+        sign = "+" if mate >= 0 else "-"
+        return f"{sign}M{abs(mate)}"
+    if margin is None:
+        return "0.00"
+    return f"{margin / 100.0:+.2f}"
 
 
 class StockfishAnalyzer:

@@ -28,6 +28,7 @@ from checkpause.assets import (
     DEFAULT_PIECE_SET,
     PIECE_SETS,
 )
+from checkpause.config import EVAL_DEPTH_OPTIONS
 from checkpause.gui.icons import nav_icon
 from checkpause.gui.sound import SoundPlayer, move_sound_kind
 from checkpause.gui.theme import DARK
@@ -43,6 +44,9 @@ class BoardWidget(QWidget):
     move_requested = Signal(int, int)
     line_changed = Signal(bool)
     position_applied = Signal(str)
+    position_changed = Signal(str)
+    hint_toggled = Signal(bool)
+    eval_depth_changed = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -72,6 +76,11 @@ class BoardWidget(QWidget):
         self._edit_backup = None
         self._nav_visible = True
         self._sound = SoundPlayer()
+        self._hint_enabled = False
+        self._eval_depth = 0
+        self._eval_available = False
+        self._live_eval = None
+        self._last_position_fen = None
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -79,6 +88,11 @@ class BoardWidget(QWidget):
 
         self._canvas = _BoardCanvas(self)
         self._canvas.setMinimumSize(320, 320)
+
+        # The evaluation bar is painted by the canvas in the empty margin above
+        # the board; the controls ride on top of that margin as child widgets.
+        self._eval_controls = self._build_eval_controls()
+        self._eval_controls.setParent(self._canvas)
 
         self._step_label = QLabel()
         self._step_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -131,6 +145,29 @@ class BoardWidget(QWidget):
         layout.addWidget(self._edit_bar)
 
         self.retranslate(self._language)
+
+    def _build_eval_controls(self):
+        controls = QWidget()
+        row = QHBoxLayout(controls)
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(6)
+
+        self._eval_check = QCheckBox()
+        self._eval_check.toggled.connect(self._on_hint_check)
+        self._eval_depth_label = QLabel()
+        self._eval_depth_combo = QComboBox()
+        for depth in EVAL_DEPTH_OPTIONS:
+            self._eval_depth_combo.addItem(str(depth), depth)
+        self._eval_depth_combo.currentIndexChanged.connect(
+            self._on_eval_depth_index
+        )
+
+        row.addWidget(self._eval_check)
+        row.addStretch(1)
+        row.addWidget(self._eval_depth_label)
+        row.addWidget(self._eval_depth_combo)
+        controls.setVisible(False)
+        return controls
 
     def _build_edit_bar(self):
         bar = QWidget()
@@ -312,6 +349,8 @@ class BoardWidget(QWidget):
             self._start_fen = None
         self._moves = moves
         self._best_moves = {}
+        self._live_eval = None
+        self._last_position_fen = None
         self._index = 0
         self.render()
         return True, None
@@ -321,6 +360,8 @@ class BoardWidget(QWidget):
         self._start_fen = fen or None
         self._moves = []
         self._best_moves = {}
+        self._live_eval = None
+        self._last_position_fen = None
         self._index = 0
         self.render()
 
@@ -359,14 +400,69 @@ class BoardWidget(QWidget):
         self._start_fen = None
         self._moves = []
         self._best_moves = {}
+        self._live_eval = None
+        self._last_position_fen = None
         self._index = 0
         self.render()
+
+    def set_eval_available(self, available):
+        self._eval_available = bool(available)
+        self._eval_controls.setVisible(self._eval_available)
+        self._canvas.place_eval_controls()
+
+    def set_hint_enabled(self, enabled):
+        enabled = bool(enabled)
+        self._hint_enabled = enabled
+        self._eval_check.blockSignals(True)
+        self._eval_check.setChecked(enabled)
+        self._eval_check.blockSignals(False)
+        self._canvas.update()
+
+    def set_eval_depth(self, depth):
+        self._eval_depth = int(depth)
+        index = self._eval_depth_combo.findData(self._eval_depth)
+        if index >= 0:
+            self._eval_depth_combo.blockSignals(True)
+            self._eval_depth_combo.setCurrentIndex(index)
+            self._eval_depth_combo.blockSignals(False)
+
+    def eval_depth(self):
+        return self._eval_depth
+
+    def current_fen(self):
+        return self._board.fen()
+
+    def apply_live_eval(self, uci, margin, mate=None):
+        self._live_eval = {
+            "index": self._index,
+            "uci": uci,
+            "margin": margin,
+            "mate": mate,
+        }
+        self._canvas.animate_eval(margin, mate)
+
+    def clear_live_eval(self):
+        self._live_eval = None
+        self._canvas.animate_eval(None, None)
+
+    def _on_hint_check(self, checked):
+        self.set_hint_enabled(checked)
+        self.hint_toggled.emit(bool(checked))
+
+    def _on_eval_depth_index(self, index):
+        depth = self._eval_depth_combo.itemData(index)
+        if depth is None:
+            return
+        self._eval_depth = int(depth)
+        self.eval_depth_changed.emit(self._eval_depth)
 
     def set_moves(self, moves, index=None, animate=False, sound=True):
         self._end_edit()
         previous_count = len(self._moves)
         self._moves = list(moves)
         self._best_moves = {}
+        self._live_eval = None
+        self._last_position_fen = None
         if index is None:
             self._index = len(self._moves)
         else:
@@ -911,6 +1007,17 @@ class BoardWidget(QWidget):
         self._btn_next.setEnabled(has_moves and self._index < len(self._moves))
         self._btn_last.setEnabled(has_moves and self._index < len(self._moves))
 
+        self._emit_position_changed()
+
+    def _emit_position_changed(self):
+        if self._editable:
+            return
+        fen = self._board.fen()
+        if fen == self._last_position_fen:
+            return
+        self._last_position_fen = fen
+        self.position_changed.emit(fen)
+
     def retranslate(self, language):
         self._language = language
         self._btn_first.setToolTip(t("btn_first", language))
@@ -919,5 +1026,9 @@ class BoardWidget(QWidget):
         self._btn_last.setToolTip(t("btn_last", language))
         self._btn_flip.setToolTip(t("btn_flip", language))
         self._btn_edit.setToolTip(t("btn_edit_board", language))
+        self._eval_check.setText(t("hint_toggle", language))
+        self._eval_depth_label.setText(t("eval_depth", language))
+        self._eval_check.setToolTip(t("hint_toggle_hint", language))
         self._retranslate_edit_bar(language)
+        self._canvas.place_eval_controls()
         self.render()

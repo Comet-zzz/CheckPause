@@ -2,14 +2,25 @@ import math
 import time
 
 import chess
-from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QBrush, QColor, QPainter, QPen, QPolygonF
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
+from PySide6.QtGui import (
+    QBrush,
+    QColor,
+    QLinearGradient,
+    QPainter,
+    QPainterPath,
+    QPen,
+)
 from PySide6.QtWidgets import QSizePolicy, QWidget
 
+from checkpause.core.engine import eval_ratio
 from checkpause.gui.widgets.board.constants import (
     CHECK_RGBA,
     DRAG_LIFT,
     DRAG_THRESHOLD,
+    EVAL_BLACK_RGBA,
+    EVAL_BORDER_RGBA,
+    EVAL_WHITE_RGBA,
     HOVER_RGBA,
     LAST_MOVE_RGBA,
     SELECTED_RGBA,
@@ -33,6 +44,14 @@ class _BoardCanvas(QWidget):
         self._dragging = False
         self._drag_pos = None
         self._hover_square = None
+        self._eval_ratio = 0.5
+        self._eval_from = 0.5
+        self._eval_to = 0.5
+        self._eval_started = 0.0
+        self._eval_duration = 0.28
+        self._eval_timer = QTimer(self)
+        self._eval_timer.setInterval(16)
+        self._eval_timer.timeout.connect(self._step_eval_animation)
 
     def mousePressEvent(self, event):
         owner = self._owner
@@ -253,6 +272,79 @@ class _BoardCanvas(QWidget):
         y0 = (height - board_size) / 2
         return x0, y0, board_size, max(1.0, board_size / 8)
 
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.place_eval_controls()
+
+    def _eval_bar_metrics(self, square):
+        bar_h = min(22.0, max(10.0, square * 0.24))
+        gap = max(3.0, square * 0.04)
+        return bar_h, gap
+
+    def _eval_row(self, x0, y0, board_size, square):
+        """Geometry for the evaluation bar and the controls under it.
+
+        Both live in the empty margin above the board: the bar spans the full
+        board width and the controls stretch across the line below it. Nothing
+        takes layout space, so the board keeps exactly the same size as the
+        play and puzzle boards.
+        """
+        owner = self._owner
+        controls = getattr(owner, "_eval_controls", None)
+        bar_h, gap = self._eval_bar_metrics(square)
+        controls_h = 0
+        if owner._eval_available and controls is not None:
+            controls.adjustSize()
+            controls_h = controls.sizeHint().height()
+        row_h = bar_h + (gap + controls_h if controls_h else 0)
+        top_margin = y0
+        row_y = max(0.0, (top_margin - row_h) / 2.0)
+        bar_rect = QRectF(x0, row_y, board_size, bar_h)
+        controls_rect = QRectF(
+            x0,
+            row_y + bar_h + gap,
+            board_size,
+            controls_h,
+        )
+        return bar_rect, controls_rect
+
+    def place_eval_controls(self):
+        owner = self._owner
+        controls = getattr(owner, "_eval_controls", None)
+        if controls is None or not owner._eval_available:
+            return
+        x0, y0, board_size, square = self._geometry()
+        _, controls_rect = self._eval_row(x0, y0, board_size, square)
+        controls.setGeometry(
+            int(controls_rect.x()),
+            int(controls_rect.y()),
+            int(controls_rect.width()),
+            int(controls_rect.height()),
+        )
+        controls.raise_()
+
+    def animate_eval(self, margin, mate=None):
+        target = eval_ratio(margin, mate)
+        self._eval_from = self._eval_ratio
+        self._eval_to = target
+        self._eval_started = time.monotonic()
+        if not self._eval_timer.isActive():
+            self._eval_timer.start()
+        self.update()
+
+    def _step_eval_animation(self):
+        elapsed = time.monotonic() - self._eval_started
+        progress = elapsed / self._eval_duration
+        if progress >= 1.0:
+            self._eval_ratio = self._eval_to
+            self._eval_timer.stop()
+        else:
+            eased = 1.0 - (1.0 - progress) ** 3
+            self._eval_ratio = self._eval_from + (
+                self._eval_to - self._eval_from
+            ) * eased
+        self.update()
+
     def _square_from_display(self, row, col, flipped):
         if flipped:
             return chess.square(7 - col, row)
@@ -343,6 +435,8 @@ class _BoardCanvas(QWidget):
                     self._draw_target(painter, rect, square, piece)
 
         self._draw_coordinates(painter, palette, x0, y0, board_size, square)
+        if not owner._editable:
+            self._draw_eval_bar(painter, x0, y0, board_size, square)
 
         if animation is not None:
             self._draw_animation(painter, x0, y0, square, animation)
@@ -352,11 +446,18 @@ class _BoardCanvas(QWidget):
         if drag_return is not None and not self._dragging:
             self._draw_drag_return(painter, x0, y0, square, drag_return)
 
-        best = owner._best_moves.get(owner._index)
+        best = None
+        live = owner._live_eval
+        if (
+            live is not None
+            and owner._hint_enabled
+            and live["index"] == owner._index
+        ):
+            best = live.get("uci")
+        if not best:
+            best = owner._best_moves.get(owner._index)
         if best and not owner._editable:
-            arrow = QColor(palette["arrow"])
-            arrow.setAlpha(200)
-            self._draw_arrow(painter, best, x0, y0, square, arrow)
+            self._draw_arrow(painter, best, x0, y0, square)
 
         painter.end()
 
@@ -503,7 +604,55 @@ class _BoardCanvas(QWidget):
                 rect, Qt.AlignmentFlag.AlignCenter, str(rank_index + 1)
             )
 
-    def _draw_arrow(self, painter, uci, x0, y0, square, color):
+    def _draw_eval_bar(self, painter, x0, y0, board_size, square):
+        owner = self._owner
+        if not owner._eval_available:
+            return
+        rect, _ = self._eval_row(x0, y0, board_size, square)
+        radius = rect.height() / 2.0
+        ratio = max(0.0, min(1.0, self._eval_ratio))
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        shape = QPainterPath()
+        shape.addRoundedRect(rect, radius, radius)
+        painter.setPen(Qt.PenStyle.NoPen)
+        painter.setBrush(QColor(*EVAL_BLACK_RGBA))
+        painter.drawPath(shape)
+
+        painter.setClipPath(shape)
+        painter.fillRect(
+            QRectF(
+                rect.left(),
+                rect.top(),
+                rect.width() * ratio,
+                rect.height(),
+            ),
+            QColor(*EVAL_WHITE_RGBA),
+        )
+        painter.setClipping(False)
+
+        notch = QColor(*EVAL_BORDER_RGBA)
+        notch.setAlpha(90)
+        pen = QPen(notch)
+        pen.setWidthF(1.0)
+        painter.setPen(pen)
+        center_x = rect.center().x()
+        painter.drawLine(
+            QPointF(center_x, rect.top()), QPointF(center_x, rect.bottom())
+        )
+
+        border = QColor(*EVAL_BORDER_RGBA)
+        border.setAlpha(150)
+        pen = QPen(border)
+        pen.setWidthF(1.0)
+        painter.setPen(pen)
+        painter.setBrush(Qt.BrushStyle.NoBrush)
+        painter.drawRoundedRect(rect, radius, radius)
+        painter.restore()
+
+    def _draw_arrow(self, painter, uci, x0, y0, square):
+        """A frosted-glass arrow: translucent fill, bright rim, soft shadow."""
         try:
             move = chess.Move.from_uci(uci)
         except ValueError:
@@ -524,29 +673,44 @@ class _BoardCanvas(QWidget):
         if dist == 0:
             return
         ux, uy = dx / dist, dy / dist
+        px, py = -uy, ux
 
-        head_length = square * 0.34
-        line_start = QPointF(
-            start.x() + ux * square * 0.18, start.y() + uy * square * 0.18
-        )
-        line_end = QPointF(
-            end.x() - ux * head_length * 0.7, end.y() - uy * head_length * 0.7
-        )
+        shaft = square * 0.085
+        head_len = square * 0.30
+        head_half = square * 0.205
+        neck = QPointF(end.x() - ux * head_len, end.y() - uy * head_len)
 
-        pen = QPen(color)
-        pen.setWidthF(square * 0.16)
-        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawLine(line_start, line_end)
+        path = QPainterPath()
+        path.moveTo(start.x() + px * shaft, start.y() + py * shaft)
+        path.lineTo(neck.x() + px * shaft, neck.y() + py * shaft)
+        path.lineTo(neck.x() + px * head_half, neck.y() + py * head_half)
+        path.lineTo(end.x(), end.y())
+        path.lineTo(neck.x() - px * head_half, neck.y() - py * head_half)
+        path.lineTo(neck.x() - px * shaft, neck.y() - py * shaft)
+        path.lineTo(start.x() - px * shaft, start.y() - py * shaft)
+        path.closeSubpath()
 
-        base = QPointF(
-            end.x() - ux * head_length, end.y() - uy * head_length
-        )
-        perp_x, perp_y = -uy, ux
-        half = head_length * 0.55
-        p1 = QPointF(base.x() + perp_x * half, base.y() + perp_y * half)
-        p2 = QPointF(base.x() - perp_x * half, base.y() - perp_y * half)
+        glass = QLinearGradient(start, end)
+        glass.setColorAt(0.0, QColor(198, 222, 245, 110))
+        glass.setColorAt(0.55, QColor(224, 238, 252, 150))
+        glass.setColorAt(1.0, QColor(244, 251, 255, 200))
+        brush = QBrush(glass)
+
+        painter.save()
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+
+        painter.translate(square * 0.02, square * 0.04)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QBrush(color))
-        painter.drawPolygon(QPolygonF([end, p1, p2]))
+        painter.setBrush(QColor(20, 35, 55, 55))
+        painter.drawPath(path)
+        painter.translate(-square * 0.02, -square * 0.04)
+
+        rim = QPen(QColor(255, 255, 255, 170))
+        rim.setWidthF(max(1.0, square * 0.018))
+        rim.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        rim.setCapStyle(Qt.PenCapStyle.RoundCap)
+        painter.setPen(rim)
+        painter.setBrush(brush)
+        painter.drawPath(path)
+
+        painter.restore()

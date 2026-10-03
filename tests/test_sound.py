@@ -5,7 +5,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import chess
 
-from checkpause.assets import SOUND_SETS
+from checkpause.assets import DEFAULT_SOUND_SET, SOUND_SETS
 from checkpause.gui.sound import SOUND_KINDS, SoundPlayer, move_sound_kind
 from checkpause.resources import resource_path
 
@@ -88,7 +88,7 @@ class SoundPlayerTests(unittest.TestCase):
         for name in SOUND_SETS:
             player.set_set(name)
         player.set_set("nonsense")
-        self.assertEqual(player._set, "classic")
+        self.assertEqual(player._set, DEFAULT_SOUND_SET)
 
 
 class SoundAssetTests(unittest.TestCase):

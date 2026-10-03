@@ -9,6 +9,7 @@ from checkpause.assets import (
     DEFAULT_SOUND_SET,
     SOUND_OFF,
 )
+from checkpause.config import DEFAULT_EVAL_DEPTH, DEFAULT_HINT_ENABLED
 from checkpause.data import profile
 
 
@@ -46,8 +47,36 @@ class ProfileTests(unittest.TestCase):
         created = profile.create_profile("Tester")
         profile.set_sound_set(created, SOUND_OFF)
         self.assertEqual(profile.load_profile()["sound_set"], SOUND_OFF)
-        profile.set_sound_set(created, "wood")
-        self.assertEqual(profile.load_profile()["sound_set"], "wood")
+        profile.set_sound_set(created, DEFAULT_SOUND_SET)
+        self.assertEqual(
+            profile.load_profile()["sound_set"], DEFAULT_SOUND_SET
+        )
+
+    def test_eval_preferences_default_and_persist(self):
+        created = profile.create_profile("Tester")
+        self.assertEqual(created["hint_enabled"], DEFAULT_HINT_ENABLED)
+        self.assertEqual(created["eval_depth"], DEFAULT_EVAL_DEPTH)
+
+        profile.set_hint_enabled(created, False)
+        profile.set_eval_depth(created, 20)
+        loaded = profile.load_profile()
+        self.assertFalse(loaded["hint_enabled"])
+        self.assertEqual(loaded["eval_depth"], 20)
+
+    def test_unknown_eval_depth_falls_back_to_the_default(self):
+        created = profile.create_profile("Tester")
+        profile.set_eval_depth(created, 999)
+        self.assertEqual(
+            profile.load_profile()["eval_depth"], DEFAULT_EVAL_DEPTH
+        )
+
+    def test_legacy_profile_gets_the_default_eval_preferences(self):
+        legacy = os.path.join(self._tmp.name, "legacy.json")
+        with open(legacy, "w", encoding="utf-8") as handle:
+            handle.write('{"username": "Legacy"}')
+        loaded = profile.load_profile()
+        self.assertEqual(loaded["hint_enabled"], DEFAULT_HINT_ENABLED)
+        self.assertEqual(loaded["eval_depth"], DEFAULT_EVAL_DEPTH)
 
     def test_unknown_sound_set_falls_back_to_the_default(self):
         created = profile.create_profile("Tester")

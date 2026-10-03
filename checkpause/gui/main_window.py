@@ -1,4 +1,3 @@
-import chess
 from PySide6.QtCore import Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
@@ -22,13 +21,20 @@ from checkpause.assets import (
     SOUND_CHOICES,
     SOUND_OFF,
 )
-from checkpause.config import SYSTEM_PROMPT, USER_PROMPT_TEMPLATE
+from checkpause.config import (
+    DEFAULT_EVAL_DEPTH,
+    DEFAULT_HINT_ENABLED,
+    SYSTEM_PROMPT,
+    USER_PROMPT_TEMPLATE,
+)
 from checkpause.core.engine import compact_analysis
 from checkpause.data.profile import (
     create_profile,
     delete_profile,
     load_profile,
     set_board_theme,
+    set_eval_depth,
+    set_hint_enabled,
     set_language,
     set_piece_set,
     set_sound_set,
@@ -67,6 +73,7 @@ from checkpause.gui.workers import (
     AccountWorker,
     AnalysisWorker,
     ChatWorker,
+    LiveAnalysisWorker,
     UpdateCheckWorker,
 )
 from checkpause.i18n import t
@@ -96,6 +103,16 @@ class MainWindow(QMainWindow):
         self._sound_set = (self.profile or {}).get(
             "sound_set", DEFAULT_SOUND_SET
         )
+        self._hint_enabled = (self.profile or {}).get(
+            "hint_enabled", DEFAULT_HINT_ENABLED
+        )
+        self._eval_depth = (self.profile or {}).get(
+            "eval_depth", DEFAULT_EVAL_DEPTH
+        )
+        self._eval_worker = None
+        self._eval_pending = None
+        self._eval_token = 0
+        self._eval_failed = False
         self._messages = []
         self._results = []
         self._current_pgn = ""
@@ -214,9 +231,13 @@ class MainWindow(QMainWindow):
         self.board = BoardWidget()
         self.board.set_edit_available(True)
         self.board.set_interactive(True, None)
+        self.board.set_eval_available(True)
         self.board.move_requested.connect(self._on_analysis_move_requested)
         self.board.line_changed.connect(self._on_line_changed)
         self.board.position_applied.connect(self._on_position_applied)
+        self.board.position_changed.connect(self._on_position_changed)
+        self.board.hint_toggled.connect(self._on_hint_toggled)
+        self.board.eval_depth_changed.connect(self._on_eval_depth_changed)
 
         self.analysis_page = AnalysisPage()
         self.chat_page = ChatPage()
@@ -399,6 +420,10 @@ class MainWindow(QMainWindow):
             "board_theme", DEFAULT_BOARD_THEME
         )
         self._sound_set = self.profile.get("sound_set", DEFAULT_SOUND_SET)
+        self._hint_enabled = self.profile.get(
+            "hint_enabled", DEFAULT_HINT_ENABLED
+        )
+        self._eval_depth = self.profile.get("eval_depth", DEFAULT_EVAL_DEPTH)
         self._act_light.setChecked(self._theme == LIGHT)
         self._act_dark.setChecked(self._theme == DARK)
         self._piece_actions[self._piece_set].setChecked(True)
@@ -577,6 +602,9 @@ class MainWindow(QMainWindow):
         self._analysis_worker = None
         if worker is not None:
             worker.deleteLater()
+        # Live evaluation was paused while the full analysis ran; catch up on
+        # whatever position the board ended on.
+        self._request_live_eval(self.board.current_fen())
 
     def _open_pgn_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -588,7 +616,7 @@ class MainWindow(QMainWindow):
         if not path:
             return
         try:
-            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+            with open(path, encoding="utf-8", errors="replace") as handle:
                 content = handle.read()
         except OSError as exc:
             self.analysis_page.set_status(str(exc))
@@ -765,6 +793,9 @@ class MainWindow(QMainWindow):
         self.play_page.set_board_theme(self._board_theme)
         self.puzzle_page.set_piece_set(self._piece_set)
         self.puzzle_page.set_board_theme(self._board_theme)
+        self.board.set_hint_enabled(self._hint_enabled)
+        self.board.set_eval_depth(self._eval_depth)
+        self._request_live_eval(self.board.current_fen())
         self._apply_sound()
 
     def _apply_sound(self):
@@ -798,6 +829,87 @@ class MainWindow(QMainWindow):
         self._apply_sound()
         if self.profile:
             self.profile = set_sound_set(self.profile, self._sound_set)
+
+    def _on_hint_toggled(self, enabled):
+        self._hint_enabled = bool(enabled)
+        self._eval_failed = False
+        if self.profile:
+            self.profile = set_hint_enabled(
+                self.profile, self._hint_enabled
+            )
+        if self._hint_enabled:
+            self._request_live_eval(self.board.current_fen())
+
+    def _on_eval_depth_changed(self, depth):
+        self._eval_depth = int(depth)
+        self._eval_failed = False
+        if self.profile:
+            self.profile = set_eval_depth(self.profile, self._eval_depth)
+        self._request_live_eval(self.board.current_fen())
+
+    def _on_position_changed(self, fen):
+        if self._analysis_worker and self._analysis_worker.isRunning():
+            # The full-game analysis runs its own engine; a second one per
+            # navigated ply would only fight it for CPU.
+            return
+        self._request_live_eval(fen)
+
+    def _request_live_eval(self, fen):
+        if self._eval_failed:
+            return
+        self._eval_token += 1
+        token = self._eval_token
+        if self._eval_worker is not None and self._eval_worker.isRunning():
+            # Latest wins: the running search finishes, but its result is
+            # already stale and the newest position waits behind it.
+            self._eval_pending = (fen, token)
+            return
+        self._start_eval_worker(fen, token)
+
+    def _start_eval_worker(self, fen, token):
+        worker = LiveAnalysisWorker(
+            fen, self._eval_depth, token, self._language, self
+        )
+        worker.evaluated.connect(self._on_live_eval)
+        worker.failed.connect(self._on_live_eval_failed)
+        worker.finished.connect(self._on_eval_worker_finished)
+        self._eval_worker = worker
+        worker.start()
+
+    def _on_live_eval(self, result):
+        if result.get("token") != self._eval_token:
+            return
+        self.board.apply_live_eval(
+            result.get("best_move"),
+            result.get("margin"),
+            result.get("mate"),
+        )
+
+    def _on_live_eval_failed(self, error):
+        # An unavailable engine must not break the rest of the app; stop
+        # retrying every position until the feature is toggled again.
+        self._eval_failed = True
+
+    def _on_eval_worker_finished(self):
+        worker = self._eval_worker
+        self._eval_worker = None
+        if worker is not None:
+            worker.deleteLater()
+        pending = self._eval_pending
+        self._eval_pending = None
+        if pending is not None and not self._eval_failed:
+            self._start_eval_worker(*pending)
+
+    def _stop_eval_worker(self):
+        self._eval_pending = None
+        self._eval_token += 1
+        worker = self._eval_worker
+        self._eval_worker = None
+        if worker is not None and worker.isRunning():
+            worker.terminate()
+            worker.wait(1000)
+        if worker is not None:
+            worker.deleteLater()
 
     def _open_api_settings(self):
         result = api_settings_dialog(
@@ -838,6 +950,10 @@ class MainWindow(QMainWindow):
         self._piece_set = DEFAULT_PIECE_SET
         self._board_theme = DEFAULT_BOARD_THEME
         self._sound_set = DEFAULT_SOUND_SET
+        self._hint_enabled = DEFAULT_HINT_ENABLED
+        self._eval_depth = DEFAULT_EVAL_DEPTH
+        self._eval_failed = False
+        self._stop_eval_worker()
         self._act_light.setChecked(True)
         self._piece_actions[DEFAULT_PIECE_SET].setChecked(True)
         self._board_actions[DEFAULT_BOARD_THEME].setChecked(True)
@@ -872,6 +988,7 @@ class MainWindow(QMainWindow):
         if self._chat_worker and self._chat_worker.isRunning():
             self._chat_worker.terminate()
             self._chat_worker.wait(1000)
+        self._stop_eval_worker()
         self.play_page.shutdown()
         self.puzzle_page.shutdown()
         super().closeEvent(event)

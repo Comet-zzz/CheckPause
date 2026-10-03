@@ -171,6 +171,49 @@ class BoardWidgetTests(unittest.TestCase):
         )
         self.assertEqual(board._index, 2)
 
+    def test_position_changed_reports_new_positions(self):
+        board = self.make_board()
+        seen = []
+        board.position_changed.connect(seen.append)
+        board.goto(1)
+        self.assertEqual(seen, [board._board.fen()])
+        board.goto(1)
+        self.assertEqual(len(seen), 1)
+
+    def test_live_eval_is_stored_and_cleared(self):
+        board = self.make_board()
+        board.apply_live_eval("e2e4", 420, None)
+        self.assertEqual(board._live_eval["uci"], "e2e4")
+        self.assertEqual(board._live_eval["margin"], 420)
+        board.clear_live_eval()
+        self.assertIsNone(board._live_eval)
+
+    def test_eval_controls_track_the_state(self):
+        board = BoardWidget()
+        self.assertTrue(board._eval_controls.isHidden())
+        board.set_eval_available(True)
+        self.assertFalse(board._eval_controls.isHidden())
+
+        board.set_hint_enabled(True)
+        self.assertTrue(board._eval_check.isChecked())
+        board.set_eval_depth(18)
+        self.assertEqual(board._eval_depth_combo.currentData(), 18)
+
+    def test_eval_control_emits_changes(self):
+        board = BoardWidget()
+        board.set_eval_available(True)
+        toggles = []
+        depths = []
+        board.hint_toggled.connect(toggles.append)
+        board.eval_depth_changed.connect(depths.append)
+
+        board._eval_check.setChecked(True)
+        self.assertEqual(toggles, [True])
+
+        index = board._eval_depth_combo.findData(20)
+        board._eval_depth_combo.setCurrentIndex(index)
+        self.assertEqual(depths, [20])
+
     def test_line_pgn_round_trips_a_custom_start_position(self):
         board = BoardWidget()
         board.set_start_fen(CUSTOM_FEN)
@@ -180,7 +223,7 @@ class BoardWidgetTests(unittest.TestCase):
 
         line = board.line_pgn()
 
-        self.assertIn('[FEN "{}"]'.format(CUSTOM_FEN), line)
+        self.assertIn(f'[FEN "{CUSTOM_FEN}"]', line)
         self.assertIn('[SetUp "1"]', line)
 
         reloaded = BoardWidget()
