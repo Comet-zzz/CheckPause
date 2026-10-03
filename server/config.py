@@ -14,6 +14,10 @@ import pathlib
 
 DEFAULT_CONFIG_DIR = "/etc/checkpause"
 
+# Where the release installers and the version manifest are mirrored, as laid
+# out by server/deploy/install.sh (nginx serves the same directory at /download/).
+DEFAULT_DOWNLOAD_DIR = "/srv/downloads"
+
 # Only used when the real prompt file is missing, so a fresh checkout still
 # runs and so tests do not need one. Deliberately plain: the tuned prompt is
 # what the paid tier is paying for, and it lives on the server.
@@ -41,6 +45,12 @@ DEFAULT_FIRST_TOPUP_BONUS_PERCENT = 10
 def config_dir():
     override = os.environ.get("CHECKPAUSE_CONFIG_DIR", "").strip()
     return pathlib.Path(override or DEFAULT_CONFIG_DIR)
+
+
+def downloads_dir():
+    """Where release installers and the version manifest live."""
+    override = os.environ.get("CHECKPAUSE_DOWNLOAD_DIR", "").strip()
+    return pathlib.Path(override or DEFAULT_DOWNLOAD_DIR)
 
 
 def _read(name):

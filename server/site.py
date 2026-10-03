@@ -6,12 +6,15 @@ this there was nothing to photograph on this server except an API status blob.
 The price list is rendered from the same pack list the payment endpoints use,
 so a price change cannot leave the shop page advertising something else. There
 is deliberately no JavaScript: a page whose only job is to be read should render
-the same for a reviewer, a screenshot and a text browser.
+the same for a reviewer, a screenshot and a text browser. The language switcher
+is a pair of links (``?lang=zh`` / ``?lang=en``) for the same reason.
 
 Every picture is inline SVG - the logo mark, the boards, the interface mock and
 the icons - so the pages need no static directory, no nginx change and no image
 files to keep in sync, and they render fully offline.
 """
+
+import json
 
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -60,9 +63,15 @@ STYLE = """
   .brand { display: flex; align-items: center; gap: 11px; color: var(--ink);
            font-weight: 700; font-size: 18px; letter-spacing: .6px; }
   .brand .logo { display: block; border-radius: 9px; }
+  .nav-right { display: flex; align-items: center; }
   .nav-links a { color: var(--muted); font-size: 14.5px; margin-left: 28px;
                  transition: color .15s ease; }
   .nav-links a:hover { color: var(--ink); }
+  .lang { display: inline-flex; margin-left: 26px; padding: 3px; border-radius: 999px;
+          border: 1px solid var(--line2); background: rgba(255,255,255,.03); }
+  .lang a { padding: 4px 13px; border-radius: 999px; font-size: 13px; color: var(--muted); }
+  .lang a.on { background: rgba(255,255,255,.10); color: var(--ink); }
+  .lang a:hover { color: var(--ink); }
 
   .hero { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px;
           align-items: center; padding: 66px 0 34px; }
@@ -78,9 +87,10 @@ STYLE = """
                    -webkit-background-clip: text; background-clip: text;
                    color: transparent; }
   .hero .lede { color: var(--muted); font-size: 17px; max-width: 34em; margin: 0 0 30px; }
-  .cta { display: flex; flex-wrap: wrap; gap: 14px; }
+
+  .cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
   .btn { display: inline-block; padding: 13px 27px; border-radius: 11px;
-         font-size: 15px; font-weight: 600; color: #fff;
+         font-size: 15px; font-weight: 600; color: #fff; cursor: pointer;
          background: linear-gradient(180deg, #6a98ff, #3f74e6);
          border: 1px solid rgba(255,255,255,.18);
          box-shadow: 0 12px 28px rgba(63,116,230,.34);
@@ -89,6 +99,28 @@ STYLE = """
   .btn.ghost { background: rgba(255,255,255,.05); color: var(--ink);
                border: 1px solid var(--line2); box-shadow: none; }
   .btn.ghost:hover { background: rgba(255,255,255,.09); }
+
+  .dl { position: relative; }
+  .dl-btn { display: inline-flex; align-items: center; gap: 10px; font: inherit; }
+  .dl-btn svg { width: 15px; height: 15px; }
+  .dl:hover .dl-btn svg, .dl:focus-within .dl-btn svg { transform: rotate(180deg); }
+  .dl-menu { position: absolute; top: calc(100% + 10px); left: 0; z-index: 30;
+             min-width: 268px; padding: 8px; border-radius: 14px;
+             border: 1px solid var(--line2); background: rgba(13,18,28,.98);
+             backdrop-filter: blur(14px); box-shadow: 0 26px 54px rgba(0,0,0,.52);
+             opacity: 0; visibility: hidden; transform: translateY(-6px);
+             transition: opacity .16s ease, transform .16s ease, visibility .16s ease; }
+  .dl:hover .dl-menu, .dl:focus-within .dl-menu { opacity: 1; visibility: visible;
+                                                   transform: none; }
+  .dl-item { display: flex; align-items: center; justify-content: space-between;
+             gap: 16px; padding: 11px 13px; border-radius: 10px;
+             color: var(--ink); font-size: 14.5px; }
+  a.dl-item:hover { background: rgba(255,255,255,.06); }
+  .dl-name { font-weight: 600; }
+  .dl-meta { color: var(--muted2); font-size: 12.5px; }
+  .dl-sub a { color: var(--brand2); font-size: 13px; margin-left: 14px; }
+  .dl-sub a:hover { text-decoration: underline; }
+  .dl-hint { padding: 7px 13px 5px; color: var(--muted2); font-size: 12px; }
 
   .hero-art { position: relative; display: flex; justify-content: center; padding: 8px; }
   .hero-art::before { content: ""; position: absolute; width: 360px; height: 360px;
@@ -226,7 +258,8 @@ STYLE = """
     .panel-body { grid-template-columns: 1fr; }
     .panel-board { border-right: none; border-bottom: 1px solid var(--line); }
     .steps, .packs { grid-template-columns: 1fr; }
-    .nav-links a { margin-left: 16px; }
+    .nav-links a { margin-left: 15px; font-size: 13.5px; }
+    .lang { margin-left: 14px; }
   }
 """
 
@@ -292,15 +325,243 @@ _ICONS = {
     "shield": '<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/>'
     '<path d="M9.5 12l2 2 3.5-4"/>',
     "download": '<path d="M12 3v11"/><path d="M8 10.5l4 4 4-4"/><path d="M5 20h14"/>',
+    "chevron": '<path d="M6 9l6 6 6-6"/>',
+}
+
+_STRINGS = {
+    "zh": {
+        "title_home": "CheckPause - 国际象棋复盘工具",
+        "title_shop": "CheckPause - 定价",
+        "desc": "CheckPause 是一款国际象棋复盘工具：导入棋谱，逐着查看引擎评估与讲解，"
+        "定位关键转折并理解更优选择。",
+        "nav_home": "首页",
+        "nav_features": "功能",
+        "nav_guide": "流程",
+        "nav_pricing": "定价",
+        "pill": "国际象棋 · 复盘与训练",
+        "hero_1": "读懂",
+        "hero_2": "每一步棋的得失",
+        "hero_lede": "导入棋谱，逐着查看引擎评估与讲解：定位关键转折，"
+        "理解当时的更优选择，把对局沉淀为可以复用的经验。",
+        "download": "下载",
+        "dl_windows": "Windows",
+        "dl_windows_meta": "x64 · .exe",
+        "dl_macos": "macOS",
+        "dl_apple": "Apple 芯片",
+        "dl_intel": "Intel",
+        "dl_hint": "macOS 提供 Apple 芯片与 Intel 两个版本",
+        "chip_best": "最优着法 Nf3",
+        "chip_blunder": "失误 12… Nf3",
+        "trust": [
+            "内置 Stockfish 引擎",
+            "标准 PGN 棋谱导入",
+            "开局线路与精选题集",
+            "本地功能可离线使用",
+        ],
+        "features_kicker": "功能",
+        "features_title": "为认真复盘而设计",
+        "features_sub": "从棋谱导入到逐着讲解，围绕同一局棋，"
+        "把评估、思路与训练串成一条完整的复盘链路。",
+        "f1_t": "棋谱导入",
+        "f1_b": "支持标准 PGN 格式，可直接粘贴来自 Lichess 等平台的棋局，"
+        "自动解析对局信息与完整着法序列。",
+        "f2_t": "引擎分析",
+        "f2_b": "内置 Stockfish，逐着给出评估分数与最优着法，" "并标记关键节点，便于聚焦全局转折。",
+        "f3_t": "复盘讲解",
+        "f3_b": "将引擎评估整理为结构化文字，说明失误成因、局面判断与改进方向。",
+        "f4_t": "追问答疑",
+        "f4_b": "针对具体着法或局面提问，获得聚焦该处的解释与思路分析。",
+        "f5_t": "打谱与训练",
+        "f5_b": "内置开局线路与精选题目，兼顾打谱、解题与对弈训练。",
+        "show_kicker": "界面",
+        "show_title": "一份清晰的复盘报告",
+        "show_sub": "左侧棋盘与评估条，右侧着法列表与讲解；"
+        "关键失误直接标出，无需在长串数字中自行寻找。",
+        "report_name": "CheckPause · 复盘",
+        "eval_label": "局面评估",
+        "q": "第 12 手 Nf3 的问题在哪里？",
+        "a": "该着法放弃了对 e5 的控制，并为黑方 <b>e5–e4</b> 的推进创造了机会。"
+        "更稳妥的次序是先将马调往 d2，再逐步争夺中心。",
+        "fine": "云端复盘讲解由服务端模型生成，需联网并消耗 CP积分；" "本地分析功能无需联网。",
+        "guide_kicker": "上手",
+        "guide_title": "三步开始复盘",
+        "s1_t": "获取并安装",
+        "s1_b": "下载桌面客户端，支持 Windows 与 macOS，安装过程无需管理员权限。",
+        "s2_t": "建立本地档案",
+        "s2_b": "首次启动设置用户名与语言，档案与棋局数据保存在本机。",
+        "s3_t": "导入并复盘",
+        "s3_b": "导入一局棋，逐着查看评估与讲解；针对疑问可随时追问。",
+        "band_title": "从下一局棋开始",
+        "band_body": "安装 CheckPause，把每一盘对局变成可以反复回看的复盘。",
+        "band_download": "前往下载",
+        "band_pricing": "查看",
+        "footer_ops": "CheckPause · 本站由 CometZZZ 运营 · 版权保留",
+        "footer_download": "下载",
+        "footer_pricing": "定价",
+        "shop_kicker": "定价",
+        "shop_title": "CP积分",
+        "shop_sub": "云端复盘按用量计费。CP积分充入账号后长期有效，"
+        "按实际消耗扣除，可在客户端内随时查看余额与流水。",
+        "credits": "{} CP积分",
+        "popular": "最受欢迎",
+        "pack_hint": "约 {} 次完整复盘",
+        "shop_fine": "1 CP积分 = ¥0.01。一次完整复盘（含棋谱与引擎数据分析、"
+        "生成讲解）通常消耗 6 至 10 CP积分。",
+        "topup_kicker": "充值",
+        "topup_title": "充值方式",
+        "topup_items": [
+            "在客户端「设置 → 云端账号」中选择面额",
+            "浏览器打开支付宝付款页面，扫码或登录完成支付",
+            "支付完成后返回客户端，余额自动到账，无需人工操作",
+        ],
+        "refund_kicker": "说明",
+        "refund_title": "退款与声明",
+        "refund_items": [
+            "<b>虚拟商品</b>：CP积分充入账号后即可使用，余额与每一笔流水均可在客户端查看",
+            "<b>异常处理</b>：如遇重复扣费或功能异常，请联系作者核实，未消费部分将原路退回",
+            "<b>效果说明</b>：本工具提供复盘辅助，不承诺棋力提升幅度",
+        ],
+    },
+    "en": {
+        "title_home": "CheckPause - Chess Review and Training",
+        "title_shop": "CheckPause - Pricing",
+        "desc": "CheckPause is a chess review tool: import a game, step through "
+        "the engine evaluation and notes, and see the better choices.",
+        "nav_home": "Home",
+        "nav_features": "Features",
+        "nav_guide": "Workflow",
+        "nav_pricing": "Pricing",
+        "pill": "Chess · Review and Training",
+        "hero_1": "Understand",
+        "hero_2": "every move you play",
+        "hero_lede": "Import a game and step through the engine's evaluation and "
+        "notes: find the turning points, see what else was available, and turn "
+        "each game into experience you can reuse.",
+        "download": "Download",
+        "dl_windows": "Windows",
+        "dl_windows_meta": "x64 · .exe",
+        "dl_macos": "macOS",
+        "dl_apple": "Apple silicon",
+        "dl_intel": "Intel",
+        "dl_hint": "macOS ships as Apple silicon and Intel builds",
+        "chip_best": "Best move Nf3",
+        "chip_blunder": "Blunder 12… Nf3",
+        "trust": [
+            "Built-in Stockfish engine",
+            "Standard PGN import",
+            "Opening lines and puzzles",
+            "Local features work offline",
+        ],
+        "features_kicker": "Features",
+        "features_title": "Built for serious review",
+        "features_sub": "From import to move-by-move notes, everything revolves "
+        "around one game, connecting evaluation, ideas and training.",
+        "f1_t": "Game import",
+        "f1_b": "Standard PGN is supported; paste a game from Lichess or another "
+        "platform and the moves and headers are parsed automatically.",
+        "f2_t": "Engine analysis",
+        "f2_b": "Stockfish is built in. Every move gets an evaluation and the "
+        "best line, with the turning points marked so you can focus.",
+        "f3_t": "Written notes",
+        "f3_b": "Engine numbers become structured text: what went wrong, how to "
+        "read the position, and what to aim for instead.",
+        "f4_t": "Follow-up questions",
+        "f4_b": "Ask about a specific move or position and get an explanation "
+        "focused on exactly that moment.",
+        "f5_t": "Study and practice",
+        "f5_b": "Opening lines and curated puzzles are included, so you can "
+        "review, solve and play in one place.",
+        "show_kicker": "Interface",
+        "show_title": "A review that reads clearly",
+        "show_sub": "Board and evaluation bar on the left, moves and notes on the "
+        "right; the turning points are marked, so you do not have to hunt "
+        "through a wall of numbers.",
+        "report_name": "CheckPause · Review",
+        "eval_label": "Evaluation",
+        "q": "What is wrong with 12. Nf3?",
+        "a": "The move gives up control of e5 and lets Black play <b>e5–e4</b>. "
+        "A steadier order is to bring the knight to d2 first and contest the "
+        "centre step by step.",
+        "fine": "Cloud review notes are generated by a server-side model; they "
+        "need a connection and consume CP credits. Local analysis works offline.",
+        "guide_kicker": "Getting started",
+        "guide_title": "Three steps to your first review",
+        "s1_t": "Download and install",
+        "s1_b": "Get the desktop client for Windows or macOS; installation needs "
+        "no administrator rights.",
+        "s2_t": "Create a local profile",
+        "s2_b": "Choose a username and language on first launch; your profile and "
+        "games stay on your machine.",
+        "s3_t": "Import and review",
+        "s3_b": "Import a game and step through the evaluation and notes; ask "
+        "follow-up questions any time.",
+        "band_title": "Start with your next game",
+        "band_body": "Install CheckPause and turn every game into a review you "
+        "can come back to.",
+        "band_download": "Download",
+        "band_pricing": "See",
+        "footer_ops": "CheckPause · Operated by CometZZZ · All rights reserved",
+        "footer_download": "Download",
+        "footer_pricing": "Pricing",
+        "shop_kicker": "Pricing",
+        "shop_title": "CP credits",
+        "shop_sub": "Cloud review is billed by usage. CP credits stay valid in "
+        "your account and are charged as you go; the client shows your balance "
+        "and every transaction.",
+        "credits": "{} CP credits",
+        "popular": "Most popular",
+        "pack_hint": "about {} full reviews",
+        "shop_fine": "1 CP credit = ¥0.01. A full review (import, engine "
+        "analysis and written notes) usually costs 6 to 10 CP credits.",
+        "topup_kicker": "Top-up",
+        "topup_title": "How to top up",
+        "topup_items": [
+            "Choose an amount under Settings → Cloud account in the client",
+            "Your browser opens the Alipay checkout; scan the code or sign in to pay",
+            "Return to the client and the credits appear automatically",
+        ],
+        "refund_kicker": "Notes",
+        "refund_title": "Refunds and terms",
+        "refund_items": [
+            "<b>Virtual goods</b>: credits are usable as soon as they arrive, "
+            "and the client shows your balance and full history",
+            "<b>Problems</b>: for a duplicate charge or a fault, contact the "
+            "author and any unspent amount is refunded to the original method",
+            "<b>Scope</b>: this tool assists review; it does not promise a " "specific rating gain",
+        ],
+    },
 }
 
 
-def _page(title, body):
+def _normalize_lang(value):
+    return "en" if value.strip().lower().startswith("en") else "zh"
+
+
+def _download_links():
+    """Resolve installer links from the mirror manifest, with a safe fallback.
+
+    The manifest is written by the deploy scripts; when it is missing (a fresh
+    checkout, the tests) every link points at the release page instead.
+    """
+    links = {"windows": DOWNLOAD_URL, "mac_arm": DOWNLOAD_URL, "mac_intel": DOWNLOAD_URL}
+    try:
+        raw = (config.downloads_dir() / "version.json").read_text(encoding="utf-8")
+        urls = json.loads(raw).get("urls", {})
+    except (OSError, ValueError):
+        return links
+    links["windows"] = urls.get("windows-x86_64") or DOWNLOAD_URL
+    links["mac_arm"] = urls.get("macos-arm64") or DOWNLOAD_URL
+    links["mac_intel"] = urls.get("macos-x86_64") or DOWNLOAD_URL
+    return links
+
+
+def _page(title, description, lang, body):
+    html_lang = "zh-CN" if lang == "zh" else "en"
     return HTMLResponse(
         "<!doctype html>\n"
-        '<html lang="zh-CN">\n<head>\n<meta charset="utf-8">\n'
+        f'<html lang="{html_lang}">\n<head>\n<meta charset="utf-8">\n'
         '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-        '<meta name="description" content="CheckPause - 国际象棋复盘工具">\n'
+        f'<meta name="description" content="{description}">\n'
         f"<title>{title}</title>\n"
         f"<style>{STYLE}</style>\n</head>\n<body>\n"
         f'<div class="wrap">\n{body}\n</div>\n</body>\n</html>\n'
@@ -362,88 +623,91 @@ def _board_svg():
     size = span + pad * 2
     return (
         f'<svg class="board" viewBox="0 0 {size} {size}" role="img" '
-        'aria-label="棋盘示意图" xmlns="http://www.w3.org/2000/svg">'
+        'aria-label="board" xmlns="http://www.w3.org/2000/svg">'
         f'<rect width="{size}" height="{size}" rx="14" fill="#0b1220"/>'
         f"{''.join(parts)}</svg>"
     )
 
 
-def _header():
+def _header(lang, path, s):
+    home = f"/?lang={lang}"
     return (
         '<header class="nav">'
-        f'<a class="brand" href="/">{_logo()}<span>CheckPause</span></a>'
-        '<nav class="nav-links">'
-        '<a href="#features">功能</a>'
-        '<a href="#guide">流程</a>'
-        '<a href="/shop">定价</a>'
-        "</nav></header>"
+        f'<a class="brand" href="{home}">{_logo()}<span>CheckPause</span></a>'
+        '<div class="nav-right"><nav class="nav-links">'
+        f'<a href="{home}">{s["nav_home"]}</a>'
+        f'<a href="/?lang={lang}#features">{s["nav_features"]}</a>'
+        f'<a href="/?lang={lang}#guide">{s["nav_guide"]}</a>'
+        f'<a href="/shop?lang={lang}">{s["nav_pricing"]}</a>'
+        "</nav>"
+        f'<div class="lang"><a class="{"on" if lang == "zh" else ""}" '
+        f'href="{path}?lang=zh">中文</a>'
+        f'<a class="{"on" if lang == "en" else ""}" '
+        f'href="{path}?lang=en">EN</a></div>'
+        "</div></header>"
     )
 
 
-def _footer():
+def _footer(lang, s):
     return (
         "<footer>"
-        "<span>CheckPause · 本站由 CometZZZ 运营 · 版权保留</span>"
-        f'<span><a href="{DOWNLOAD_URL}">下载</a> · '
-        '<a href="/shop">定价</a></span>'
+        f'<span>{s["footer_ops"]}</span>'
+        f'<span><a href="{DOWNLOAD_URL}">{s["footer_download"]}</a> · '
+        f'<a href="/shop?lang={lang}">{s["footer_pricing"]}</a></span>'
         "</footer>"
     )
 
 
-def _hero():
+def _download_menu(s):
+    links = _download_links()
+    return (
+        '<div class="dl">'
+        f'<button class="btn dl-btn" type="button">{s["download"]}'
+        f'{_icon("chevron")}</button>'
+        '<div class="dl-menu">'
+        f'<a class="dl-item" href="{links["windows"]}">'
+        f'<span class="dl-name">{s["dl_windows"]}</span>'
+        f'<span class="dl-meta">{s["dl_windows_meta"]}</span></a>'
+        '<div class="dl-item">'
+        f'<span class="dl-name">{s["dl_macos"]}</span>'
+        f'<span class="dl-sub"><a href="{links["mac_arm"]}">{s["dl_apple"]}</a>'
+        f'<a href="{links["mac_intel"]}">{s["dl_intel"]}</a></span>'
+        "</div>"
+        f'<div class="dl-hint">{s["dl_hint"]}</div>'
+        "</div></div>"
+    )
+
+
+def _hero(s):
     return (
         '<section class="hero">'
         '<div class="hero-copy">'
-        '<span class="pill"><span class="dot"></span>国际象棋 · 复盘与训练</span>'
-        '<h1>读懂<br><span class="grad">每一步棋的得失</span></h1>'
-        '<p class="lede">导入棋谱，逐着查看引擎评估与讲解：定位关键转折，'
-        "理解当时的更优选择，把对局沉淀为可以复用的经验。</p>"
-        '<div class="cta">'
-        '<a class="btn" href="#features">了解功能</a>'
-        '<a class="btn ghost" href="#guide">使用流程</a>'
-        "</div></div>"
+        f'<span class="pill"><span class="dot"></span>{s["pill"]}</span>'
+        f'<h1>{s["hero_1"]}<br><span class="grad">{s["hero_2"]}</span></h1>'
+        f'<p class="lede">{s["hero_lede"]}</p>'
+        f'<div class="cta">{_download_menu(s)}</div>'
+        "</div>"
         '<div class="hero-art">'
         f"{_board_svg()}"
-        '<span class="chip a"><i></i>最优着法 Nf3</span>'
-        '<span class="chip b bad"><i></i>失误 12… Nf3</span>'
+        f'<span class="chip a"><i></i>{s["chip_best"]}</span>'
+        f'<span class="chip b bad"><i></i>{s["chip_blunder"]}</span>'
         "</div></section>"
     )
 
 
-def _trust():
-    items = [
-        ("engine", "内置 Stockfish 引擎"),
-        ("import", "标准 PGN 棋谱导入"),
-        ("book", "开局线路与精选题集"),
-        ("shield", "本地功能可离线使用"),
-    ]
-    cells = "".join(f"<div>{_icon(key)}{text}</div>" for key, text in items)
+def _trust(s):
+    items = [("engine", 0), ("import", 1), ("book", 2), ("shield", 3)]
+    cells = "".join(f"<div>{_icon(key)}{s['trust'][index]}</div>" for key, index in items)
     return f'<div class="trust">{cells}</div>'
 
 
-def _features():
+def _features(s):
     items = [
-        (
-            "span3",
-            "import",
-            "棋谱导入",
-            "支持标准 PGN 格式，可直接粘贴来自 Lichess 等平台的棋局，"
-            "自动解析对局信息与完整着法序列。",
-        ),
-        (
-            "span3",
-            "analysis",
-            "引擎分析",
-            "内置 Stockfish，逐着给出评估分数与最优着法，并标记关键节点，" "便于聚焦全局转折。",
-        ),
-        (
-            "span2",
-            "chat",
-            "复盘讲解",
-            "将引擎评估整理为结构化文字，说明失误成因、局面判断与改进方向。",
-        ),
-        ("span2", "puzzle", "追问答疑", "针对具体着法或局面提问，获得聚焦该处的解释与思路分析。"),
-        ("span2", "book", "打谱与训练", "内置开局线路与精选题目，兼顾打谱、解题与对弈训练。"),
+        ("span3", "import", s["f1_t"], s["f1_b"]),
+        ("span3", "analysis", s["f2_t"], s["f2_b"]),
+        ("span2", "chat", s["f3_t"], s["f3_b"]),
+        ("span2", "puzzle", s["f4_t"], s["f4_b"]),
+        ("span2", "book", s["f5_t"], s["f5_b"]),
     ]
     cards = "".join(
         f'<div class="card {span}"><span class="glow"></span>'
@@ -453,16 +717,15 @@ def _features():
     )
     return (
         '<section class="section" id="features">'
-        '<div class="kicker">功能</div>'
-        '<h2 class="title">为认真复盘而设计</h2>'
-        '<p class="sub">从棋谱导入到逐着讲解，围绕同一局棋，把评估、'
-        "思路与训练串成一条完整的复盘链路。</p>"
+        f'<div class="kicker">{s["features_kicker"]}</div>'
+        f'<h2 class="title">{s["features_title"]}</h2>'
+        f'<p class="sub">{s["features_sub"]}</p>'
         f'<div class="bento">{cards}</div>'
         "</section>"
     )
 
 
-def _showcase():
+def _showcase(s):
     moves = [
         "e4",
         "e5",
@@ -486,35 +749,32 @@ def _showcase():
     )
     return (
         '<section class="section" id="report">'
-        '<div class="kicker">界面</div>'
-        '<h2 class="title">一份清晰的复盘报告</h2>'
-        '<p class="sub">左侧棋盘与评估条，右侧着法列表与讲解；'
-        "关键失误直接标出，无需在长串数字中自行寻找。</p>"
+        f'<div class="kicker">{s["show_kicker"]}</div>'
+        f'<h2 class="title">{s["show_title"]}</h2>'
+        f'<p class="sub">{s["show_sub"]}</p>'
         '<div class="panel">'
         '<div class="panel-top"><i></i><i></i><i></i>'
-        '<span class="name">CheckPause · 复盘</span></div>'
+        f'<span class="name">{s["report_name"]}</span></div>'
         '<div class="panel-body">'
         f'<div class="panel-board">{_board_svg()}</div>'
         '<div class="panel-side">'
-        '<div class="eval-label"><span>局面评估</span><b>+0.42</b></div>'
+        f'<div class="eval-label"><span>{s["eval_label"]}</span><b>+0.42</b></div>'
         '<div class="bar"><span></span></div>'
         f'<div class="moves">{move_cells}</div>'
         '<div class="chat">'
-        '<div class="q">第 12 手 Nf3 的问题在哪里？</div>'
-        '<div class="a">该着法放弃了对 e5 的控制，并为黑方 <b>e5–e4</b> 的推进'
-        "创造了机会。更稳妥的次序是先将马调往 d2，再逐步争夺中心。</div>"
+        f'<div class="q">{s["q"]}</div>'
+        f'<div class="a">{s["a"]}</div>'
         "</div></div></div></div>"
-        '<p class="fine">云端复盘讲解由服务端 AI 生成，需联网并消耗 CP积分；'
-        "本地分析功能无需联网。</p>"
+        f'<p class="fine">{s["fine"]}</p>'
         "</section>"
     )
 
 
-def _steps():
+def _steps(s):
     items = [
-        ("01", "获取并安装", "下载桌面客户端，支持 Windows 与 macOS，" "安装过程无需管理员权限。"),
-        ("02", "建立本地档案", "首次启动设置用户名与语言，" "档案与棋局数据保存在本机。"),
-        ("03", "导入并复盘", "导入一局棋，逐着查看评估与讲解；" "针对疑问可随时追问。"),
+        ("01", s["s1_t"], s["s1_b"]),
+        ("02", s["s2_t"], s["s2_b"]),
+        ("03", s["s3_t"], s["s3_b"]),
     ]
     cards = "".join(
         f'<div class="step"><div class="n">{number}</div>' f"<h3>{title}</h3><p>{text}</p></div>"
@@ -522,84 +782,92 @@ def _steps():
     )
     return (
         '<section class="section" id="guide">'
-        '<div class="kicker">上手</div>'
-        '<h2 class="title">三步开始复盘</h2>'
+        f'<div class="kicker">{s["guide_kicker"]}</div>'
+        f'<h2 class="title">{s["guide_title"]}</h2>'
         f'<div class="steps">{cards}</div>'
         "</section>"
     )
 
 
-def _band():
+def _band(lang, s):
     return (
         '<section class="band">'
-        "<h2>从下一局棋开始</h2>"
-        "<p>安装 CheckPause，把每一盘对局变成可以反复回看的复盘。</p>"
-        f'<a class="btn" href="{DOWNLOAD_URL}">前往下载</a>'
-        '<span class="quiet">查看 <a href="/shop">定价</a></span>'
+        f'<h2>{s["band_title"]}</h2>'
+        f'<p>{s["band_body"]}</p>'
+        f'<a class="btn" href="{DOWNLOAD_URL}">{s["band_download"]}</a>'
+        f'<span class="quiet">{s["band_pricing"]} '
+        f'<a href="/shop?lang={lang}">{s["nav_pricing"]}</a></span>'
         "</section>"
     )
 
 
 @router.get("/", response_class=HTMLResponse)
-def home():
+def home(lang: str = ""):
     """The front door."""
+    language = _normalize_lang(lang)
+    s = _STRINGS[language]
     return _page(
-        "CheckPause - 国际象棋复盘工具",
-        _header() + _hero() + _trust() + _features() + _showcase() + _steps() + _band() + _footer(),
+        s["title_home"],
+        s["desc"],
+        language,
+        _header(language, "/", s)
+        + _hero(s)
+        + _trust(s)
+        + _features(s)
+        + _showcase(s)
+        + _steps(s)
+        + _band(language, s)
+        + _footer(language, s),
     )
 
 
-def _pack_cards():
+def _pack_cards(s):
     packs = config.topup_packs()
     popular = packs[len(packs) // 2]
     cards = []
     for yuan in packs:
         credits = yuan * config.CREDITS_PER_YUAN
         is_popular = yuan == popular
-        badge = '<span class="badge">最受欢迎</span>' if is_popular else ""
+        badge = f'<span class="badge">{s["popular"]}</span>' if is_popular else ""
         cards.append(
             f'<div class="pack{" popular" if is_popular else ""}">{badge}'
-            f'<div class="credits">{credits} CP积分</div>'
+            f'<div class="credits">{s["credits"].format(credits)}</div>'
             f'<div class="price">¥{yuan}</div>'
-            f'<div class="hint">约 {credits // 8} 次完整复盘</div>'
+            f'<div class="hint">{s["pack_hint"].format(credits // 8)}</div>'
             "</div>"
         )
     return "".join(cards)
 
 
 @router.get("/shop", response_class=HTMLResponse)
-def shop():
+def shop(lang: str = ""):
     """The price list. Screenshot material for Alipay's onboarding."""
+    language = _normalize_lang(lang)
+    s = _STRINGS[language]
+    topup = "".join(f"<li>{item}</li>" for item in s["topup_items"])
+    refund = "".join(f"<li>{item}</li>" for item in s["refund_items"])
     return _page(
-        "CheckPause - 定价",
-        _header() + '<section class="section" style="padding-top:56px">'
-        '<div class="kicker">定价</div>'
-        '<h2 class="title">CP积分</h2>'
-        '<p class="sub">云端复盘按用量计费。CP积分充入账号后长期有效，'
-        "按实际消耗扣除，可在客户端内随时查看余额与流水。</p>"
-        "</section>" + '<div class="card-panel">'
-        f'<div class="packs">{_pack_cards()}</div>'
-        '<p class="fine">1 CP积分 = ¥0.01。一次完整复盘（含棋谱与引擎数据'
-        "分析、生成讲解）通常消耗 6 至 10 CP积分。</p>"
-        "</div>"
-        '<section class="section">'
-        '<div class="kicker">充值</div>'
-        '<h2 class="title">充值方式</h2>'
-        "<ul>"
-        "<li>在客户端「设置 → 云端账号」中选择面额</li>"
-        "<li>浏览器打开支付宝付款页面，扫码或登录完成支付</li>"
-        "<li>支付完成后返回客户端，余额自动到账，无需人工操作</li>"
-        "</ul>"
+        s["title_shop"],
+        s["desc"],
+        language,
+        _header(language, "/shop", s) + '<section class="section" style="padding-top:56px">'
+        f'<div class="kicker">{s["shop_kicker"]}</div>'
+        f'<h2 class="title">{s["shop_title"]}</h2>'
+        f'<p class="sub">{s["shop_sub"]}</p>'
         "</section>"
-        '<section class="section">'
-        '<div class="kicker">说明</div>'
-        '<h2 class="title">退款与声明</h2>'
-        "<ul>"
-        "<li><b>虚拟商品</b>：CP积分充入账号后即可使用，"
-        "余额与每一笔流水均可在客户端查看</li>"
-        "<li><b>异常处理</b>：如遇重复扣费或功能异常，请联系作者核实，"
-        "未消费部分将原路退回</li>"
-        "<li><b>效果说明</b>：本工具提供复盘辅助，不承诺棋力提升幅度</li>"
-        "</ul>"
-        "</section>" + _footer(),
+        + '<div class="card-panel">'
+        + f'<div class="packs">{_pack_cards(s)}</div>'
+        + f'<p class="fine">{s["shop_fine"]}</p>'
+        + "</div>"
+        + '<section class="section">'
+        + f'<div class="kicker">{s["topup_kicker"]}</div>'
+        + f'<h2 class="title">{s["topup_title"]}</h2>'
+        + f"<ul>{topup}</ul>"
+        + "</section>"
+        + '<section class="section">'
+        + f'<div class="kicker">{s["refund_kicker"]}</div>'
+        + f'<h2 class="title">{s["refund_title"]}</h2>'
+        + f"<ul>{refund}</ul>"
+        + "</section>"
+        + _footer(language, s),
     )
