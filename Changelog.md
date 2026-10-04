@@ -1,3 +1,49 @@
+# v1.8.4 – Multi-Line Live Analysis & Game-End Sounds
+
+> **实时分析升级为多主线、逐层加深，并新增数字评分；修复了音效的bug** 面板模式下，引擎常驻并一路加深，最多同时给出三条推荐着法，最优一条最粗、其余依次变细变淡，推荐会随深度变化；评估条旁新增数字评分。使盘面更美观符合逻辑。
+>
+> **Live analysis now runs multi-line and deepens over time, with a numeric score, and the sound bugs are fixed.** In the Panel module the engine keeps one process alive and deepens the search, showing up to three ranked best moves (the best drawn thickest, the rest thinner and fainter) that change with depth, plus a numeric score next to the bar, so the board looks nicer and behaves more logically.
+
+---
+
+## 🎯 What's New
+
+### 🔍 Multi-line, deeper live analysis
+- 实时分析改为**常驻引擎**，逐层加深并实时刷新，能直接看到推荐着法随深度变化。
+- 开启「显示推荐着法」后，最多同时显示**三条**推荐箭头，最优一条最粗，其余依次变细变淡。
+- 深度越高搜索越久，机器负载相应更明显。
+
+- The live search now keeps **one persistent engine** that deepens step by step and streams each depth, so you can watch the suggestions change as it thinks.
+- With "Show best move" on, up to **three** ranked arrows appear, the best drawn thickest and the rest thinner and fainter.
+- A higher depth searches longer, so the machine works noticeably harder.
+
+## 🛠️ Full Changelog
+- feat(analysis): keep a persistent engine and stream the live search by depth
+- feat(analysis): show up to three ranked best-move arrows via MultiPV
+- feat(board): show a numeric evaluation beside the depth selector
+- feat(menu): move Appearance into Personalization above Pieces
+- fix(board): hide the evaluation row while editing the board
+- fix(board): stop the hint switch from re-scoring the evaluation bar
+- fix(sound): play the check effect when a capture also gives check
+- feat(sound): add dedicated checkmate and draw effects
+- chore(version): bump the app version to 1.8.4
+
+---
+
+## ⚠️ Breaking Changes
+
+- 「显示推荐着法」现在最多给出三条推荐，且开关只控制箭头显隐；评估条始终独立更新。
+- 新增 `checkmate` / `draw` 音效文件；旧档案无需迁移。
+- 「外观」菜单位置调整到「个性化 → 外观」。
+
+- "Show best move" can now show up to three suggestions and only toggles the arrows; the bar updates independently.
+- New `checkmate` / `draw` sound files ship alongside the existing set; no profile migration is needed.
+- The Appearance submenu moved to Personalization → Appearance.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.3...v1.8.4
+
 # v1.8.3 – Evaluation Bar & Cleaner Sounds
 
 > **棋盘上方新增 Stockfish 评估条，随局面平滑变化，可显示推荐着法箭头；音效精简为一种。** 面板模式下，棋盘上方的留白处会出现一条评估条，白黑占比实时反映双方优势，切换着法时带动画过渡。可在评估条下方勾选「显示推荐着法」，用半透明玻璃质感的箭头标出引擎最佳着法，并自由选择分析深度（10–22）。同时，音效只保留一种，原「电子」更名为「默认」。
