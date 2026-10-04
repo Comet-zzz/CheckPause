@@ -38,6 +38,25 @@ def read_score(info):
     return score.score(), None
 
 
+def read_lines(infos):
+    """Turn the latest info dict per MultiPV index into ranked arrow lines.
+
+    ``infos`` maps a MultiPV index (1 = best) to the most recent engine info
+    dict for that line. The returned list is ordered best first and keeps only
+    lines that actually carry a continuation, so it is safe to feed straight
+    into the board's arrow renderer.
+    """
+    lines = []
+    for index in sorted(infos):
+        info = infos[index]
+        pv = info.get("pv") if info else None
+        if not pv:
+            continue
+        margin, mate = read_score(info)
+        lines.append({"uci": pv[0].uci(), "margin": margin, "mate": mate})
+    return lines
+
+
 def eval_ratio(margin, mate=None):
     """White's share of the evaluation bar, as a 0..1 fraction.
 

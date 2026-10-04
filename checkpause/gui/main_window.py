@@ -110,7 +110,6 @@ class MainWindow(QMainWindow):
             "eval_depth", DEFAULT_EVAL_DEPTH
         )
         self._eval_worker = None
-        self._eval_pending = None
         self._eval_token = 0
         self._eval_failed = False
         self._messages = []
@@ -301,24 +300,6 @@ class MainWindow(QMainWindow):
 
         self._menu_settings = menubar.addMenu("")
 
-        self._menu_appearance = self._menu_settings.addMenu("")
-        self._theme_group = QActionGroup(self)
-        self._theme_group.setExclusive(True)
-        self._act_light = QAction(self)
-        self._act_light.setCheckable(True)
-        self._act_light.triggered.connect(lambda: self._change_theme(LIGHT))
-        self._act_dark = QAction(self)
-        self._act_dark.setCheckable(True)
-        self._act_dark.triggered.connect(lambda: self._change_theme(DARK))
-        self._theme_group.addAction(self._act_light)
-        self._theme_group.addAction(self._act_dark)
-        self._menu_appearance.addAction(self._act_light)
-        self._menu_appearance.addAction(self._act_dark)
-        self._act_light.setChecked(self._theme == LIGHT)
-        self._act_dark.setChecked(self._theme == DARK)
-
-        self._menu_settings.addSeparator()
-
         self._act_api_settings = QAction(self)
         self._act_api_settings.triggered.connect(self._open_api_settings)
         self._act_cloud_account = QAction(self)
@@ -333,6 +314,22 @@ class MainWindow(QMainWindow):
         self._menu_settings.addAction(self._act_delete)
 
         self._menu_personalization = menubar.addMenu("")
+
+        self._menu_appearance = self._menu_personalization.addMenu("")
+        self._theme_group = QActionGroup(self)
+        self._theme_group.setExclusive(True)
+        self._act_light = QAction(self)
+        self._act_light.setCheckable(True)
+        self._act_light.triggered.connect(lambda: self._change_theme(LIGHT))
+        self._act_dark = QAction(self)
+        self._act_dark.setCheckable(True)
+        self._act_dark.triggered.connect(lambda: self._change_theme(DARK))
+        self._theme_group.addAction(self._act_light)
+        self._theme_group.addAction(self._act_dark)
+        self._menu_appearance.addAction(self._act_light)
+        self._menu_appearance.addAction(self._act_dark)
+        self._act_light.setChecked(self._theme == LIGHT)
+        self._act_dark.setChecked(self._theme == DARK)
 
         self._menu_pieces = self._menu_personalization.addMenu("")
         self._piece_group = QActionGroup(self)
@@ -403,6 +400,7 @@ class MainWindow(QMainWindow):
         self._show_module()
         self._retranslate()
         self._refresh_stats()
+        self._ensure_eval_worker()
 
     def _show_welcome(self):
         self.setWindowTitle(t("app_title", self._language))
@@ -832,12 +830,16 @@ class MainWindow(QMainWindow):
 
     def _on_hint_toggled(self, enabled):
         self._hint_enabled = bool(enabled)
+        retry = self._eval_failed
         self._eval_failed = False
         if self.profile:
             self.profile = set_hint_enabled(
                 self.profile, self._hint_enabled
             )
-        if self._hint_enabled:
+        if retry:
+            # The bar is evaluated whether or not hints are shown, so toggling
+            # the switch must not refresh the score. Only an earlier failure
+            # needs a fresh search to recover.
             self._request_live_eval(self.board.current_fen())
 
     def _on_eval_depth_changed(self, depth):
@@ -854,61 +856,45 @@ class MainWindow(QMainWindow):
             return
         self._request_live_eval(fen)
 
+    def _ensure_eval_worker(self):
+        if self._eval_worker is not None and self._eval_worker.isRunning():
+            return self._eval_worker
+        self._stop_eval_worker()
+        worker = LiveAnalysisWorker(self._language, self)
+        worker.evaluated.connect(self._on_live_eval)
+        worker.failed.connect(self._on_live_eval_failed)
+        self._eval_worker = worker
+        worker.start()
+        return worker
+
     def _request_live_eval(self, fen):
         if self._eval_failed:
             return
+        worker = self._ensure_eval_worker()
         self._eval_token += 1
-        token = self._eval_token
-        if self._eval_worker is not None and self._eval_worker.isRunning():
-            # Latest wins: the running search finishes, but its result is
-            # already stale and the newest position waits behind it.
-            self._eval_pending = (fen, token)
-            return
-        self._start_eval_worker(fen, token)
-
-    def _start_eval_worker(self, fen, token):
-        worker = LiveAnalysisWorker(
-            fen, self._eval_depth, token, self._language, self
-        )
-        worker.evaluated.connect(self._on_live_eval)
-        worker.failed.connect(self._on_live_eval_failed)
-        worker.finished.connect(self._on_eval_worker_finished)
-        self._eval_worker = worker
-        worker.start()
+        # Latest wins: the worker abandons a search in flight for this one.
+        worker.request(fen, self._eval_depth, self._eval_token)
 
     def _on_live_eval(self, result):
         if result.get("token") != self._eval_token:
             return
         self.board.apply_live_eval(
-            result.get("best_move"),
-            result.get("margin"),
-            result.get("mate"),
+            result.get("lines") or [], result.get("depth")
         )
 
     def _on_live_eval_failed(self, error):
         # An unavailable engine must not break the rest of the app; stop
         # retrying every position until the feature is toggled again.
         self._eval_failed = True
-
-    def _on_eval_worker_finished(self):
-        worker = self._eval_worker
-        self._eval_worker = None
-        if worker is not None:
-            worker.deleteLater()
-        pending = self._eval_pending
-        self._eval_pending = None
-        if pending is not None and not self._eval_failed:
-            self._start_eval_worker(*pending)
+        self._stop_eval_worker()
 
     def _stop_eval_worker(self):
-        self._eval_pending = None
         self._eval_token += 1
         worker = self._eval_worker
         self._eval_worker = None
-        if worker is not None and worker.isRunning():
-            worker.terminate()
-            worker.wait(1000)
         if worker is not None:
+            worker.stop()
+            worker.wait(2000)
             worker.deleteLater()
 
     def _open_api_settings(self):

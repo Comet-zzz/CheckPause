@@ -29,6 +29,7 @@ from checkpause.assets import (
     PIECE_SETS,
 )
 from checkpause.config import EVAL_DEPTH_OPTIONS
+from checkpause.core.engine import format_eval
 from checkpause.gui.icons import nav_icon
 from checkpause.gui.sound import SoundPlayer, move_sound_kind
 from checkpause.gui.theme import DARK
@@ -154,6 +155,7 @@ class BoardWidget(QWidget):
 
         self._eval_check = QCheckBox()
         self._eval_check.toggled.connect(self._on_hint_check)
+        self._eval_value_label = QLabel()
         self._eval_depth_label = QLabel()
         self._eval_depth_combo = QComboBox()
         for depth in EVAL_DEPTH_OPTIONS:
@@ -163,6 +165,7 @@ class BoardWidget(QWidget):
         )
 
         row.addWidget(self._eval_check)
+        row.addWidget(self._eval_value_label)
         row.addStretch(1)
         row.addWidget(self._eval_depth_label)
         row.addWidget(self._eval_depth_combo)
@@ -401,13 +404,20 @@ class BoardWidget(QWidget):
         self._moves = []
         self._best_moves = {}
         self._live_eval = None
+        self._eval_value_label.clear()
         self._last_position_fen = None
         self._index = 0
         self.render()
 
     def set_eval_available(self, available):
         self._eval_available = bool(available)
-        self._eval_controls.setVisible(self._eval_available)
+        self._sync_eval_controls_visibility()
+
+    def _sync_eval_controls_visibility(self):
+        # The evaluation row is hidden while editing the board so it does not
+        # crowd the palette and its stale score cannot mislead.
+        visible = self._eval_available and not self._editable
+        self._eval_controls.setVisible(visible)
         self._canvas.place_eval_controls()
 
     def set_hint_enabled(self, enabled):
@@ -432,17 +442,20 @@ class BoardWidget(QWidget):
     def current_fen(self):
         return self._board.fen()
 
-    def apply_live_eval(self, uci, margin, mate=None):
+    def apply_live_eval(self, lines, depth=None):
+        lines = [line for line in (lines or []) if line.get("uci")]
         self._live_eval = {
             "index": self._index,
-            "uci": uci,
-            "margin": margin,
-            "mate": mate,
+            "lines": lines,
+            "depth": depth,
         }
-        self._canvas.animate_eval(margin, mate)
+        top = lines[0] if lines else {}
+        self._eval_value_label.setText(format_eval(top.get("margin"), top.get("mate")))
+        self._canvas.animate_eval(top.get("margin"), top.get("mate"))
 
     def clear_live_eval(self):
         self._live_eval = None
+        self._eval_value_label.clear()
         self._canvas.animate_eval(None, None)
 
     def _on_hint_check(self, checked):
@@ -520,6 +533,7 @@ class BoardWidget(QWidget):
         self._sync_edit_controls()
         self._edit_bar.setVisible(True)
         self._btn_edit.setChecked(True)
+        self._sync_eval_controls_visibility()
         self.render()
 
     def apply_edit(self):
@@ -551,6 +565,7 @@ class BoardWidget(QWidget):
         self._targets = set()
         self._edit_bar.setVisible(False)
         self._btn_edit.setChecked(False)
+        self._sync_eval_controls_visibility()
 
     def _on_edit_clicked(self, checked):
         if checked:

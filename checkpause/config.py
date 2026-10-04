@@ -33,10 +33,14 @@ ENGINE_LIMIT = chess.engine.Limit(depth=18, time=2.0)
 
 # The evaluation bar shown above the analysis board is always on. The depth
 # controls how hard the engine searches for it, and the hint switch only
-# decides whether its best move is drawn as an arrow.
+# decides whether its best moves are drawn as arrows.
 EVAL_DEPTH_OPTIONS = (10, 12, 14, 16, 18, 20, 22)
 DEFAULT_EVAL_DEPTH = 14
 DEFAULT_HINT_ENABLED = True
+
+# How many engine lines the live search keeps, and therefore how many ranked
+# arrows can be drawn. The first (best) line is drawn thickest.
+EVAL_MULTIPV = 3
 
 PLAY_RATING_MIN = 100
 PLAY_RATING_MAX = 3000

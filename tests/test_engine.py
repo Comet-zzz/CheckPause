@@ -7,6 +7,7 @@ from checkpause.core.engine import (
     compact_analysis,
     eval_ratio,
     format_eval,
+    read_lines,
     read_score,
 )
 
@@ -45,6 +46,47 @@ class ReadScoreTests(unittest.TestCase):
     def test_missing_score_is_neutral(self):
         self.assertEqual(read_score({}), (None, None))
         self.assertEqual(read_score(None), (None, None))
+
+
+class ReadLinesTests(unittest.TestCase):
+    def test_lines_are_ranked_best_first(self):
+        infos = {
+            2: {
+                "score": chess.engine.PovScore(chess.engine.Cp(120), chess.WHITE),
+                "pv": [chess.Move.from_uci("d2d4")],
+            },
+            1: {
+                "score": chess.engine.PovScore(chess.engine.Cp(50), chess.WHITE),
+                "pv": [chess.Move.from_uci("e2e4")],
+            },
+        }
+        self.assertEqual(
+            read_lines(infos),
+            [
+                {"uci": "e2e4", "margin": 50, "mate": None},
+                {"uci": "d2d4", "margin": 120, "mate": None},
+            ],
+        )
+
+    def test_lines_without_a_continuation_are_skipped(self):
+        infos = {
+            1: {
+                "score": chess.engine.PovScore(chess.engine.Cp(0), chess.WHITE),
+                "pv": [],
+            }
+        }
+        self.assertEqual(read_lines(infos), [])
+
+    def test_mate_lines_report_the_mate_count(self):
+        infos = {
+            1: {
+                "score": chess.engine.PovScore(chess.engine.Mate(3), chess.WHITE),
+                "pv": [chess.Move.from_uci("e2e4")],
+            }
+        }
+        self.assertEqual(
+            read_lines(infos), [{"uci": "e2e4", "margin": None, "mate": 3}]
+        )
 
 
 class EvalRatioTests(unittest.TestCase):

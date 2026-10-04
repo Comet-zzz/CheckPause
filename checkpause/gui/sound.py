@@ -14,7 +14,15 @@ import os
 from checkpause.assets import DEFAULT_SOUND_SET, SOUND_SETS
 from checkpause.resources import resource_path
 
-SOUND_KINDS = ("move", "capture", "check", "castle", "promote")
+SOUND_KINDS = (
+    "move",
+    "capture",
+    "check",
+    "checkmate",
+    "castle",
+    "promote",
+    "draw",
+)
 DEFAULT_VOLUME = 0.6
 
 
@@ -22,8 +30,10 @@ def move_sound_kind(board, move, forward=True):
     """Pick the effect that fits ``move`` on ``board``.
 
     ``board`` is the position the widget is showing: after the move when
-    playing forward, before it when stepping back. Only new checks make a
-    sound; un-checking while browsing backwards goes back to a plain move.
+    playing forward, before it when stepping back. A game-ending move is
+    announced as such, and a capture that also gives check sounds like the
+    check. Only forward moves announce a check, a mate or a draw; browsing
+    backwards still names what the move did (capture, castle, promotion).
     """
     try:
         if forward:
@@ -36,14 +46,18 @@ def move_sound_kind(board, move, forward=True):
             after.push(move)
     except (IndexError, ValueError, AssertionError):
         return "move"
+    if forward and after.is_checkmate():
+        return "checkmate"
+    if forward and after.is_game_over():
+        return "draw"
     if before.is_castling(move):
         return "castle"
     if move.promotion is not None:
         return "promote"
-    if before.is_capture(move):
-        return "capture"
     if forward and after.is_check():
         return "check"
+    if before.is_capture(move):
+        return "capture"
     return "move"
 
 

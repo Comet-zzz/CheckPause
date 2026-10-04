@@ -1,15 +1,19 @@
+import contextlib
+import threading
+import time
+
 import chess
 import chess.engine
 from PySide6.QtCore import QThread, Signal
 
-from checkpause.config import play_engine_settings
+from checkpause.config import EVAL_MULTIPV, play_engine_settings
 from checkpause.core import cloud
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.cloud import CloudRequestError
 from checkpause.core.engine import (
     StockfishAnalyzer,
     open_stockfish,
-    read_score,
+    read_lines,
 )
 from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
@@ -107,56 +111,109 @@ class EngineMoveWorker(QThread):
         self.move_ready.emit(result.move.uci())
 
 
-class LiveAnalysisWorker(QThread):
-    """Scores one position for the on-board evaluation bar.
+# Live searches stream every new depth. The board redraws on each one, so the
+# rate is capped to keep a fast engine from flooding the GUI thread.
+_EVAL_EMIT_INTERVAL = 0.08
 
-    Every request gets its own short-lived engine, so a slow search can never
-    stall navigation: the window keeps only the latest request in flight and
-    discards results whose token is stale.
+
+class LiveAnalysisWorker(QThread):
+    """Deepens the on-board evaluation with one persistent engine.
+
+    The engine stays alive between positions, so a new request does not pay
+    the startup cost, and each search streams every new depth: arrows and the
+    bar settle over time the way an online analysis board behaves. A newer
+    request abandons the search in flight instead of queueing behind it, and a
+    result carries the token of the request that produced it.
     """
 
     evaluated = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, fen, depth, token, language="zh-CN", parent=None):
+    def __init__(self, language="zh-CN", parent=None):
         super().__init__(parent)
-        self.fen = fen
-        self.depth = depth
-        self.token = token
         self.language = language
+        self._engine = None
+        self._lock = threading.Lock()
+        self._wake = threading.Condition(self._lock)
+        self._request = None
+        self._generation = 0
+        self._running = True
+
+    def request(self, fen, depth, token):
+        with self._wake:
+            self._request = (fen, depth, token)
+            self._generation += 1
+            self._wake.notify_all()
+
+    def stop(self):
+        with self._wake:
+            self._running = False
+            self._wake.notify_all()
 
     def run(self):
         try:
-            engine = open_stockfish(get_stockfish_path(self.language))
+            self._engine = open_stockfish(get_stockfish_path(self.language))
         except Exception as exc:
             self.failed.emit(str(exc))
             return
 
         try:
-            info = engine.analyse(
-                chess.Board(self.fen), chess.engine.Limit(depth=self.depth)
+            while True:
+                with self._wake:
+                    while self._running and self._request is None:
+                        self._wake.wait()
+                    if not self._running:
+                        break
+                    fen, depth, token = self._request
+                    self._request = None
+                    generation = self._generation
+                self._search(fen, depth, token, generation)
+        finally:
+            engine, self._engine = self._engine, None
+            if engine is not None:
+                # A shutdown failure must not strand the worker thread.
+                with contextlib.suppress(Exception):
+                    engine.quit()
+
+    def _superseded(self, generation):
+        with self._lock:
+            return not self._running or generation != self._generation
+
+    def _search(self, fen, depth, token, generation):
+        try:
+            board = chess.Board(fen)
+        except ValueError:
+            return
+        infos = {}
+        last_emit = 0.0
+        try:
+            analysis = self._engine.analysis(
+                board, chess.engine.Limit(depth=depth), multipv=EVAL_MULTIPV
             )
+            with analysis:
+                for info in analysis:
+                    if self._superseded(generation):
+                        break
+                    index = info.get("multipv")
+                    if index is None or "score" not in info:
+                        continue
+                    infos[index] = info
+                    reached = info.get("depth") or 0
+                    now = time.monotonic()
+                    if reached < depth and now - last_emit < _EVAL_EMIT_INTERVAL:
+                        continue
+                    last_emit = now
+                    self.evaluated.emit(
+                        {
+                            "token": token,
+                            "depth": reached,
+                            "lines": read_lines(infos),
+                        }
+                    )
+        except chess.engine.EngineError as exc:
+            self.failed.emit(str(exc))
         except Exception as exc:
             self.failed.emit(str(exc))
-            return
-        finally:
-            try:
-                engine.quit()
-            except Exception:
-                # A shutdown failure must not hide the score we just read.
-                pass
-
-        margin, mate = read_score(info)
-        pv = info.get("pv") or []
-        best = pv[0].uci() if pv else None
-        self.evaluated.emit(
-            {
-                "token": self.token,
-                "best_move": best,
-                "margin": margin,
-                "mate": mate,
-            }
-        )
 
 
 class PuzzleImportWorker(QThread):

@@ -57,6 +57,26 @@ class MoveSoundKindTests(unittest.TestCase):
         self.assertTrue(board.is_check())
         self.assertEqual(move_sound_kind(board, move, True), "check")
 
+    def test_capture_that_also_checks_prefers_check(self):
+        board, move = _play_uci(["e2e4", "e7e5", "f1c4", "g8f6", "c4f7"])
+        self.assertTrue(board.is_capture(move))
+        self.assertTrue(board.is_check())
+        self.assertEqual(move_sound_kind(board, move, True), "check")
+
+    def test_checkmate_outranks_the_capture(self):
+        board, move = _play_uci(
+            ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"]
+        )
+        self.assertTrue(board.is_checkmate())
+        self.assertEqual(move_sound_kind(board, move, True), "checkmate")
+
+    def test_stalemate_reads_as_a_draw(self):
+        board = chess.Board("7k/3Q4/6K1/8/8/8/8/8 w - - 0 1")
+        move = chess.Move.from_uci("d7f7")
+        board.push(move)
+        self.assertTrue(board.is_stalemate())
+        self.assertEqual(move_sound_kind(board, move, True), "draw")
+
     def test_stepping_back_never_reports_check(self):
         board, move = _play_uci(["e2e4", "f7f5", "d1h5"])
         before = board.copy()

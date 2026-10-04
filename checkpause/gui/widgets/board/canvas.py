@@ -28,6 +28,10 @@ from checkpause.gui.widgets.board.constants import (
     TARGET_RGBA,
 )
 
+# (width, opacity) multipliers per ranked engine line: the best move keeps the
+# full arrow, alternates get progressively thinner and fainter.
+_ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
+
 
 class _BoardCanvas(QWidget):
     def __init__(self, owner, parent=None):
@@ -446,18 +450,21 @@ class _BoardCanvas(QWidget):
         if drag_return is not None and not self._dragging:
             self._draw_drag_return(painter, x0, y0, square, drag_return)
 
-        best = None
+        lines = []
         live = owner._live_eval
         if (
             live is not None
             and owner._hint_enabled
             and live["index"] == owner._index
         ):
-            best = live.get("uci")
-        if not best:
-            best = owner._best_moves.get(owner._index)
-        if best and not owner._editable:
-            self._draw_arrow(painter, best, x0, y0, square)
+            lines = live.get("lines") or []
+        if not owner._editable:
+            if lines:
+                self._draw_live_arrows(painter, lines, x0, y0, square)
+            else:
+                best = owner._best_moves.get(owner._index)
+                if best:
+                    self._draw_arrow(painter, best, x0, y0, square)
 
         painter.end()
 
@@ -606,7 +613,7 @@ class _BoardCanvas(QWidget):
 
     def _draw_eval_bar(self, painter, x0, y0, board_size, square):
         owner = self._owner
-        if not owner._eval_available:
+        if not owner._eval_available or owner._editable:
             return
         rect, _ = self._eval_row(x0, y0, board_size, square)
         radius = rect.height() / 2.0
@@ -651,7 +658,22 @@ class _BoardCanvas(QWidget):
         painter.drawRoundedRect(rect, radius, radius)
         painter.restore()
 
-    def _draw_arrow(self, painter, uci, x0, y0, square):
+    def _draw_live_arrows(self, painter, lines, x0, y0, square):
+        """Draw ranked MultiPV arrows, best last so it sits on top."""
+        ranked = list(enumerate(lines))[: len(_ARROW_SCALES)]
+        for rank, line in reversed(ranked):
+            width, opacity = _ARROW_SCALES[rank]
+            self._draw_arrow(
+                painter,
+                line["uci"],
+                x0,
+                y0,
+                square,
+                width_scale=width,
+                opacity_scale=opacity,
+            )
+
+    def _draw_arrow(self, painter, uci, x0, y0, square, width_scale=1.0, opacity_scale=1.0):
         """A frosted-glass arrow: translucent fill, bright rim, soft shadow."""
         try:
             move = chess.Move.from_uci(uci)
@@ -675,9 +697,9 @@ class _BoardCanvas(QWidget):
         ux, uy = dx / dist, dy / dist
         px, py = -uy, ux
 
-        shaft = square * 0.085
-        head_len = square * 0.30
-        head_half = square * 0.205
+        shaft = square * 0.135 * width_scale
+        head_len = square * 0.34 * width_scale
+        head_half = square * 0.30 * width_scale
         neck = QPointF(end.x() - ux * head_len, end.y() - uy * head_len)
 
         path = QPainterPath()
@@ -690,10 +712,13 @@ class _BoardCanvas(QWidget):
         path.lineTo(start.x() - px * shaft, start.y() - py * shaft)
         path.closeSubpath()
 
+        def faded(r, g, b, alpha):
+            return QColor(r, g, b, int(alpha * opacity_scale))
+
         glass = QLinearGradient(start, end)
-        glass.setColorAt(0.0, QColor(198, 222, 245, 110))
-        glass.setColorAt(0.55, QColor(224, 238, 252, 150))
-        glass.setColorAt(1.0, QColor(244, 251, 255, 200))
+        glass.setColorAt(0.0, faded(198, 222, 245, 110))
+        glass.setColorAt(0.55, faded(224, 238, 252, 150))
+        glass.setColorAt(1.0, faded(244, 251, 255, 200))
         brush = QBrush(glass)
 
         painter.save()
@@ -701,12 +726,12 @@ class _BoardCanvas(QWidget):
 
         painter.translate(square * 0.02, square * 0.04)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(20, 35, 55, 55))
+        painter.setBrush(faded(20, 35, 55, 55))
         painter.drawPath(path)
         painter.translate(-square * 0.02, -square * 0.04)
 
-        rim = QPen(QColor(255, 255, 255, 170))
-        rim.setWidthF(max(1.0, square * 0.018))
+        rim = QPen(faded(255, 255, 255, 170))
+        rim.setWidthF(max(1.0, square * 0.018 * width_scale))
         rim.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         rim.setCapStyle(Qt.PenCapStyle.RoundCap)
         painter.setPen(rim)

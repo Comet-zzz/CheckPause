@@ -180,13 +180,22 @@ class BoardWidgetTests(unittest.TestCase):
         board.goto(1)
         self.assertEqual(len(seen), 1)
 
-    def test_live_eval_is_stored_and_cleared(self):
+    def test_live_eval_stores_ranked_lines_and_shows_the_best(self):
         board = self.make_board()
-        board.apply_live_eval("e2e4", 420, None)
-        self.assertEqual(board._live_eval["uci"], "e2e4")
-        self.assertEqual(board._live_eval["margin"], 420)
+        board.apply_live_eval(
+            [
+                {"uci": "e2e4", "margin": 420, "mate": None},
+                {"uci": "d2d4", "margin": 180, "mate": None},
+            ],
+            depth=18,
+        )
+        self.assertEqual(board._live_eval["lines"][0]["uci"], "e2e4")
+        self.assertEqual(board._live_eval["lines"][0]["margin"], 420)
+        self.assertEqual(board._live_eval["depth"], 18)
+        self.assertEqual(board._eval_value_label.text(), "+4.20")
         board.clear_live_eval()
         self.assertIsNone(board._live_eval)
+        self.assertEqual(board._eval_value_label.text(), "")
 
     def test_eval_controls_track_the_state(self):
         board = BoardWidget()
@@ -198,6 +207,17 @@ class BoardWidgetTests(unittest.TestCase):
         self.assertTrue(board._eval_check.isChecked())
         board.set_eval_depth(18)
         self.assertEqual(board._eval_depth_combo.currentData(), 18)
+
+    def test_eval_controls_are_hidden_while_editing(self):
+        board = BoardWidget()
+        board.set_eval_available(True)
+        self.assertFalse(board._eval_controls.isHidden())
+
+        board.start_edit()
+        self.assertTrue(board._eval_controls.isHidden())
+
+        board.cancel_edit()
+        self.assertFalse(board._eval_controls.isHidden())
 
     def test_eval_control_emits_changes(self):
         board = BoardWidget()
