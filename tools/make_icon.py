@@ -78,7 +78,8 @@ def main(argv=None):
     parser.add_argument("output", nargs="?", default=os.path.join(ROOT, "assets", "app.ico"))
     args = parser.parse_args(argv)
 
-    QGuiApplication([])
+    # The application object must stay referenced for the renderer to work.
+    _app = QGuiApplication([])
     renderer = QSvgRenderer(args.source)
     if not renderer.isValid():
         raise SystemExit(f"Invalid or missing SVG: {args.source}")
