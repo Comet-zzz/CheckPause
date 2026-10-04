@@ -89,9 +89,7 @@ def is_newer(candidate, current):
 
 
 def _default_opener(url):
-    request_object = request.Request(
-        url, headers={"User-Agent": f"CheckPause/{APP_VERSION}"}
-    )
+    request_object = request.Request(url, headers={"User-Agent": f"CheckPause/{APP_VERSION}"})
     with request.urlopen(request_object, timeout=REQUEST_TIMEOUT) as response:
         return response.read()
 
@@ -159,9 +157,7 @@ def _best_info(manifests, current, key):
     return best
 
 
-def check_for_update(
-    current=APP_VERSION, opener=None, strict=False, quick=False, key=None
-):
+def check_for_update(current=APP_VERSION, opener=None, strict=False, quick=False, key=None):
     """Return the newest release any mirror knows about, otherwise None.
 
     Failures are silent by default; strict mode raises UpdateCheckError when no
@@ -174,9 +170,7 @@ def check_for_update(
     server itself is unreachable. The background check stays thorough and
     compares every mirror, which is what notices a primary copy gone stale.
     """
-    manifests = fetch_manifests(
-        opener, PRIMARY_MANIFEST_URLS if quick else MANIFEST_URLS
-    )
+    manifests = fetch_manifests(opener, PRIMARY_MANIFEST_URLS if quick else MANIFEST_URLS)
     if quick and not manifests:
         manifests = fetch_manifests(opener, FALLBACK_MANIFEST_URLS)
     if not manifests:

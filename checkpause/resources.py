@@ -50,9 +50,7 @@ def get_stockfish_path(language="zh-CN"):
 def get_opening_book_path():
     candidates = [resource_path(*OPENING_BOOK_RELATIVE)]
     if getattr(sys, "frozen", False):
-        candidates.append(
-            os.path.join(os.path.dirname(sys.executable), *OPENING_BOOK_RELATIVE)
-        )
+        candidates.append(os.path.join(os.path.dirname(sys.executable), *OPENING_BOOK_RELATIVE))
     candidates.append(os.path.join(BASE_DIR, *OPENING_BOOK_RELATIVE))
     for path in candidates:
         if path and os.path.isfile(path):

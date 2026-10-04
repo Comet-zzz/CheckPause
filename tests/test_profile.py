@@ -48,9 +48,7 @@ class ProfileTests(unittest.TestCase):
         profile.set_sound_set(created, SOUND_OFF)
         self.assertEqual(profile.load_profile()["sound_set"], SOUND_OFF)
         profile.set_sound_set(created, DEFAULT_SOUND_SET)
-        self.assertEqual(
-            profile.load_profile()["sound_set"], DEFAULT_SOUND_SET
-        )
+        self.assertEqual(profile.load_profile()["sound_set"], DEFAULT_SOUND_SET)
 
     def test_eval_preferences_default_and_persist(self):
         created = profile.create_profile("Tester")
@@ -66,9 +64,7 @@ class ProfileTests(unittest.TestCase):
     def test_unknown_eval_depth_falls_back_to_the_default(self):
         created = profile.create_profile("Tester")
         profile.set_eval_depth(created, 999)
-        self.assertEqual(
-            profile.load_profile()["eval_depth"], DEFAULT_EVAL_DEPTH
-        )
+        self.assertEqual(profile.load_profile()["eval_depth"], DEFAULT_EVAL_DEPTH)
 
     def test_legacy_profile_gets_the_default_eval_preferences(self):
         legacy = os.path.join(self._tmp.name, "legacy.json")

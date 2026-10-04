@@ -11,9 +11,7 @@ class StockfishNameTests(unittest.TestCase):
         )
 
     def test_macos_uses_the_universal_binary(self):
-        self.assertEqual(
-            stockfish_executable_name("darwin"), "stockfish-macos-universal"
-        )
+        self.assertEqual(stockfish_executable_name("darwin"), "stockfish-macos-universal")
 
     def test_linux_uses_the_bare_name(self):
         self.assertEqual(stockfish_executable_name("linux"), "stockfish")

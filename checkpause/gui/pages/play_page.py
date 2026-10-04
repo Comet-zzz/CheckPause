@@ -116,9 +116,7 @@ class PlayPage(QWidget):
         self._level_slider.setValue(self._level_rating)
         self._level_slider.valueChanged.connect(self._on_level_changed)
         self._level_value = QLabel()
-        self._level_value.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-        )
+        self._level_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
         self._level_value.setMinimumWidth(44)
 
         self._time_label = QLabel()
@@ -127,15 +125,11 @@ class PlayPage(QWidget):
 
         self._opening_label = QLabel()
         self._opening_combo = QComboBox()
-        self._opening_combo.currentIndexChanged.connect(
-            self._on_opening_changed
-        )
+        self._opening_combo.currentIndexChanged.connect(self._on_opening_changed)
 
         self._endgame_label = QLabel()
         self._endgame_combo = QComboBox()
-        self._endgame_combo.currentIndexChanged.connect(
-            self._on_endgame_changed
-        )
+        self._endgame_combo.currentIndexChanged.connect(self._on_endgame_changed)
 
         self._btn_new = QPushButton()
         self._btn_new.clicked.connect(self._new_game)
@@ -260,9 +254,7 @@ class PlayPage(QWidget):
         if not session.clock_enabled:
             return
         active = (
-            None
-            if session.game_over or session.paused or not session.moves
-            else session.board.turn
+            None if session.game_over or session.paused or not session.moves else session.board.turn
         )
         active_changed = active != self._clock_active
         self._clock_active = active
@@ -270,21 +262,13 @@ class PlayPage(QWidget):
             (chess.WHITE, self._clock_white),
             (chess.BLACK, self._clock_black),
         ):
-            key = (
-                "play_clock_white"
-                if color == chess.WHITE
-                else "play_clock_black"
-            )
+            key = "play_clock_white" if color == chess.WHITE else "play_clock_black"
             label.setText(
                 f"{t(key, self._language)} "
                 f"{PlaySession.format_clock(session.clock_remaining[color])}"
             )
             if active_changed:
-                label.setStyleSheet(
-                    "font-weight: bold;"
-                    if color == active
-                    else "color: #8a8a8a;"
-                )
+                label.setStyleSheet("font-weight: bold;" if color == active else "color: #8a8a8a;")
 
     def _toggle_pause(self):
         self._session.toggle_pause()
@@ -300,9 +284,7 @@ class PlayPage(QWidget):
     def _update_pause_button(self):
         paused = self._session.paused
         key = "play_resume" if paused else "play_pause"
-        tooltip_key = (
-            "play_resume_tooltip" if paused else "play_pause_tooltip"
-        )
+        tooltip_key = "play_resume_tooltip" if paused else "play_pause_tooltip"
         icon_name = "resume" if paused else "pause"
         self._btn_pause.setIcon(nav_icon(self._theme, icon_name))
         self._btn_pause.setAccessibleName(t(key, self._language))
@@ -344,9 +326,7 @@ class PlayPage(QWidget):
         self._new_game()
 
     def _on_level_changed(self, value):
-        rating = clamp_play_rating(
-            int(round(value / PLAY_RATING_STEP)) * PLAY_RATING_STEP
-        )
+        rating = clamp_play_rating(int(round(value / PLAY_RATING_STEP)) * PLAY_RATING_STEP)
         if rating != value:
             self._level_slider.blockSignals(True)
             self._level_slider.setValue(rating)
@@ -371,11 +351,7 @@ class PlayPage(QWidget):
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
-        if (
-            session.paused
-            or session.game_over
-            or self._engine_worker is not None
-        ):
+        if session.paused or session.game_over or self._engine_worker is not None:
             return
         if session.board.turn != session.human_color:
             return
@@ -387,9 +363,7 @@ class PlayPage(QWidget):
             and piece.piece_type == chess.PAWN
             and chess.square_rank(to_square) in (0, 7)
         ):
-            promotion = self.board.promotion_choice(
-                to_square, piece.color
-            )
+            promotion = self.board.promotion_choice(to_square, piece.color)
             if promotion is None:
                 self.board.clear_selection()
                 return
@@ -475,11 +449,7 @@ class PlayPage(QWidget):
 
     def _undo(self):
         session = self._session
-        if (
-            self._engine_worker is not None
-            or session.game_over
-            or session.paused
-        ):
+        if self._engine_worker is not None or session.game_over or session.paused:
             return
         if not session.undo():
             return
@@ -519,22 +489,12 @@ class PlayPage(QWidget):
 
     def _update_buttons(self):
         session = self._session
-        thinking = (
-            self._engine_worker is not None
-            and self._engine_worker.isRunning()
-        )
+        thinking = self._engine_worker is not None and self._engine_worker.isRunning()
         self._btn_undo.setEnabled(
-            session.can_undo()
-            and not thinking
-            and not session.game_over
-            and not session.paused
+            session.can_undo() and not thinking and not session.game_over and not session.paused
         )
-        self._btn_resign.setEnabled(
-            bool(session.moves) and not session.game_over
-        )
-        self._btn_pause.setEnabled(
-            not session.game_over and not thinking
-        )
+        self._btn_resign.setEnabled(bool(session.moves) and not session.game_over)
+        self._btn_pause.setEnabled(not session.game_over and not thinking)
         self._btn_import.setEnabled(bool(session.moves))
         self._update_setup_controls()
 
@@ -630,39 +590,27 @@ class PlayPage(QWidget):
         self._time_combo.blockSignals(True)
         self._time_combo.clear()
         for control in PLAY_TIME_CONTROLS:
-            self._time_combo.addItem(
-                t("play_time_" + control["id"], language), control["id"]
-            )
+            self._time_combo.addItem(t("play_time_" + control["id"], language), control["id"])
         time_index = self._time_combo.findData(self._time_id)
         self._time_combo.setCurrentIndex(max(0, time_index))
         self._time_combo.blockSignals(False)
 
         self._opening_combo.blockSignals(True)
         self._opening_combo.clear()
-        self._opening_combo.addItem(
-            t("play_opening_standard", language), None
-        )
+        self._opening_combo.addItem(t("play_opening_standard", language), None)
         for opening in self._openings:
             self._opening_combo.addItem(opening["name"], opening["name"])
-        opening_index = max(
-            0, min(self._opening_index, self._opening_combo.count() - 1)
-        )
+        opening_index = max(0, min(self._opening_index, self._opening_combo.count() - 1))
         self._opening_index = opening_index
         self._opening_combo.setCurrentIndex(opening_index)
         self._opening_combo.blockSignals(False)
 
         self._endgame_combo.blockSignals(True)
         self._endgame_combo.clear()
-        self._endgame_combo.addItem(
-            t("play_endgame_standard", language), None
-        )
+        self._endgame_combo.addItem(t("play_endgame_standard", language), None)
         for endgame in self._endgames:
-            self._endgame_combo.addItem(
-                t("play_endgame_" + endgame["id"], language), endgame["id"]
-            )
-        endgame_index = max(
-            0, min(self._endgame_index, self._endgame_combo.count() - 1)
-        )
+            self._endgame_combo.addItem(t("play_endgame_" + endgame["id"], language), endgame["id"])
+        endgame_index = max(0, min(self._endgame_index, self._endgame_combo.count() - 1))
         self._endgame_index = endgame_index
         self._endgame_combo.setCurrentIndex(endgame_index)
         self._endgame_combo.blockSignals(False)

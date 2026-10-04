@@ -5,7 +5,6 @@ import time
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.data.profile import set_language
 from checkpause.i18n import choose_language, t
-
 from cli.input_handler import clear_profile_data
 
 
@@ -33,7 +32,7 @@ def run_chat(profile, messages):
         stop_timer = threading.Event()
         first_chunk_received = False
 
-        def update_timer():
+        def update_timer(stop_timer=stop_timer, start_time=start_time, language=language):
             while not stop_timer.is_set():
                 elapsed = time.time() - start_time
                 sys.stdout.write(f"\r{t('thinking', language, seconds=elapsed)}")

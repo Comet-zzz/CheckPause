@@ -44,14 +44,8 @@ class ModuleRail(QWidget):
         button.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
         button.setIconSize(QSize(20, 20))
         button.setFixedHeight(40)
-        button.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed
-        )
-        button.clicked.connect(
-            lambda _checked=False, mid=module_id: self.module_selected.emit(
-                mid
-            )
-        )
+        button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        button.clicked.connect(lambda _checked=False, mid=module_id: self.module_selected.emit(mid))
         self._group.addButton(button)
         self._module_box.addWidget(button)
         self._modules[module_id] = {

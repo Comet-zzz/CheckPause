@@ -1,3 +1,4 @@
+import contextlib
 import json
 import os
 from datetime import datetime
@@ -27,9 +28,7 @@ def _normalize(profile):
     profile.setdefault("board_theme", DEFAULT_BOARD_THEME)
     if "sound_set" not in profile:
         # Migrate the on/off boolean used before sound sets existed.
-        profile["sound_set"] = (
-            SOUND_OFF if profile.get("sound") is False else DEFAULT_SOUND_SET
-        )
+        profile["sound_set"] = SOUND_OFF if profile.get("sound") is False else DEFAULT_SOUND_SET
     profile.pop("sound", None)
     if profile["sound_set"] not in SOUND_CHOICES:
         profile["sound_set"] = DEFAULT_SOUND_SET
@@ -56,10 +55,8 @@ def load_profile():
         with open(LEGACY_PROFILE_FILE, encoding="utf-8") as handle:
             profile = _normalize(json.load(handle))
         save_profile(profile)
-        try:
+        with contextlib.suppress(OSError):
             os.remove(LEGACY_PROFILE_FILE)
-        except OSError:
-            pass
         return profile
 
     return None
@@ -84,7 +81,7 @@ def create_profile(username, language="zh-CN"):
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_games": 0,
         "history": [],
-        "latest_accuracy": None
+        "latest_accuracy": None,
     }
     save_profile(profile)
     return profile
@@ -127,20 +124,20 @@ def set_hint_enabled(profile, enabled):
 
 
 def set_eval_depth(profile, depth):
-    profile["eval_depth"] = (
-        depth if depth in EVAL_DEPTH_OPTIONS else DEFAULT_EVAL_DEPTH
-    )
+    profile["eval_depth"] = depth if depth in EVAL_DEPTH_OPTIONS else DEFAULT_EVAL_DEPTH
     save_profile(profile)
     return profile
 
 
 def update_profile(profile, accuracy, pgn):
     profile["total_games"] += 1
-    profile["history"].append({
-        "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "accuracy": accuracy,
-        "pgn": pgn[:200] + "..." if len(pgn) > 200 else pgn
-    })
+    profile["history"].append(
+        {
+            "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "accuracy": accuracy,
+            "pgn": pgn[:200] + "..." if len(pgn) > 200 else pgn,
+        }
+    )
     if len(profile["history"]) > 20:
         profile["history"] = profile["history"][-20:]
     profile["latest_accuracy"] = accuracy

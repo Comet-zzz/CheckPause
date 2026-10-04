@@ -28,9 +28,7 @@ class AnalysisPage(QWidget):
         self._language = "zh-CN"
 
         self._editor = QPlainTextEdit()
-        self._editor.setFont(
-            QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont)
-        )
+        self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
         self._editor.textChanged.connect(self._update_toggle)
 
         editor_page = QWidget()

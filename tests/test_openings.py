@@ -31,9 +31,7 @@ class OpeningsTests(unittest.TestCase):
             with open(path, "w", encoding="utf-8") as handle:
                 handle.write(text)
             openings = load_openings(path)
-        self.assertEqual(
-            [o["name"] for o in openings], ["Test Line", "Second Line"]
-        )
+        self.assertEqual([o["name"] for o in openings], ["Test Line", "Second Line"])
         self.assertEqual(len(openings[0]["moves"]), 4)
 
     def test_missing_file_returns_empty(self):

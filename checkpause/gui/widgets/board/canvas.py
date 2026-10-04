@@ -37,9 +37,7 @@ class _BoardCanvas(QWidget):
     def __init__(self, owner, parent=None):
         super().__init__(parent)
         self._owner = owner
-        self.setSizePolicy(
-            QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding
-        )
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.setMouseTracking(True)
         self._press_pos = None
         self._press_square = None
@@ -103,14 +101,8 @@ class _BoardCanvas(QWidget):
         if self._press_square is not None and pressed:
             if not self._dragging:
                 delta = pos - self._press_pos
-                if (
-                    delta.x() * delta.x() + delta.y() * delta.y()
-                    > DRAG_THRESHOLD * DRAG_THRESHOLD
-                ):
-                    if (
-                        self._drag_square is not None
-                        and owner._selected == self._drag_square
-                    ):
+                if delta.x() * delta.x() + delta.y() * delta.y() > DRAG_THRESHOLD * DRAG_THRESHOLD:
+                    if self._drag_square is not None and owner._selected == self._drag_square:
                         self._dragging = True
                         self._drag_pos = pos
                         self.setCursor(Qt.CursorShape.ClosedHandCursor)
@@ -142,21 +134,14 @@ class _BoardCanvas(QWidget):
             self._drag_pos = None
             self.setCursor(Qt.CursorShape.ArrowCursor)
             handled = False
-            if (
-                square is not None
-                and owner._selected is not None
-                and square in owner._targets
-            ):
+            if square is not None and owner._selected is not None and square in owner._targets:
                 handled = owner.try_move(owner._selected, square)
-            if not handled and owner._selected is not None:
-                if (
-                    square is None
-                    or square == owner._selected
-                    or not owner.select_square(square)
-                ):
-                    owner.start_drag_return(
-                        event.position(), owner._selected
-                    )
+            if (
+                not handled
+                and owner._selected is not None
+                and (square is None or square == owner._selected or not owner.select_square(square))
+            ):
+                owner.start_drag_return(event.position(), owner._selected)
             self._reset_press()
             self.update()
         else:
@@ -197,10 +182,7 @@ class _BoardCanvas(QWidget):
             return
         if not self._dragging:
             delta = pos - self._press_pos
-            if (
-                delta.x() * delta.x() + delta.y() * delta.y()
-                > DRAG_THRESHOLD * DRAG_THRESHOLD
-            ):
+            if delta.x() * delta.x() + delta.y() * delta.y() > DRAG_THRESHOLD * DRAG_THRESHOLD:
                 self._dragging = True
                 self._drag_pos = pos
                 self.setCursor(Qt.CursorShape.ClosedHandCursor)
@@ -241,10 +223,7 @@ class _BoardCanvas(QWidget):
 
     def _square_at(self, pos):
         x0, y0, board_size, square = self._geometry()
-        if not (
-            x0 <= pos.x() < x0 + board_size
-            and y0 <= pos.y() < y0 + board_size
-        ):
+        if not (x0 <= pos.x() < x0 + board_size and y0 <= pos.y() < y0 + board_size):
             return None
         col = int((pos.x() - x0) // square)
         row = int((pos.y() - y0) // square)
@@ -259,8 +238,7 @@ class _BoardCanvas(QWidget):
                 self.setCursor(Qt.CursorShape.ArrowCursor)
             return
         if square is not None and (
-            (owner._selected is not None and square in owner._targets)
-            or owner.can_pick(square)
+            (owner._selected is not None and square in owner._targets) or owner.can_pick(square)
         ):
             self.setCursor(Qt.CursorShape.PointingHandCursor)
         else:
@@ -344,9 +322,7 @@ class _BoardCanvas(QWidget):
             self._eval_timer.stop()
         else:
             eased = 1.0 - (1.0 - progress) ** 3
-            self._eval_ratio = self._eval_from + (
-                self._eval_to - self._eval_from
-            ) * eased
+            self._eval_ratio = self._eval_from + (self._eval_to - self._eval_from) * eased
         self.update()
 
     def _square_from_display(self, row, col, flipped):
@@ -404,12 +380,8 @@ class _BoardCanvas(QWidget):
                     square,
                     square,
                 )
-                is_light = (
-                    chess.square_file(sq) + chess.square_rank(sq)
-                ) % 2 == 1
-                painter.fillRect(
-                    rect, QColor(light_color if is_light else dark_color)
-                )
+                is_light = (chess.square_file(sq) + chess.square_rank(sq)) % 2 == 1
+                painter.fillRect(rect, QColor(light_color if is_light else dark_color))
 
                 if sq in highlighted:
                     painter.fillRect(rect, QColor(*LAST_MOVE_RGBA))
@@ -452,11 +424,7 @@ class _BoardCanvas(QWidget):
 
         lines = []
         live = owner._live_eval
-        if (
-            live is not None
-            and owner._hint_enabled
-            and live["index"] == owner._index
-        ):
+        if live is not None and owner._hint_enabled and live["index"] == owner._index:
             lines = live.get("lines") or []
         if not owner._editable:
             if lines:
@@ -515,9 +483,7 @@ class _BoardCanvas(QWidget):
             if opacity > 0.0:
                 painter.save()
                 painter.setOpacity(opacity)
-                captured_center = self._center_of(
-                    animation["captured_square"], x0, y0, cell
-                )
+                captured_center = self._center_of(animation["captured_square"], x0, y0, cell)
                 self._draw_piece_at(painter, captured, captured_center, cell)
                 painter.restore()
 
@@ -539,9 +505,7 @@ class _BoardCanvas(QWidget):
                     rook_start.x() + (rook_end.x() - rook_start.x()) * eased,
                     rook_start.y() + (rook_end.y() - rook_start.y()) * eased,
                 )
-                self._draw_piece_at(
-                    painter, rook_piece, rook_center, cell
-                )
+                self._draw_piece_at(painter, rook_piece, rook_center, cell)
 
     def _draw_dragged(self, painter, square, cell):
         if self._drag_pos is None:
@@ -551,9 +515,7 @@ class _BoardCanvas(QWidget):
             return
         painter.save()
         painter.setOpacity(0.92)
-        self._draw_piece_at(
-            painter, piece, self._drag_pos, cell, DRAG_LIFT
-        )
+        self._draw_piece_at(painter, piece, self._drag_pos, cell, DRAG_LIFT)
         painter.restore()
 
     def _draw_drag_return(self, painter, x0, y0, cell, drag_return):
@@ -596,20 +558,12 @@ class _BoardCanvas(QWidget):
         files = "abcdefgh"
         for col in range(8):
             file_index = 7 - col if flipped else col
-            rect = QRectF(
-                x0 + col * square, y0 + board_size, square, label_h
-            )
-            painter.drawText(
-                rect, Qt.AlignmentFlag.AlignCenter, files[file_index]
-            )
+            rect = QRectF(x0 + col * square, y0 + board_size, square, label_h)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, files[file_index])
         for row in range(8):
             rank_index = row if flipped else 7 - row
-            rect = QRectF(
-                x0 - label_w, y0 + row * square, label_w, square
-            )
-            painter.drawText(
-                rect, Qt.AlignmentFlag.AlignCenter, str(rank_index + 1)
-            )
+            rect = QRectF(x0 - label_w, y0 + row * square, label_w, square)
+            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(rank_index + 1))
 
     def _draw_eval_bar(self, painter, x0, y0, board_size, square):
         owner = self._owner
@@ -645,9 +599,7 @@ class _BoardCanvas(QWidget):
         pen.setWidthF(1.0)
         painter.setPen(pen)
         center_x = rect.center().x()
-        painter.drawLine(
-            QPointF(center_x, rect.top()), QPointF(center_x, rect.bottom())
-        )
+        painter.drawLine(QPointF(center_x, rect.top()), QPointF(center_x, rect.bottom()))
 
         border = QColor(*EVAL_BORDER_RGBA)
         border.setAlpha(150)

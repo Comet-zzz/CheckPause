@@ -24,7 +24,10 @@ class PlaySessionTests(unittest.TestCase):
         session.new_game(opening_moves=[uci("e2e4"), uci("e7e5")])
         self.assertEqual(len(session.moves), 2)
         self.assertEqual(session.opening_ply, 2)
-        self.assertEqual(session.board.fen().split()[0], "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR")
+        self.assertEqual(
+            session.board.fen().split()[0],
+            "rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR",
+        )
 
     def test_new_game_from_fen(self):
         fen = "4k3/8/8/8/8/8/8/3QK3 w - - 0 1"
@@ -75,9 +78,7 @@ class PlaySessionTests(unittest.TestCase):
 
     def test_clock_lifecycle(self):
         session = PlaySession()
-        session.new_game(
-            time_control={"base": 5.0, "increment": 3.0}, now=0.0
-        )
+        session.new_game(time_control={"base": 5.0, "increment": 3.0}, now=0.0)
         self.assertEqual(session.clock_remaining, {chess.WHITE: 5.0, chess.BLACK: 5.0})
         self.assertFalse(session.clock_should_run())
         session.push(uci("e2e4"))

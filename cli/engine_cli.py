@@ -12,9 +12,7 @@ def analyze_with_stockfish(pgn_text, language="zh-CN"):
         print(f"\r  progress: [{bar}] {percent}%", end="")
 
     analyzer = StockfishAnalyzer()
-    results, err, accuracy = analyzer.analyze(
-        pgn_text, language, on_progress=on_progress
-    )
+    results, err, accuracy = analyzer.analyze(pgn_text, language, on_progress=on_progress)
     if err is None:
         print(t("ready", language))
     return results, err, accuracy

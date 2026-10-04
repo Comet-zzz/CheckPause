@@ -26,7 +26,7 @@ def load_openings(path=None):
         return []
 
     openings = []
-    with open(path, "r", encoding="utf-8", errors="replace") as handle:
+    with open(path, encoding="utf-8", errors="replace") as handle:
         while True:
             try:
                 game = chess.pgn.read_game(handle)

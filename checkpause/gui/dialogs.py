@@ -113,16 +113,12 @@ def api_settings_dialog(parent, language, config=None):
     # hidden rather than greyed out: they have no meaning there, and leaving
     # them on screen would only invite a pointless edit.
     provider_fields = (key_field, show_toggle, base_field, model_field)
-    provider_rows = [
-        (field, form.labelForField(field)) for field in provider_fields
-    ]
+    provider_rows = [(field, form.labelForField(field)) for field in provider_fields]
 
     def refresh_mode():
         """Show only the fields the chosen mode actually needs."""
         cloud = mode_combo.currentData() == MODE_CLOUD
-        mode_hint.setText(
-            t("mode_cloud_hint" if cloud else "mode_local_hint", language)
-        )
+        mode_hint.setText(t("mode_cloud_hint" if cloud else "mode_local_hint", language))
         hint.setVisible(not cloud)
         for field, label in provider_rows:
             field.setVisible(not cloud)
@@ -137,12 +133,8 @@ def api_settings_dialog(parent, language, config=None):
     buttons = QDialogButtonBox(
         QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
     )
-    buttons.button(
-        QDialogButtonBox.StandardButton.Ok
-    ).setText(t("btn_yes", language))
-    buttons.button(
-        QDialogButtonBox.StandardButton.Cancel
-    ).setText(t("btn_no", language))
+    buttons.button(QDialogButtonBox.StandardButton.Ok).setText(t("btn_yes", language))
+    buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("btn_no", language))
 
     def on_accept():
         if mode_combo.currentData() == MODE_CLOUD:
@@ -273,15 +265,10 @@ def cloud_account_dialog(parent, language, config=None):
     )
     # A hidden input still leaves its label behind, which reads as a bug, so the
     # labels move with their fields.
-    credential_labels = [
-        (field, form.labelForField(field)) for field in credentials
-    ]
+    credential_labels = [(field, form.labelForField(field)) for field in credentials]
     session_buttons = (refresh_button, sign_out_button)
     topup_widgets = (topup_label, pack_combo, buy_button, topup_status)
-    everything = (
-        credentials + session_buttons + topup_widgets
-        + (close_button, server_field)
-    )
+    everything = credentials + session_buttons + topup_widgets + (close_button, server_field)
 
     def signed_in():
         return bool(account.get("token"))
@@ -301,16 +288,14 @@ def cloud_account_dialog(parent, language, config=None):
         if balance is None:
             lines.append(t("cloud_account_balance_unknown", language))
         else:
-            lines.append(
-                t("cloud_account_balance", language, balance=balance)
-            )
+            lines.append(t("cloud_account_balance", language, balance=balance))
         status.setText("\n".join(lines))
 
     def refresh():
         logged_in = signed_in()
         for widget in credentials:
             widget.setVisible(not logged_in)
-        for field, label in credential_labels:
+        for _field, label in credential_labels:
             if label is not None and label.text():
                 label.setVisible(not logged_in)
         for widget in session_buttons + topup_widgets:
@@ -385,9 +370,7 @@ def cloud_account_dialog(parent, language, config=None):
 
     def on_failed(message):
         finish()
-        QMessageBox.warning(
-            dialog, t("cloud_account_title", language), message
-        )
+        QMessageBox.warning(dialog, t("cloud_account_title", language), message)
 
     def run(action, **values):
         if busy["worker"] is not None:
@@ -484,9 +467,7 @@ def cloud_account_dialog(parent, language, config=None):
         stop_polling()
         changed["value"] = True
         account["balance"] = order.get("balance")
-        topup_status.setText(
-            t("cloud_topup_done", language, balance=order.get("balance"))
-        )
+        topup_status.setText(t("cloud_topup_done", language, balance=order.get("balance")))
         show_status()
 
     def poll_once():
@@ -523,9 +504,7 @@ def cloud_account_dialog(parent, language, config=None):
 
     sign_in_button.clicked.connect(sign_in)
     register_button.clicked.connect(register)
-    refresh_button.clicked.connect(
-        lambda: run("me", token=account.get("token", ""))
-    )
+    refresh_button.clicked.connect(lambda: run("me", token=account.get("token", "")))
     sign_out_button.clicked.connect(sign_out)
     buy_button.clicked.connect(buy)
     close_button.clicked.connect(dialog.accept)
@@ -544,9 +523,7 @@ def confirm_delete_dialog(parent, language="zh-CN"):
     box.setWindowTitle(t("confirm_delete_title", language))
     box.setText(t("confirm_delete_text", language))
     box.setIcon(QMessageBox.Icon.Warning)
-    yes_button = box.addButton(
-        t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole
-    )
+    yes_button = box.addButton(t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole)
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
     return box.clickedButton() is yes_button
@@ -557,9 +534,7 @@ def confirm_close_dialog(parent, language="zh-CN"):
     box.setWindowTitle(t("confirm_close_title", language))
     box.setText(t("confirm_close_text", language))
     box.setIcon(QMessageBox.Icon.Question)
-    yes_button = box.addButton(
-        t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole
-    )
+    yes_button = box.addButton(t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole)
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
     return box.clickedButton() is yes_button
@@ -585,14 +560,10 @@ def show_about(parent, language):
     version.setFont(version_font)
 
     author = QLabel(t("about_author", language, author=AUTHOR))
-    copyright_label = QLabel(
-        t("about_copyright", language, year=COPYRIGHT_YEAR, author=AUTHOR)
-    )
+    copyright_label = QLabel(t("about_copyright", language, year=COPYRIGHT_YEAR, author=AUTHOR))
     link = QLabel(f'<a href="{GITHUB_URL}">{GITHUB_URL}</a>')
     link.setOpenExternalLinks(True)
-    link.setTextInteractionFlags(
-        Qt.TextInteractionFlag.TextBrowserInteraction
-    )
+    link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
     pieces = QLabel(t("about_pieces", language))
     pieces.setWordWrap(True)
@@ -603,9 +574,7 @@ def show_about(parent, language):
     puzzles.setStyleSheet("color: #8a8a8a;")
 
     buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-    buttons.button(QDialogButtonBox.StandardButton.Close).setText(
-        t("about_close", language)
-    )
+    buttons.button(QDialogButtonBox.StandardButton.Close).setText(t("about_close", language))
     buttons.rejected.connect(dialog.reject)
 
     layout = QVBoxLayout(dialog)
@@ -639,12 +608,8 @@ def show_update_dialog(parent, language, info):
     if info.notes:
         box.setInformativeText(info.notes)
 
-    download = box.addButton(
-        t("update_download", language), QMessageBox.ButtonRole.AcceptRole
-    )
-    box.addButton(
-        t("update_later", language), QMessageBox.ButtonRole.RejectRole
-    )
+    download = box.addButton(t("update_download", language), QMessageBox.ButtonRole.AcceptRole)
+    box.addButton(t("update_later", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
 
     if box.clickedButton() is not download:

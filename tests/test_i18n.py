@@ -8,9 +8,7 @@ class I18nTests(unittest.TestCase):
         self.assertEqual(set(MESSAGES["zh-CN"]), set(MESSAGES["en-US"]))
 
     def test_translate_with_values(self):
-        self.assertEqual(
-            t("board_step", "zh-CN", index=1, total=2), "第 1 / 2 步"
-        )
+        self.assertEqual(t("board_step", "zh-CN", index=1, total=2), "第 1 / 2 步")
 
     def test_unknown_language_falls_back_to_chinese(self):
         self.assertEqual(t("app_title", "xx-XX"), "CheckPause")

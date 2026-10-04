@@ -167,11 +167,7 @@ def build():
     candidates = _select(buckets)
     print(f"scanned {seen} rows, sampled {len(candidates)} candidates")
 
-    valid = [
-        puzzle
-        for puzzle in candidates
-        if _is_valid(puzzle["fen"], puzzle["moves"])
-    ]
+    valid = [puzzle for puzzle in candidates if _is_valid(puzzle["fen"], puzzle["moves"])]
     valid.sort(key=lambda item: item["rating"])
     print(f"validated {len(valid)} puzzles")
 
@@ -182,16 +178,11 @@ def build():
     os.makedirs(os.path.dirname(OUT_PATH), exist_ok=True)
     with open(OUT_PATH, "w", encoding="utf-8") as handle:
         for puzzle in valid:
-            handle.write(
-                json.dumps(puzzle, ensure_ascii=False, separators=(",", ":"))
-            )
+            handle.write(json.dumps(puzzle, ensure_ascii=False, separators=(",", ":")))
             handle.write("\n")
 
     ratings = [puzzle["rating"] for puzzle in valid]
-    print(
-        f"written {len(valid)} puzzles "
-        f"(rating {min(ratings)}-{max(ratings)}) to {OUT_PATH}"
-    )
+    print(f"written {len(valid)} puzzles " f"(rating {min(ratings)}-{max(ratings)}) to {OUT_PATH}")
     return 0
 
 

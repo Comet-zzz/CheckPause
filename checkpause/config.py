@@ -114,6 +114,7 @@ def _weak_settings(rating, floor):
         "approximate": True,
     }
 
+
 PLAY_TIME_CONTROLS = (
     {"id": "unlimited", "base": None, "increment": 0},
     {"id": "bullet_1_0", "base": 60, "increment": 0},
@@ -128,7 +129,9 @@ PLAY_TIME_CONTROLS = (
 )
 DEFAULT_PLAY_TIME = "unlimited"
 
-SYSTEM_PROMPT = "Please answer user's questions based on the provided PGN game and Stockfish analysis data."
+SYSTEM_PROMPT = (
+    "Please answer user's questions based on the provided PGN game and " "Stockfish analysis data."
+)
 
 USER_PROMPT_TEMPLATE = """This is the PGN game and Stockfish analysis data:
 

@@ -160,9 +160,7 @@ class BoardWidget(QWidget):
         self._eval_depth_combo = QComboBox()
         for depth in EVAL_DEPTH_OPTIONS:
             self._eval_depth_combo.addItem(str(depth), depth)
-        self._eval_depth_combo.currentIndexChanged.connect(
-            self._on_eval_depth_index
-        )
+        self._eval_depth_combo.currentIndexChanged.connect(self._on_eval_depth_index)
 
         row.addWidget(self._eval_check)
         row.addWidget(self._eval_value_label)

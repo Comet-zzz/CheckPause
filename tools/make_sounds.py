@@ -60,8 +60,7 @@ def _tone(
 def _click(duration=0.012, decay=120.0, gain=0.6):
     count = _samples(duration)
     return [
-        gain * math.exp(-decay * (i / count)) * (random.random() * 2.0 - 1.0)
-        for i in range(count)
+        gain * math.exp(-decay * (i / count)) * (random.random() * 2.0 - 1.0) for i in range(count)
     ]
 
 
@@ -111,15 +110,9 @@ def _digital():
             _click(duration=0.006, decay=300.0, gain=0.12),
         ),
         "check": _tone(990.0, 1320.0, 0.16, decay=6.0, gain=0.6),
-        "castle": _double(
-            _tone(880.0, 880.0, 0.06, decay=30.0, gain=0.7), 0.09
-        ),
-        "promote": _arpeggio(
-            (659.25, 880.0, 1174.66), 0.08, 0.055, 16.0, 0.55
-        ),
-        "checkmate": _arpeggio(
-            (1174.66, 987.77, 783.99), 0.13, 0.10, 9.0, 0.6
-        ),
+        "castle": _double(_tone(880.0, 880.0, 0.06, decay=30.0, gain=0.7), 0.09),
+        "promote": _arpeggio((659.25, 880.0, 1174.66), 0.08, 0.055, 16.0, 0.55),
+        "checkmate": _arpeggio((1174.66, 987.77, 783.99), 0.13, 0.10, 9.0, 0.6),
         "draw": _arpeggio((587.33, 587.33), 0.15, 0.17, 11.0, 0.5),
     }
 

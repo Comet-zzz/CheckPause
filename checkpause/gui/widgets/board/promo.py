@@ -17,9 +17,7 @@ class _PromotionPopup(QWidget):
         self._board_widget = board_widget
         self._to_square = to_square
         self._color = color
-        self._cell = max(
-            32, int(board_widget._canvas._geometry()[3])
-        )
+        self._cell = max(32, int(board_widget._canvas._geometry()[3]))
         self._hover = -1
         self._result = None
         self._loop = QEventLoop()
@@ -47,14 +45,10 @@ class _PromotionPopup(QWidget):
         for index, piece_type in enumerate(PROMOTION_CHOICES):
             rect = QRectF(0, index * self._cell, self._cell, self._cell)
             is_light = (file_index + rank_index + index) % 2 == 1
-            painter.fillRect(
-                rect, QColor(light if is_light else dark)
-            )
+            painter.fillRect(rect, QColor(light if is_light else dark))
             if index == self._hover:
                 painter.fillRect(rect, QColor(*PROMOTION_HOVER_RGBA))
-            pixmap = self._board_widget._piece_pixmap(
-                chess.Piece(piece_type, self._color), size
-            )
+            pixmap = self._board_widget._piece_pixmap(chess.Piece(piece_type, self._color), size)
             if pixmap is not None:
                 painter.drawPixmap(
                     int((self._cell - size) / 2),
@@ -92,14 +86,10 @@ class _PromotionPopup(QWidget):
     def _reposition(self):
         canvas = self._board_widget._canvas
         x0, y0, _size, cell = canvas._geometry()
-        row, col = canvas._display_from_square(
-            self._to_square, self._board_widget._flipped
-        )
+        row, col = canvas._display_from_square(self._to_square, self._board_widget._flipped)
         x = x0 + col * cell
         if row <= 3:
             y = y0 + row * cell
         else:
             y = y0 + (row + 1) * cell - self.height()
-        self.move(
-            canvas.mapToGlobal(QPoint(int(round(x)), int(round(y))))
-        )
+        self.move(canvas.mapToGlobal(QPoint(int(round(x)), int(round(y)))))

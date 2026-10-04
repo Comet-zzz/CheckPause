@@ -87,23 +87,17 @@ class EngineMoveWorker(QThread):
 
         try:
             supports_elo, floor = _engine_elo_floor(engine)
-            settings = play_engine_settings(
-                self.rating, elo_floor=floor, supports_elo=supports_elo
-            )
-            try:
+            settings = play_engine_settings(self.rating, elo_floor=floor, supports_elo=supports_elo)
+            with contextlib.suppress(chess.engine.EngineError):
                 engine.configure(settings["options"])
-            except chess.engine.EngineError:
-                pass
             limit = chess.engine.Limit(nodes=settings["nodes"])
             result = engine.play(chess.Board(self.fen), limit)
         except Exception as exc:
             self.failed.emit(str(exc))
             return
         finally:
-            try:
+            with contextlib.suppress(Exception):
                 engine.quit()
-            except Exception:
-                pass
 
         if result.move is None:
             self.failed.emit(t("play_no_move", self.language))
@@ -228,9 +222,7 @@ class PuzzleImportWorker(QThread):
 
     def run(self):
         try:
-            meta = import_collection(
-                self.path, self.name, self._emit_progress
-            )
+            meta = import_collection(self.path, self.name, self._emit_progress)
         except PuzzleImportError as exc:
             self.failed.emit(exc.code, exc.detail)
             return
@@ -323,16 +315,12 @@ class AccountWorker(QThread):
                     self.server_url, self.username, self.password, self.language
                 )
             elif self.action == "sign_in":
-                result = cloud.sign_in(
-                    self.server_url, self.username, self.password, self.language
-                )
+                result = cloud.sign_in(self.server_url, self.username, self.password, self.language)
             elif self.action == "sign_out":
                 cloud.sign_out(self.server_url, self.token, self.language)
                 result = {"token": "", "account": {}}
             elif self.action == "packs":
-                result = {
-                    "packs": cloud.fetch_packs(self.server_url, self.language)
-                }
+                result = {"packs": cloud.fetch_packs(self.server_url, self.language)}
             elif self.action == "open_order":
                 result = {
                     "order": cloud.create_order(
@@ -351,9 +339,7 @@ class AccountWorker(QThread):
             else:
                 result = {
                     "token": self.token,
-                    "account": cloud.fetch_account(
-                        self.server_url, self.token, self.language
-                    ),
+                    "account": cloud.fetch_account(self.server_url, self.token, self.language),
                 }
         except CloudRequestError as exc:
             self.failed.emit(str(exc))

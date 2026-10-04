@@ -41,9 +41,7 @@ class MoveSoundKindTests(unittest.TestCase):
         self.assertEqual(move_sound_kind(board, move, True), "capture")
 
     def test_castling(self):
-        board, move = _play_uci(
-            ["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "e1g1"]
-        )
+        board, move = _play_uci(["e2e4", "e7e5", "g1f3", "b8c6", "f1c4", "f8c5", "e1g1"])
         self.assertEqual(move_sound_kind(board, move, True), "castle")
 
     def test_promotion(self):
@@ -64,9 +62,7 @@ class MoveSoundKindTests(unittest.TestCase):
         self.assertEqual(move_sound_kind(board, move, True), "check")
 
     def test_checkmate_outranks_the_capture(self):
-        board, move = _play_uci(
-            ["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"]
-        )
+        board, move = _play_uci(["e2e4", "e7e5", "f1c4", "b8c6", "d1h5", "g8f6", "h5f7"])
         self.assertTrue(board.is_checkmate())
         self.assertEqual(move_sound_kind(board, move, True), "checkmate")
 
@@ -115,9 +111,7 @@ class SoundAssetTests(unittest.TestCase):
     def test_every_set_has_every_kind(self):
         for name in SOUND_SETS:
             for kind in SOUND_KINDS:
-                path = resource_path(
-                    "assets", "sounds", name, kind + ".wav"
-                )
+                path = resource_path("assets", "sounds", name, kind + ".wav")
                 self.assertTrue(os.path.isfile(path), path)
 
 

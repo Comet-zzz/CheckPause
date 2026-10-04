@@ -115,10 +115,7 @@ class StockfishAnalyzer:
             entries = book.find_all(board, minimum_weight=BOOK_MIN_WEIGHT)
         except Exception:
             return False
-        for entry in entries:
-            if entry.move == move:
-                return True
-        return False
+        return any(entry.move == move for entry in entries)
 
     def close(self):
         if self._engine is not None:
@@ -132,8 +129,7 @@ class StockfishAnalyzer:
             finally:
                 self._book = None
 
-    def analyze(self, pgn_text, language="zh-CN", on_progress=None,
-                on_move=None, should_stop=None):
+    def analyze(self, pgn_text, language="zh-CN", on_progress=None, on_move=None, should_stop=None):
         game = chess.pgn.read_game(io.StringIO(pgn_text))
         if game is None:
             return None, t("pgn_invalid", language), None
@@ -164,9 +160,7 @@ class StockfishAnalyzer:
                 turn_desc = f"Turn {board.fullmove_number} {color}"
 
                 is_book = (
-                    book_active
-                    and idx <= BOOK_MAX_PLIES
-                    and self._is_book_move(book, board, move)
+                    book_active and idx <= BOOK_MAX_PLIES and self._is_book_move(book, board, move)
                 )
 
                 if is_book:
@@ -181,18 +175,18 @@ class StockfishAnalyzer:
                         return None, str(exc), None
 
                     info_before = engine.analyse(board, self.limit)
-                    score_before = info_before.get('score')
-                    best = info_before.get('pv')[0] if info_before.get('pv') else None
+                    score_before = info_before.get("score")
+                    best = info_before.get("pv")[0] if info_before.get("pv") else None
 
                     board.push(move)
 
                     info_after = engine.analyse(board, self.limit)
-                    score_after = info_after.get('score')
+                    score_after = info_after.get("score")
 
                     move_score = 0.0
-                    if score_before and score_before.is_mate():
-                        move_score = 1.0
-                    elif score_after and score_after.is_mate():
+                    if (score_before and score_before.is_mate()) or (
+                        score_after and score_after.is_mate()
+                    ):
                         move_score = 1.0
                     else:
                         try:
@@ -259,12 +253,12 @@ class StockfishAnalyzer:
 def compact_analysis(results):
     lines = []
     for r in results:
-        move = r['move']
+        move = r["move"]
         if r.get("book"):
             lines.append(f"{move}(book)")
             continue
-        score = r['engine_score']
-        best = r.get('best_move')
+        score = r["engine_score"]
+        best = r.get("best_move")
         if best and best != move:
             lines.append(f"{move}(score:{score}, best:{best})")
         else:

@@ -102,9 +102,7 @@ def _error(response, language):
     key = ERROR_KEYS.get(code)
     if key:
         return CloudRequestError(t(key, language), code, detail)
-    return CloudRequestError(
-        t("cloud_server_error", language, code=response.status_code), code
-    )
+    return CloudRequestError(t("cloud_server_error", language, code=response.status_code), code)
 
 
 def _post(server_url, path, payload, language, token=""):
@@ -183,9 +181,7 @@ def fetch_packs(server_url, language="zh-CN"):
 
 def create_order(server_url, token, yuan, language="zh-CN"):
     """Open an order; the reply carries the page the browser should open."""
-    return _post(
-        server_url, ORDERS_ENDPOINT, {"yuan": int(yuan)}, language, token=token
-    )
+    return _post(server_url, ORDERS_ENDPOINT, {"yuan": int(yuan)}, language, token=token)
 
 
 def order_status(server_url, token, order_id, language="zh-CN"):
@@ -194,9 +190,7 @@ def order_status(server_url, token, order_id, language="zh-CN"):
     Asking is what makes a purchase arrive: Alipay either notifies the server
     or, as here, the server asks Alipay.
     """
-    return _get(
-        server_url, ORDERS_ENDPOINT + "/" + str(order_id), token, language
-    )
+    return _get(server_url, ORDERS_ENDPOINT + "/" + str(order_id), token, language)
 
 
 def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN"):

@@ -33,7 +33,6 @@ MESSAGES = {
     "total_stat": "   ─ 对局总数：{total}",
     "pgn_invalid": "PGN 格式无效",
     "pgn_no_moves": "PGN 中没有棋步",
-
     "app_title": "CheckPause",
     "menu_settings": "设置",
     "menu_language": "语言",
@@ -85,24 +84,20 @@ MESSAGES = {
     "about_pieces": "棋子来自 Lichess 开源棋子集（cburnett、merida、chessnut、fantasy、spatial、celtic、kiwen-suwi、rhosgfx、totoy、mpchess），版权归各作者所有，遵循 GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 等许可。",
     "about_puzzles": "内置谜题精选自 Lichess puzzle database（CC0 公共领域），仅包含少量样例，用户可自行导入更多题集。",
     "about_close": "关闭",
-
     "update_title": "发现新版本",
     "update_available": "发现新版本 {version}，你当前使用的是 {current}。",
     "update_download": "前往下载",
     "update_later": "稍后",
-
     "ai_mode_label": "AI 模式：",
     "mode_local": "自带 API Key（免费）",
     "mode_cloud": "云端讲解（需CP积分）",
     "mode_local_hint": "请求直连服务商，用你自己的 Key，费用由你承担。",
     "mode_cloud_hint": "请求走 CheckPause 服务器，使用调教好的讲解，按CP积分计费。",
     "server_url_label": "服务器地址：",
-
     "cloud_timeout": "云端服务响应超时，请稍后重试。",
     "cloud_unreachable": "无法连接云端服务，请检查网络。",
     "cloud_server_error": "云端服务返回错误（HTTP {code}）。",
     "server_url_empty": "请填写服务器地址。",
-
     "cloud_signin_required": "请先登录云端账号（设置 > 云端账号...）。",
     "cloud_username_taken": "这个用户名已经被注册了，换一个试试。",
     "cloud_username_invalid": "用户名只能是 3-32 个字母、数字、下划线、点或短横线。",
@@ -111,7 +106,6 @@ MESSAGES = {
     "cloud_too_many_attempts": "尝试次数过多，请稍等一会儿再试。",
     "cloud_no_credit": "CP积分不足，请先充值。",
     "cloud_no_credit_detail": "CP积分不足：余额 {balance}，本次约需 {needed}。",
-
     "action_cloud_account": "云端账号...",
     "cloud_account_title": "云端账号",
     "cloud_account_hint": "云端讲解按CP积分计费。选择金额后会用浏览器打开支付宝付款，付完余额自动到账。",
@@ -136,7 +130,6 @@ MESSAGES = {
     "cloud_account_password_empty": "请填写密码。",
     "cloud_account_menu_signed_in": "云端账号（{username} · {balance} CP积分）...",
     "cloud_account_menu_no_balance": "云端账号（{username}）...",
-
     "cloud_topup_label": "充值：",
     "cloud_topup_buy": "去支付",
     "cloud_topup_pack": "{yuan} 元 · {credits} CP积分",
@@ -145,7 +138,6 @@ MESSAGES = {
     "cloud_topup_gave_up": "还没收到付款结果。付完后点「刷新余额」即可。",
     "update_none": "当前已是最新版本。",
     "update_failed": "检查更新失败，请检查网络连接后重试。",
-
     "welcome_title": "欢迎使用 CheckPause",
     "welcome_intro": "首次使用，请设置你的用户名和界面语言",
     "welcome_back_title": "欢迎回来，{username}",
@@ -155,7 +147,6 @@ MESSAGES = {
     "lang_en": "English",
     "btn_start": "开始",
     "username_required": "请输入用户名。",
-
     "tab_analysis": "局面",
     "tab_chat": "分析",
     "tab_stats": "统计",
@@ -208,7 +199,6 @@ MESSAGES = {
     "status_position_applied": "已应用编辑后的局面，可在棋盘上走子后再分析。",
     "piece_king": "王",
     "piece_pawn": "兵",
-
     "chat_placeholder": "输入你的问题...",
     "btn_send": "发送",
     "btn_reset_chat": "重置对话",
@@ -216,7 +206,6 @@ MESSAGES = {
     "chat_error": "错误：{error}",
     "chat_welcome": "分析已完成，你可以开始提问。",
     "chat_no_analysis": "请先完成一次棋谱分析。",
-
     "play_side_label": "我方",
     "play_side_white": "执白",
     "play_side_black": "执黑",
@@ -274,7 +263,6 @@ MESSAGES = {
     "piece_rook": "车",
     "piece_bishop": "象",
     "piece_knight": "马",
-
     "stat_username": "用户名：{username}",
     "stat_total_games": "对局总数：{total}",
     "stat_avg_accuracy": "平均准确度：{accuracy:.1f}%",
@@ -282,7 +270,6 @@ MESSAGES = {
     "stat_no_data": "暂无对局记录。",
     "hist_date": "日期",
     "hist_performance": "表现",
-
     "confirm_delete_title": "确认删除",
     "confirm_delete_text": "确认删除所有用户数据吗？此操作无法撤销！",
     "confirm_close_title": "确认关闭",
@@ -292,7 +279,6 @@ MESSAGES = {
     "deleted_restart": "用户数据已删除，请重新启动程序。",
     "config_error_title": "配置错误",
     "engine_error": "Stockfish 引擎错误：{error}",
-
     "nav_puzzle": "谜题",
     "puzzle_builtin_name": "Lichess 精选",
     "puzzle_collections": "题集",

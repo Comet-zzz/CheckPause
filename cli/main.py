@@ -13,7 +13,6 @@ from checkpause.data.profile import (
     update_profile,
 )
 from checkpause.i18n import choose_language, t
-
 from cli.chat_ui import run_chat
 from cli.engine_cli import analyze_with_stockfish
 from cli.input_handler import read_pgn
@@ -35,7 +34,7 @@ def main():
         print(t("welcome_back", language, username=profile["username"]))
         if profile["latest_accuracy"] is not None:
             avg = get_avg_accuracy(profile)
-            last_date = profile['history'][-1]['date'] if profile['history'] else "N/A"
+            last_date = profile["history"][-1]["date"] if profile["history"] else "N/A"
             print(t("stats", language))
             print(t("last_game", language, date=last_date))
             if avg:
@@ -88,7 +87,7 @@ def main():
     first_user_message = USER_PROMPT_TEMPLATE.format(棋谱=pgn, 数据=compact_data)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
-        {"role": "user", "content": first_user_message}
+        {"role": "user", "content": first_user_message},
     ]
 
     run_chat(profile, messages)

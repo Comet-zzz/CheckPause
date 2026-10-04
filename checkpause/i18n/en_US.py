@@ -33,7 +33,6 @@ MESSAGES = {
     "total_stat": "   ─ Total games: {total}",
     "pgn_invalid": "Invalid PGN format",
     "pgn_no_moves": "No moves in PGN",
-
     "app_title": "CheckPause",
     "menu_settings": "Settings",
     "menu_language": "Language",
@@ -85,24 +84,20 @@ MESSAGES = {
     "about_pieces": "Pieces from Lichess open-source piece sets (cburnett, merida, chessnut, fantasy, spatial, celtic, kiwen-suwi, rhosgfx, totoy, mpchess), each owned by its author under GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 licenses.",
     "about_close": "Close",
     "about_puzzles": "The bundled puzzle sample is curated from the Lichess puzzle database (CC0 public domain); only a small selection is included, and users can import more collections.",
-
     "update_title": "Update available",
     "update_available": "CheckPause {version} is available; you are running {current}.",
     "update_download": "Download",
     "update_later": "Later",
-
     "ai_mode_label": "AI mode:",
     "mode_local": "Your own API key (free)",
     "mode_cloud": "Cloud coaching (uses CP credits)",
     "mode_local_hint": "Requests go straight to the provider with your own key, at your own cost.",
     "mode_cloud_hint": "Requests go through the CheckPause server, which uses the tuned coaching prompt and charges CP credits.",
     "server_url_label": "Server address:",
-
     "cloud_timeout": "The cloud service timed out. Please try again later.",
     "cloud_unreachable": "Could not reach the cloud service. Check your network.",
     "cloud_server_error": "The cloud service returned an error (HTTP {code}).",
     "server_url_empty": "Enter the server address.",
-
     "cloud_signin_required": "Sign in first (Settings > Cloud account...).",
     "cloud_username_taken": "That username is taken. Try another one.",
     "cloud_username_invalid": "Usernames are 3-32 letters, digits, underscores, dots or dashes.",
@@ -111,7 +106,6 @@ MESSAGES = {
     "cloud_too_many_attempts": "Too many attempts. Wait a moment and try again.",
     "cloud_no_credit": "Not enough CP credits. Please top up.",
     "cloud_no_credit_detail": "Not enough CP credits: balance {balance}, this request needs about {needed}.",
-
     "action_cloud_account": "Cloud account...",
     "cloud_account_title": "Cloud account",
     "cloud_account_hint": "Cloud analysis is paid for with CP credits. Pick an amount and the payment page opens in your browser; the credits arrive by themselves.",
@@ -136,7 +130,6 @@ MESSAGES = {
     "cloud_account_password_empty": "Enter a password.",
     "cloud_account_menu_signed_in": "Cloud account ({username} · {balance} CP credits)...",
     "cloud_account_menu_no_balance": "Cloud account ({username})...",
-
     "cloud_topup_label": "Top up:",
     "cloud_topup_buy": "Pay",
     "cloud_topup_pack": "CNY {yuan} · {credits} CP credits",
@@ -145,7 +138,6 @@ MESSAGES = {
     "cloud_topup_gave_up": "No payment result yet. Once you have paid, press Refresh balance.",
     "update_none": "You are running the latest version.",
     "update_failed": "Could not check for updates. Check your network connection and try again.",
-
     "welcome_title": "Welcome to CheckPause",
     "welcome_intro": "First-time setup. Please set your username and interface language",
     "welcome_back_title": "Welcome back, {username}",
@@ -155,11 +147,10 @@ MESSAGES = {
     "lang_en": "English",
     "btn_start": "Start",
     "username_required": "Please enter a username.",
-
     "tab_analysis": "Position",
     "tab_chat": "Analysis",
     "tab_stats": "Statistics",
-    "placeholder_pgn": "Paste a PGN here, or click \"Open PGN file\".",
+    "placeholder_pgn": 'Paste a PGN here, or click "Open PGN file".',
     "btn_analyze": "Analyze",
     "btn_stop": "Stop",
     "btn_clear_pgn": "Clear",
@@ -208,7 +199,6 @@ MESSAGES = {
     "status_position_applied": "Position applied; make moves on the board, then analyze.",
     "piece_king": "King",
     "piece_pawn": "Pawn",
-
     "chat_placeholder": "Type your question...",
     "btn_send": "Send",
     "btn_reset_chat": "Reset chat",
@@ -216,7 +206,6 @@ MESSAGES = {
     "chat_error": "Error: {error}",
     "chat_welcome": "Analysis complete. You can start asking questions.",
     "chat_no_analysis": "Please analyze a game first.",
-
     "play_side_label": "Play as",
     "play_side_white": "White",
     "play_side_black": "Black",
@@ -274,7 +263,6 @@ MESSAGES = {
     "piece_rook": "Rook",
     "piece_bishop": "Bishop",
     "piece_knight": "Knight",
-
     "stat_username": "Username: {username}",
     "stat_total_games": "Total games: {total}",
     "stat_avg_accuracy": "Average accuracy: {accuracy:.1f}%",
@@ -282,7 +270,6 @@ MESSAGES = {
     "stat_no_data": "No games recorded yet.",
     "hist_date": "Date",
     "hist_performance": "Performance",
-
     "confirm_delete_title": "Confirm deletion",
     "confirm_delete_text": "Confirm delete all user data? This cannot be undone!",
     "confirm_close_title": "Confirm close",
@@ -292,7 +279,6 @@ MESSAGES = {
     "deleted_restart": "User data deleted. Please restart the program.",
     "config_error_title": "Configuration error",
     "engine_error": "Stockfish engine error: {error}",
-
     "nav_puzzle": "Puzzles",
     "puzzle_builtin_name": "Lichess Sample",
     "puzzle_collections": "Collections",
@@ -312,7 +298,7 @@ MESSAGES = {
     "puzzle_unfavorited": "Removed from favorites.",
     "puzzle_favorites_name": "Favorites",
     "puzzle_favorites_empty": "Favorites is empty. Tap Favorite on a puzzle, or miss one to add it automatically.",
-    "puzzle_empty": "No puzzle collections yet. Click \"Import collection...\" to import a CSV or PGN file.",
+    "puzzle_empty": 'No puzzle collections yet. Click "Import collection..." to import a CSV or PGN file.',
     "puzzle_status_correct": "Correct! Keep going.",
     "puzzle_status_wrong": "That move is wrong. Try again.",
     "puzzle_status_solved": "🎉 Puzzle solved!",
@@ -325,7 +311,7 @@ MESSAGES = {
     "puzzle_import_error_empty": "No usable puzzles were found in the file.",
     "puzzle_import_error_read_error": "Failed to read the file: {error}",
     "puzzle_delete_title": "Delete collection",
-    "puzzle_delete_text": "Delete the collection \"{name}\"?",
+    "puzzle_delete_text": 'Delete the collection "{name}"?',
     "puzzle_info": "{name} · Solved {solved}/{total}",
     "puzzle_rating": "Rating: {rating}",
     "puzzle_themes": "Themes: {themes}",

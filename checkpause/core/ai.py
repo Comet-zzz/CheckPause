@@ -25,25 +25,39 @@ def chat_with_model(messages, language="zh-CN"):
     client = _create_client(config["base_url"], config["api_key"])
     try:
         stream = client.chat.completions.create(
-            model=config["model"],
-            messages=messages,
-            stream=True
+            model=config["model"], messages=messages, stream=True
         )
         for chunk in stream:
             delta = chunk.choices[0].delta
             if delta.content:
                 yield delta.content
     except APITimeoutError as exc:
-        message = "请求超时，请稍后重试。" if language == "zh-CN" else "Request timed out. Please try again later."
+        message = (
+            "请求超时，请稍后重试。"
+            if language == "zh-CN"
+            else "Request timed out. Please try again later."
+        )
         raise ChatRequestError(message) from exc
     except APIConnectionError as exc:
-        message = "无法连接 API 服务，请检查网络或接口地址。" if language == "zh-CN" else "Could not reach the API service. Check your network or base URL."
+        message = (
+            "无法连接 API 服务，请检查网络或接口地址。"
+            if language == "zh-CN"
+            else "Could not reach the API service. Check your network or base URL."
+        )
         raise ChatRequestError(message) from exc
     except APIStatusError as exc:
         if exc.status_code == 401:
-            message = "API 密钥无效，请检查设置。" if language == "zh-CN" else "Invalid API key. Please check your settings."
+            message = (
+                "API 密钥无效，请检查设置。"
+                if language == "zh-CN"
+                else "Invalid API key. Please check your settings."
+            )
         elif exc.status_code == 429:
-            message = "API 请求过于频繁，请稍后重试。" if language == "zh-CN" else "Too many API requests. Please try again later."
+            message = (
+                "API 请求过于频繁，请稍后重试。"
+                if language == "zh-CN"
+                else "Too many API requests. Please try again later."
+            )
         else:
             message = (
                 f"API 服务返回错误（HTTP {exc.status_code}）。"

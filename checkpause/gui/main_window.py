@@ -94,21 +94,11 @@ class MainWindow(QMainWindow):
         self.profile = load_profile()
         self._language = (self.profile or {}).get("language", "zh-CN")
         self._theme = (self.profile or {}).get("theme", LIGHT)
-        self._piece_set = (self.profile or {}).get(
-            "piece_set", DEFAULT_PIECE_SET
-        )
-        self._board_theme = (self.profile or {}).get(
-            "board_theme", DEFAULT_BOARD_THEME
-        )
-        self._sound_set = (self.profile or {}).get(
-            "sound_set", DEFAULT_SOUND_SET
-        )
-        self._hint_enabled = (self.profile or {}).get(
-            "hint_enabled", DEFAULT_HINT_ENABLED
-        )
-        self._eval_depth = (self.profile or {}).get(
-            "eval_depth", DEFAULT_EVAL_DEPTH
-        )
+        self._piece_set = (self.profile or {}).get("piece_set", DEFAULT_PIECE_SET)
+        self._board_theme = (self.profile or {}).get("board_theme", DEFAULT_BOARD_THEME)
+        self._sound_set = (self.profile or {}).get("sound_set", DEFAULT_SOUND_SET)
+        self._hint_enabled = (self.profile or {}).get("hint_enabled", DEFAULT_HINT_ENABLED)
+        self._eval_depth = (self.profile or {}).get("eval_depth", DEFAULT_EVAL_DEPTH)
         self._eval_worker = None
         self._eval_token = 0
         self._eval_failed = False
@@ -339,9 +329,7 @@ class MainWindow(QMainWindow):
             action = QAction(name, self)
             action.setCheckable(True)
             action.setChecked(name == self._piece_set)
-            action.triggered.connect(
-                lambda _checked, value=name: self._change_piece_set(value)
-            )
+            action.triggered.connect(lambda _checked, value=name: self._change_piece_set(value))
             self._piece_group.addAction(action)
             self._menu_pieces.addAction(action)
             self._piece_actions[name] = action
@@ -354,9 +342,7 @@ class MainWindow(QMainWindow):
             action = QAction(self)
             action.setCheckable(True)
             action.setChecked(name == self._board_theme)
-            action.triggered.connect(
-                lambda _checked, value=name: self._change_board_theme(value)
-            )
+            action.triggered.connect(lambda _checked, value=name: self._change_board_theme(value))
             self._board_group.addAction(action)
             self._menu_board.addAction(action)
             self._board_actions[name] = action
@@ -369,22 +355,16 @@ class MainWindow(QMainWindow):
             action = QAction(self)
             action.setCheckable(True)
             action.setChecked(name == self._sound_set)
-            action.triggered.connect(
-                lambda _checked, value=name: self._change_sound_set(value)
-            )
+            action.triggered.connect(lambda _checked, value=name: self._change_sound_set(value))
             self._sound_group.addAction(action)
             self._menu_sound.addAction(action)
             self._sound_actions[name] = action
 
         self._menu_help = menubar.addMenu("")
         self._act_check_update = QAction(self)
-        self._act_check_update.triggered.connect(
-            lambda: self._check_for_update(manual=True)
-        )
+        self._act_check_update.triggered.connect(lambda: self._check_for_update(manual=True))
         self._act_about = QAction(self)
-        self._act_about.triggered.connect(
-            lambda: show_about(self, self._language)
-        )
+        self._act_about.triggered.connect(lambda: show_about(self, self._language))
         self._menu_help.addAction(self._act_check_update)
         self._menu_help.addSeparator()
         self._menu_help.addAction(self._act_about)
@@ -414,13 +394,9 @@ class MainWindow(QMainWindow):
         self._language = language
         self._theme = self.profile.get("theme", LIGHT)
         self._piece_set = self.profile.get("piece_set", DEFAULT_PIECE_SET)
-        self._board_theme = self.profile.get(
-            "board_theme", DEFAULT_BOARD_THEME
-        )
+        self._board_theme = self.profile.get("board_theme", DEFAULT_BOARD_THEME)
         self._sound_set = self.profile.get("sound_set", DEFAULT_SOUND_SET)
-        self._hint_enabled = self.profile.get(
-            "hint_enabled", DEFAULT_HINT_ENABLED
-        )
+        self._hint_enabled = self.profile.get("hint_enabled", DEFAULT_HINT_ENABLED)
         self._eval_depth = self.profile.get("eval_depth", DEFAULT_EVAL_DEPTH)
         self._act_light.setChecked(self._theme == LIGHT)
         self._act_dark.setChecked(self._theme == DARK)
@@ -445,18 +421,14 @@ class MainWindow(QMainWindow):
         self._act_check_update.setText(t("action_check_update", self._language))
         self._act_about.setText(t("action_about", self._language))
 
-        self._menu_personalization.setTitle(
-            t("menu_personalization", self._language)
-        )
+        self._menu_personalization.setTitle(t("menu_personalization", self._language))
         self._menu_pieces.setTitle(t("menu_pieces", self._language))
         self._menu_board.setTitle(t("menu_board", self._language))
         self._menu_sound.setTitle(t("menu_sound", self._language))
         for name, action in self._sound_actions.items():
             action.setText(t("sound_" + name, self._language))
         for name, action in self._board_actions.items():
-            action.setText(
-                t("board_theme_" + name, self._language)
-            )
+            action.setText(t("board_theme_" + name, self._language))
 
         self.tabs.setTabText(0, t("tab_analysis", self._language))
         self.tabs.setTabText(1, t("tab_chat", self._language))
@@ -488,9 +460,7 @@ class MainWindow(QMainWindow):
             return
         ok, err = self.board.load_pgn(pgn)
         if not ok:
-            self.analysis_page.set_status(
-                t("parse_failed", self._language, error=err)
-            )
+            self.analysis_page.set_status(t("parse_failed", self._language, error=err))
             return
 
         self._current_pgn = pgn
@@ -521,9 +491,7 @@ class MainWindow(QMainWindow):
     def _on_move_done(self, index, total, san, fen):
         percent = int(index / total * 100)
         self.analysis_page.set_progress(percent)
-        self.analysis_page.set_status(
-            t("status_analyzing", self._language, percent=percent)
-        )
+        self.analysis_page.set_status(t("status_analyzing", self._language, percent=percent))
         # The engine walks the game move by move; that is not the user
         # playing, so it must not rattle off a sound for every ply.
         self.board.goto(index, sound=False)
@@ -536,15 +504,11 @@ class MainWindow(QMainWindow):
     def _on_line_changed(self, replaced):
         if replaced:
             self._clear_analysis_results()
-        self._refresh_analysis_line(
-            t("status_line_changed", self._language)
-        )
+        self._refresh_analysis_line(t("status_line_changed", self._language))
 
     def _on_position_applied(self, fen):
         self._clear_analysis_results()
-        self._refresh_analysis_line(
-            t("status_position_applied", self._language), show_moves=False
-        )
+        self._refresh_analysis_line(t("status_position_applied", self._language), show_moves=False)
 
     def _clear_analysis_results(self):
         self._results = []
@@ -569,9 +533,7 @@ class MainWindow(QMainWindow):
         self.tabs.setCurrentWidget(self.analysis_page)
 
         if self.profile:
-            self.profile = update_profile(
-                self.profile, accuracy, self._current_pgn
-            )
+            self.profile = update_profile(self.profile, accuracy, self._current_pgn)
             self._refresh_stats()
 
         self._current_analysis = compact_analysis(results)
@@ -588,9 +550,7 @@ class MainWindow(QMainWindow):
         self.chat_page.append_notice(t("chat_welcome", self._language))
 
     def _on_analysis_failed(self, error):
-        self.analysis_page.set_status(
-            t("analysis_failed", self._language, error=error)
-        )
+        self.analysis_page.set_status(t("analysis_failed", self._language, error=error))
 
     def _on_analysis_finished(self):
         self.analysis_page.set_busy(False)
@@ -640,9 +600,12 @@ class MainWindow(QMainWindow):
             return
         # Cloud replies come out of a balance, so there has to be an account
         # before anything is sent.
-        if self._ai_mode == MODE_CLOUD and not self._account.get("token"):
-            if not self._ask_to_sign_in():
-                return
+        if (
+            self._ai_mode == MODE_CLOUD
+            and not self._account.get("token")
+            and not self._ask_to_sign_in()
+        ):
+            return
         if not text.strip():
             return
 
@@ -833,9 +796,7 @@ class MainWindow(QMainWindow):
         retry = self._eval_failed
         self._eval_failed = False
         if self.profile:
-            self.profile = set_hint_enabled(
-                self.profile, self._hint_enabled
-            )
+            self.profile = set_hint_enabled(self.profile, self._hint_enabled)
         if retry:
             # The bar is evaluated whether or not hints are shown, so toggling
             # the switch must not refresh the score. Only an earlier failure
@@ -878,9 +839,7 @@ class MainWindow(QMainWindow):
     def _on_live_eval(self, result):
         if result.get("token") != self._eval_token:
             return
-        self.board.apply_live_eval(
-            result.get("lines") or [], result.get("depth")
-        )
+        self.board.apply_live_eval(result.get("lines") or [], result.get("depth"))
 
     def _on_live_eval_failed(self, error):
         # An unavailable engine must not break the rest of the app; stop
@@ -898,9 +857,7 @@ class MainWindow(QMainWindow):
             worker.deleteLater()
 
     def _open_api_settings(self):
-        result = api_settings_dialog(
-            self, self._language, get_api_config()
-        )
+        result = api_settings_dialog(self, self._language, get_api_config())
         if not result:
             return
         save_api_config(

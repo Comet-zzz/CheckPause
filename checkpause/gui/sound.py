@@ -88,9 +88,7 @@ class SoundPlayer:
         self._effects = {}
         self._loaded_set = self._set
         for kind in SOUND_KINDS:
-            path = resource_path(
-                "assets", "sounds", self._set, kind + ".wav"
-            )
+            path = resource_path("assets", "sounds", self._set, kind + ".wav")
             if not os.path.isfile(path):
                 continue
             effect = QSoundEffect()

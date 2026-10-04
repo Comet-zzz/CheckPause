@@ -5,7 +5,7 @@ demand and re-tinted with ``CompositionMode_SourceIn`` so one file serves
 both the light and the dark theme.
 """
 
-from functools import lru_cache
+from functools import cache, lru_cache
 
 from PySide6.QtCore import QRectF, Qt
 from PySide6.QtGui import QColor, QIcon, QPainter, QPixmap
@@ -30,7 +30,7 @@ APP_ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
 _SCALES = (1.0, 2.0)
 
 
-@lru_cache(maxsize=None)
+@cache
 def _renderer(name):
     renderer = QSvgRenderer(resource_path(*ICON_DIR, name + ".svg"))
     return renderer if renderer.isValid() else None
@@ -49,15 +49,13 @@ def _pixmap(name, pixels, color=None):
     painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
     renderer.render(painter, QRectF(0, 0, pixels, pixels))
     if color is not None:
-        painter.setCompositionMode(
-            QPainter.CompositionMode.CompositionMode_SourceIn
-        )
+        painter.setCompositionMode(QPainter.CompositionMode.CompositionMode_SourceIn)
         painter.fillRect(pixmap.rect(), QColor(color))
     painter.end()
     return pixmap
 
 
-@lru_cache(maxsize=None)
+@cache
 def nav_icon(theme, name, size=16):
     """Icon for the board navigation buttons, including a disabled state."""
     colors = NAV_COLORS.get(theme, NAV_COLORS["light"])
@@ -76,7 +74,7 @@ def nav_icon(theme, name, size=16):
     return icon
 
 
-@lru_cache(maxsize=None)
+@cache
 def rail_icon(theme, name, size=20):
     """Icon for the module rail buttons."""
     color = RAIL_COLORS.get(theme, RAIL_COLORS["light"])

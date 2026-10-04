@@ -38,9 +38,7 @@ class ReadScoreTests(unittest.TestCase):
         self.assertEqual(read_score(info), (-50, None))
 
     def test_mate_is_reported_separately(self):
-        info = {
-            "score": chess.engine.PovScore(chess.engine.Mate(-3), chess.WHITE)
-        }
+        info = {"score": chess.engine.PovScore(chess.engine.Mate(-3), chess.WHITE)}
         self.assertEqual(read_score(info), (None, -3))
 
     def test_missing_score_is_neutral(self):
@@ -84,9 +82,7 @@ class ReadLinesTests(unittest.TestCase):
                 "pv": [chess.Move.from_uci("e2e4")],
             }
         }
-        self.assertEqual(
-            read_lines(infos), [{"uci": "e2e4", "margin": None, "mate": 3}]
-        )
+        self.assertEqual(read_lines(infos), [{"uci": "e2e4", "margin": None, "mate": 3}])
 
 
 class EvalRatioTests(unittest.TestCase):

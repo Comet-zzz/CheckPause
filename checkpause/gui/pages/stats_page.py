@@ -31,9 +31,7 @@ class StatsPage(QWidget):
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self._table.verticalHeader().setVisible(False)
-        self._table.horizontalHeader().setSectionResizeMode(
-            QHeaderView.ResizeMode.Stretch
-        )
+        self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._username_label)
@@ -67,9 +65,7 @@ class StatsPage(QWidget):
 
         latest = profile.get("latest_accuracy")
         self._latest_label.setText(
-            t("stat_latest_accuracy", self._language, accuracy=latest)
-            if latest is not None
-            else ""
+            t("stat_latest_accuracy", self._language, accuracy=latest) if latest is not None else ""
         )
 
         history = profile.get("history", [])
@@ -77,9 +73,7 @@ class StatsPage(QWidget):
         for row, record in enumerate(reversed(history)):
             date_item = QTableWidgetItem(str(record.get("date", "")))
             date_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
-            rating_item = QTableWidgetItem(
-                self._rating_text(record.get("accuracy"))
-            )
+            rating_item = QTableWidgetItem(self._rating_text(record.get("accuracy")))
             rating_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             self._table.setItem(row, 0, date_item)
             self._table.setItem(row, 1, rating_item)
@@ -93,9 +87,5 @@ class StatsPage(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._table.setHorizontalHeaderLabels(
-            [t(key, language) for key in self.COLUMNS]
-        )
-        self._table.horizontalHeader().setDefaultAlignment(
-            Qt.AlignmentFlag.AlignCenter
-        )
+        self._table.setHorizontalHeaderLabels([t(key, language) for key in self.COLUMNS])
+        self._table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)

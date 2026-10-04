@@ -10,8 +10,7 @@ from checkpause.core.puzzle import PuzzleSession
 from checkpause.data import puzzles
 
 CSV_HEADER = (
-    "PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays,"
-    "Themes,GameUrl,OpeningTags\n"
+    "PuzzleId,FEN,Moves,Rating,RatingDeviation,Popularity,NbPlays," "Themes,GameUrl,OpeningTags\n"
 )
 CSV_ROW = (
     "00sHx,q3k1nr/1pp1nQpp/3p4/1P2p3/4P3/B1PP1b2/B5PP/5K2 b k - 0 17,"
@@ -28,32 +27,24 @@ def _mate_in_one_fen():
 
 class PuzzleSessionTests(unittest.TestCase):
     def test_solves_checkmate(self):
-        session = PuzzleSession(
-            _mate_in_one_fen(), ["d8h4"], opponent_first=False
-        )
+        session = PuzzleSession(_mate_in_one_fen(), ["d8h4"], opponent_first=False)
         self.assertEqual(session.human_color, chess.BLACK)
         self.assertEqual(session.play(chess.Move.from_uci("d8h4")), "solved")
         self.assertTrue(session.solved)
 
     def test_wrong_move_is_rejected(self):
-        session = PuzzleSession(
-            _mate_in_one_fen(), ["d8h4"], opponent_first=False
-        )
+        session = PuzzleSession(_mate_in_one_fen(), ["d8h4"], opponent_first=False)
         wrong = chess.Move.from_uci("f8c5")
         self.assertIn(wrong, session.board.legal_moves)
         self.assertEqual(session.play(wrong), "wrong")
         self.assertFalse(session.solved)
 
     def test_opponent_first_applies_setup(self):
-        session = PuzzleSession(
-            chess.STARTING_FEN, ["e2e4", "e7e5"], opponent_first=True
-        )
+        session = PuzzleSession(chess.STARTING_FEN, ["e2e4", "e7e5"], opponent_first=True)
         self.assertEqual(session.human_color, chess.BLACK)
         self.assertEqual(len(session.applied_moves), 1)
         self.assertEqual(session.expected_move, "e7e5")
-        self.assertEqual(
-            session.play(chess.Move.from_uci("e7e5")), "solved"
-        )
+        self.assertEqual(session.play(chess.Move.from_uci("e7e5")), "solved")
 
     def test_opponent_reply_alternates(self):
         session = PuzzleSession(
@@ -61,9 +52,7 @@ class PuzzleSessionTests(unittest.TestCase):
             ["e2e4", "e7e5", "g1f3"],
             opponent_first=True,
         )
-        self.assertEqual(
-            session.play(chess.Move.from_uci("e7e5")), "correct"
-        )
+        self.assertEqual(session.play(chess.Move.from_uci("e7e5")), "correct")
         self.assertFalse(session.solved)
         self.assertIsNotNone(session.opponent_reply())
         self.assertTrue(session.solved)
@@ -75,9 +64,7 @@ class PuzzleParserTests(unittest.TestCase):
         self.assertEqual(len(rows), 1)
         row = rows[0]
         self.assertEqual(row["id"], "00sHx")
-        self.assertEqual(
-            row["moves"], ["e8d7", "a2e6", "d7d8", "f7f8"]
-        )
+        self.assertEqual(row["moves"], ["e8d7", "a2e6", "d7d8", "f7f8"])
         self.assertTrue(row["opponent_first"])
         self.assertEqual(row["rating"], 1760)
         self.assertEqual(row["themes"], ["mate", "mateIn2"])
@@ -123,9 +110,7 @@ class PuzzleStoreTests(unittest.TestCase):
         puzzle = collection.get(0)
         self.assertEqual(puzzle["moves"][0], "e8d7")
 
-        self.assertTrue(
-            puzzles.delete_collection(meta["id"], base_dir=self.base)
-        )
+        self.assertTrue(puzzles.delete_collection(meta["id"], base_dir=self.base))
         self.assertEqual(puzzles.list_collections(self.base), [])
 
     def test_unsupported_format_leaves_no_collection(self):
@@ -178,41 +163,29 @@ class PuzzleProgressTests(unittest.TestCase):
         return path
 
     def test_solved_indices_start_empty(self):
-        self.assertEqual(
-            puzzles.solved_indices("missing", base_dir=self.base), set()
-        )
+        self.assertEqual(puzzles.solved_indices("missing", base_dir=self.base), set())
 
     def test_mark_solved_is_deduplicated(self):
         puzzles.mark_solved("c1", 3, base_dir=self.base)
         puzzles.mark_solved("c1", 1, base_dir=self.base)
         puzzles.mark_solved("c1", 3, base_dir=self.base)
-        self.assertEqual(
-            puzzles.solved_indices("c1", base_dir=self.base), {1, 3}
-        )
+        self.assertEqual(puzzles.solved_indices("c1", base_dir=self.base), {1, 3})
 
     def test_progress_is_per_collection(self):
         puzzles.mark_solved("c1", 0, base_dir=self.base)
-        self.assertEqual(
-            puzzles.solved_indices("c2", base_dir=self.base), set()
-        )
+        self.assertEqual(puzzles.solved_indices("c2", base_dir=self.base), set())
 
     def test_clear_progress(self):
         puzzles.mark_solved("c1", 0, base_dir=self.base)
         self.assertTrue(puzzles.clear_progress("c1", base_dir=self.base))
-        self.assertEqual(
-            puzzles.solved_indices("c1", base_dir=self.base), set()
-        )
+        self.assertEqual(puzzles.solved_indices("c1", base_dir=self.base), set())
         self.assertFalse(puzzles.clear_progress("c1", base_dir=self.base))
 
     def test_delete_collection_clears_progress(self):
-        meta = puzzles.import_collection(
-            self._write_csv(), base_dir=self.base
-        )
+        meta = puzzles.import_collection(self._write_csv(), base_dir=self.base)
         puzzles.mark_solved(meta["id"], 0, base_dir=self.base)
         puzzles.delete_collection(meta["id"], base_dir=self.base)
-        self.assertEqual(
-            puzzles.solved_indices(meta["id"], base_dir=self.base), set()
-        )
+        self.assertEqual(puzzles.solved_indices(meta["id"], base_dir=self.base), set())
 
 
 class PuzzleFavoritesTests(unittest.TestCase):
@@ -261,21 +234,15 @@ class PuzzleFavoritesTests(unittest.TestCase):
         self.assertEqual(stored[0]["moves"], ["e2e4"])
 
     def test_delete_collection_refuses_favorites(self):
-        self.assertFalse(
-            puzzles.delete_collection(puzzles.FAVORITES_ID, base_dir=self.base)
-        )
+        self.assertFalse(puzzles.delete_collection(puzzles.FAVORITES_ID, base_dir=self.base))
 
     def test_virtual_collection_tracks_count(self):
-        collection = puzzles.PuzzleCollection(
-            puzzles.favorites_collection(self.base)
-        )
+        collection = puzzles.PuzzleCollection(puzzles.favorites_collection(self.base))
         self.assertTrue(collection.favorite)
         self.assertEqual(collection.count, 0)
         puzzles.add_favorite(self._puzzle("a"), base_dir=self.base)
         puzzles.add_favorite(self._puzzle("b"), base_dir=self.base)
-        refreshed = puzzles.PuzzleCollection(
-            puzzles.favorites_collection(self.base)
-        )
+        refreshed = puzzles.PuzzleCollection(puzzles.favorites_collection(self.base))
         self.assertEqual(refreshed.count, 2)
         self.assertEqual(refreshed.get(0)["id"], "a")
 

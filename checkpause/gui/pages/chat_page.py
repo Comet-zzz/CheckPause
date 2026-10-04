@@ -37,9 +37,7 @@ class ChatPage(QWidget):
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
         self._scroll.setFrameShape(QScrollArea.Shape.NoFrame)
-        self._scroll.setHorizontalScrollBarPolicy(
-            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
-        )
+        self._scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self._scroll.setWidget(self._container)
 
         self._input = QLineEdit()
@@ -81,10 +79,7 @@ class ChatPage(QWidget):
             bg, fg = colors["user_bg"], colors["user_fg"]
         else:
             bg, fg = colors["ai_bg"], colors["ai_fg"]
-        return (
-            f"background-color: {bg}; color: {fg};"
-            " border-radius: 10px; padding: 8px 12px;"
-        )
+        return f"background-color: {bg}; color: {fg};" " border-radius: 10px; padding: 8px 12px;"
 
     def _max_bubble_width(self):
         width = self._scroll.viewport().width()
@@ -102,9 +97,7 @@ class ChatPage(QWidget):
         else:
             row_layout.addWidget(widget)
             row_layout.addStretch(1)
-        self._messages_layout.insertWidget(
-            self._messages_layout.count() - 1, row
-        )
+        self._messages_layout.insertWidget(self._messages_layout.count() - 1, row)
 
     def _scroll_to_bottom(self):
         bar = self._scroll.verticalScrollBar()
@@ -113,9 +106,7 @@ class ChatPage(QWidget):
     def _append_bubble(self, role, text):
         bubble = QLabel(text)
         bubble.setWordWrap(True)
-        bubble.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
+        bubble.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         bubble.setMaximumWidth(self._max_bubble_width())
         bubble.setStyleSheet(self._bubble_style(role))
         self._bubbles.append((bubble, role))
@@ -129,9 +120,7 @@ class ChatPage(QWidget):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         color = self._colors()["error" if error else "notice"]
         label.setStyleSheet(f"color: {color}; background: transparent;")
-        label.setTextInteractionFlags(
-            Qt.TextInteractionFlag.TextSelectableByMouse
-        )
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self._bubbles.append((label, "error" if error else "notice"))
         self._add_row(label)
         self._scroll_to_bottom()

@@ -74,9 +74,7 @@ class BoardWidgetTests(unittest.TestCase):
 
         board._on_palette(chess.Piece(chess.KNIGHT, chess.WHITE))
         board.edit_place(chess.E4)
-        self.assertEqual(
-            board.piece_at(chess.E4), chess.Piece(chess.KNIGHT, chess.WHITE)
-        )
+        self.assertEqual(board.piece_at(chess.E4), chess.Piece(chess.KNIGHT, chess.WHITE))
         board.edit_move_piece(chess.E4, chess.D5)
         self.assertIsNone(board.piece_at(chess.E4))
         self.assertEqual(board.piece_at(chess.D5).piece_type, chess.KNIGHT)
@@ -127,9 +125,7 @@ class BoardWidgetTests(unittest.TestCase):
 
     def test_edit_controls_make_legal_en_passant_squares_available(self):
         board = BoardWidget()
-        board.set_start_fen(
-            "rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3"
-        )
+        board.set_start_fen("rnbqkbnr/ppp1pppp/8/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3")
         board.start_edit()
         self.assertEqual(board._ep_combo.count(), 2)
         self.assertEqual(board._ep_combo.itemData(1), chess.D6)
@@ -166,9 +162,7 @@ class BoardWidgetTests(unittest.TestCase):
         self.assertTrue(board.play_move(chess.C7, chess.C5))
 
         self.assertEqual(replaced, [True])
-        self.assertEqual(
-            board._moves, [chess.Move.from_uci("e2e4"), chess.Move.from_uci("c7c5")]
-        )
+        self.assertEqual(board._moves, [chess.Move.from_uci("e2e4"), chess.Move.from_uci("c7c5")])
         self.assertEqual(board._index, 2)
 
     def test_position_changed_reports_new_positions(self):
@@ -265,10 +259,7 @@ class MoveListWidgetTests(unittest.TestCase):
 
     def test_black_to_move_start_shifts_the_columns(self):
         widget = MoveListWidget()
-        pgn = (
-            '[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/8/4K3 b - - 0 7"]\n\n'
-            "7... Kd7 8. Kd2 *"
-        )
+        pgn = '[SetUp "1"]\n[FEN "4k3/8/8/8/8/8/8/4K3 b - - 0 7"]\n\n' "7... Kd7 8. Kd2 *"
         self.assertTrue(widget.set_moves(pgn))
 
         self.assertEqual(widget._table.item(0, 0).text(), "7.")

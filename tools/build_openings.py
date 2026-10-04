@@ -31,7 +31,7 @@ def build():
     games = 0
     plies = 0
 
-    with open(PGN_PATH, "r", encoding="utf-8") as handle:
+    with open(PGN_PATH, encoding="utf-8") as handle:
         while True:
             game = chess.pgn.read_game(handle)
             if game is None:
@@ -53,9 +53,7 @@ def build():
     with open(OUT_PATH, "wb") as out:
         for key in sorted(entries):
             for raw_move, weight in entries[key].items():
-                out.write(
-                    chess.polyglot.ENTRY_STRUCT.pack(key, raw_move, weight, 0)
-                )
+                out.write(chess.polyglot.ENTRY_STRUCT.pack(key, raw_move, weight, 0))
 
     print(f"games: {games}, positions: {len(entries)}, plies: {plies}")
     print(f"written: {OUT_PATH}")

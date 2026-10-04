@@ -85,9 +85,7 @@ class CheckForUpdateTests(unittest.TestCase):
         )
 
     def test_stays_quiet_when_already_current(self):
-        opener = FakeOpener(
-            {"latest": "1.5.0", "url": "https://example.com/setup.exe"}
-        )
+        opener = FakeOpener({"latest": "1.5.0", "url": "https://example.com/setup.exe"})
         self.assertIsNone(check_for_update(current="1.5.0", opener=opener))
 
     def test_ignores_a_manifest_without_a_download_url(self):
@@ -143,9 +141,7 @@ class CheckForUpdateTests(unittest.TestCase):
                 },
             }
         )
-        self.assertEqual(
-            check_for_update(current="1.5.4", opener=opener).version, "1.7.0"
-        )
+        self.assertEqual(check_for_update(current="1.5.4", opener=opener).version, "1.7.0")
 
     def test_stays_quiet_when_every_mirror_is_behind(self):
         opener = FakeOpener(
@@ -180,12 +176,8 @@ class CheckForUpdateTests(unittest.TestCase):
             check_for_update(current="1.5.0", opener=opener, strict=True)
 
     def test_strict_mode_still_reports_being_current(self):
-        opener = FakeOpener(
-            {"latest": "1.5.0", "url": "https://example.com/setup.exe"}
-        )
-        self.assertIsNone(
-            check_for_update(current="1.5.0", opener=opener, strict=True)
-        )
+        opener = FakeOpener({"latest": "1.5.0", "url": "https://example.com/setup.exe"})
+        self.assertIsNone(check_for_update(current="1.5.0", opener=opener, strict=True))
 
 
 class QuickCheckTests(unittest.TestCase):
@@ -249,12 +241,8 @@ class QuickCheckTests(unittest.TestCase):
                 FALLBACK_MANIFEST_URLS[1]: OSError("blocked"),
             }
         )
-        self.assertIsNone(
-            check_for_update(current="1.5.0", opener=opener, quick=True)
-        )
-        self.assertEqual(
-            check_for_update(current="1.5.0", opener=opener).version, "1.6.0"
-        )
+        self.assertIsNone(check_for_update(current="1.5.0", opener=opener, quick=True))
+        self.assertEqual(check_for_update(current="1.5.0", opener=opener).version, "1.6.0")
 
     def test_quick_still_raises_in_strict_mode_when_nothing_answers(self):
         opener = FakeOpener(OSError("offline"))
@@ -293,30 +281,18 @@ class PlatformDownloadTests(unittest.TestCase):
 
     def test_windows_gets_the_installer(self):
         opener = FakeOpener(self._manifest())
-        info = check_for_update(
-            current="1.7.2", opener=opener, key="windows-x86_64"
-        )
-        self.assertEqual(
-            info.url, "https://example.com/CheckPause_Setup_1.7.3.exe"
-        )
+        info = check_for_update(current="1.7.2", opener=opener, key="windows-x86_64")
+        self.assertEqual(info.url, "https://example.com/CheckPause_Setup_1.7.3.exe")
 
     def test_macos_stays_quiet_for_a_legacy_url_only_manifest(self):
         # The old manifest's single url is a Windows .exe; offering it to a
         # macOS client would send the user to an unusable file.
-        opener = FakeOpener(
-            {"latest": "1.7.3", "url": "https://example.com/setup.exe"}
-        )
-        self.assertIsNone(
-            check_for_update(current="1.7.2", opener=opener, key="macos-arm64")
-        )
+        opener = FakeOpener({"latest": "1.7.3", "url": "https://example.com/setup.exe"})
+        self.assertIsNone(check_for_update(current="1.7.2", opener=opener, key="macos-arm64"))
 
     def test_windows_still_reads_a_legacy_url_only_manifest(self):
-        opener = FakeOpener(
-            {"latest": "1.7.3", "url": "https://example.com/setup.exe"}
-        )
-        info = check_for_update(
-            current="1.7.2", opener=opener, key="windows-x86_64"
-        )
+        opener = FakeOpener({"latest": "1.7.3", "url": "https://example.com/setup.exe"})
+        info = check_for_update(current="1.7.2", opener=opener, key="windows-x86_64")
         self.assertEqual(info.url, "https://example.com/setup.exe")
 
     def test_macos_stays_quiet_when_its_key_is_absent(self):
@@ -327,9 +303,7 @@ class PlatformDownloadTests(unittest.TestCase):
                 "urls": {"windows-x86_64": "https://example.com/setup.exe"},
             }
         )
-        self.assertIsNone(
-            check_for_update(current="1.7.2", opener=opener, key="macos-arm64")
-        )
+        self.assertIsNone(check_for_update(current="1.7.2", opener=opener, key="macos-arm64"))
 
     def test_windows_falls_back_to_url_when_the_map_omits_it(self):
         opener = FakeOpener(
@@ -339,9 +313,7 @@ class PlatformDownloadTests(unittest.TestCase):
                 "urls": {"macos-arm64": "https://example.com/setup.dmg"},
             }
         )
-        info = check_for_update(
-            current="1.7.2", opener=opener, key="windows-x86_64"
-        )
+        info = check_for_update(current="1.7.2", opener=opener, key="windows-x86_64")
         self.assertEqual(info.url, "https://example.com/setup.exe")
 
 

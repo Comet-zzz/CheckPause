@@ -70,14 +70,10 @@ class MoveListWidget(QWidget):
             col = 1 if index % 2 == 0 else 2
             if col == 1 or row == 0:
                 number = QTableWidgetItem(f"{self._first_number + row}.")
-                number.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                number.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
                 self._table.setItem(row, 0, number)
             item = QTableWidgetItem(san)
-            item.setTextAlignment(
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-            )
+            item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
             self._table.setItem(row, col, item)
 
         self._current = 0
@@ -97,9 +93,7 @@ class MoveListWidget(QWidget):
         self._apply_highlight()
         item = self._item_for_ply(ply)
         if item is not None:
-            self._table.scrollToItem(
-                item, QAbstractItemView.ScrollHint.PositionAtCenter
-            )
+            self._table.scrollToItem(item, QAbstractItemView.ScrollHint.PositionAtCenter)
 
     def set_theme(self, theme):
         self._theme = theme

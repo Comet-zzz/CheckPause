@@ -9,9 +9,7 @@ def data_dir():
         base = os.environ.get("APPDATA") or os.path.expanduser("~")
         return os.path.join(base, APP_NAME)
     if sys.platform == "darwin":
-        return os.path.join(
-            os.path.expanduser("~/Library/Application Support"), APP_NAME
-        )
+        return os.path.join(os.path.expanduser("~/Library/Application Support"), APP_NAME)
     return os.path.join(os.path.expanduser("~"), "." + APP_NAME.lower())
 
 

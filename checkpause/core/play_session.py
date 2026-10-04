@@ -72,10 +72,7 @@ class PlaySession:
             return False
         self.board.pop()
         self.moves.pop()
-        if (
-            len(self.moves) > self.opening_ply
-            and self.board.turn != self.human_color
-        ):
+        if len(self.moves) > self.opening_ply and self.board.turn != self.human_color:
             self.board.pop()
             self.moves.pop()
         self.result_kind = None
@@ -100,9 +97,7 @@ class PlaySession:
 
     def timeout(self, color):
         self.game_over = True
-        self.result_kind = (
-            "timeout_lose" if color == self.human_color else "timeout_win"
-        )
+        self.result_kind = "timeout_lose" if color == self.human_color else "timeout_win"
 
     def toggle_pause(self):
         if self.game_over:
@@ -148,9 +143,7 @@ class PlaySession:
         elapsed = now - self.clock_last
         self.clock_last = now
         turn = self.board.turn
-        self.clock_remaining[turn] = max(
-            0.0, self.clock_remaining[turn] - elapsed
-        )
+        self.clock_remaining[turn] = max(0.0, self.clock_remaining[turn] - elapsed)
         if self.clock_remaining[turn] <= 0:
             return turn
         return None
