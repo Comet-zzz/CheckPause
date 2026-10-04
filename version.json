@@ -1,10 +1,10 @@
 {
-  "latest": "1.8.3",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.3.exe",
+  "latest": "1.8.4",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.4.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.3.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.3-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.3-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.4.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.4-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.4-macOS-Intel.dmg"
   },
-  "notes": "棋盘上方新增 Stockfish 评估条，随局面平滑变化，可显示推荐着法箭头；音效精简为默认一种。"
+  "notes": "实时分析升级为多主线、逐层加深，并新增数字评分；修复了吃子将军与终局音效等问题。"
 }
