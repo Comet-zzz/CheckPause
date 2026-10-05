@@ -124,6 +124,13 @@ def save_api_config(api_key, base_url, model, mode=None, server_url=None):
     return save_settings(settings)
 
 
+def set_ai_mode(mode):
+    """Remember which tier the app should use, without touching the key."""
+    settings = load_settings()
+    settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+    return save_settings(settings)
+
+
 def get_stockfish_override():
     return (load_settings().get("stockfish_path") or "").strip()
 

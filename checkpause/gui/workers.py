@@ -319,6 +319,13 @@ class AccountWorker(QThread):
             elif self.action == "sign_out":
                 cloud.sign_out(self.server_url, self.token, self.language)
                 result = {"token": "", "account": {}}
+            elif self.action == "rename":
+                result = {
+                    "token": self.token,
+                    "account": cloud.rename(
+                        self.server_url, self.token, self.username, self.language
+                    ),
+                }
             elif self.action == "packs":
                 result = {"packs": cloud.fetch_packs(self.server_url, self.language)}
             elif self.action == "open_order":

@@ -87,6 +87,15 @@ def create_profile(username, language="zh-CN"):
     return profile
 
 
+def set_username(profile, username):
+    """Rename the local display name, e.g. after a cloud rename."""
+    username = (username or "").strip()
+    if username:
+        profile["username"] = username
+        save_profile(profile)
+    return profile
+
+
 def set_language(profile, language):
     profile["language"] = language
     save_profile(profile)
@@ -141,6 +150,19 @@ def update_profile(profile, accuracy, pgn):
     if len(profile["history"]) > 20:
         profile["history"] = profile["history"][-20:]
     profile["latest_accuracy"] = accuracy
+    save_profile(profile)
+    return profile
+
+
+def clear_history(profile):
+    """Forget the recorded games but keep the profile itself.
+
+    The account name, appearance and settings stay; only the accuracy history
+    and the counters derived from it go.
+    """
+    profile["history"] = []
+    profile["total_games"] = 0
+    profile["latest_accuracy"] = None
     save_profile(profile)
     return profile
 

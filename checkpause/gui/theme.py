@@ -89,6 +89,84 @@ QSlider::handle:horizontal:hover {
 #boardEditBar QLabel {
     color: #4a4d52;
 }
+#welcomePage {
+    background-color: #f4f5f7;
+}
+#welcomeCard {
+    background-color: #ffffff;
+    border: 1px solid #e6e8ec;
+    border-radius: 16px;
+}
+#welcomeTitle {
+    color: #1f2328;
+    font-size: 24px;
+    font-weight: 600;
+}
+#welcomeSubtitle {
+    color: #6b7280;
+    font-size: 13px;
+}
+#welcomeFieldLabel {
+    color: #4b5563;
+    font-size: 12px;
+    font-weight: 600;
+}
+#welcomePage QCheckBox {
+    background-color: transparent;
+}
+#welcomePage QLineEdit, #welcomePage QComboBox {
+    background-color: #ffffff;
+    color: #1f2328;
+    border: 1px solid #d8dce2;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+#welcomePage QLineEdit:focus, #welcomePage QComboBox:focus {
+    border: 1px solid #3a7bd5;
+}
+#welcomePrimary {
+    background-color: #3a7bd5;
+    color: #ffffff;
+    border: 1px solid #3a7bd5;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-weight: 600;
+}
+#welcomePrimary:hover {
+    background-color: #2f6bbd;
+    border-color: #2f6bbd;
+}
+#welcomePrimary:pressed {
+    background-color: #2a61ad;
+    border-color: #2a61ad;
+}
+#welcomePrimary:disabled {
+    background-color: #aac5e9;
+    border-color: #aac5e9;
+    color: #eef3fa;
+}
+#welcomeSecondary {
+    background-color: #ffffff;
+    color: #33373d;
+    border: 1px solid #d0d5dc;
+    border-radius: 8px;
+    padding: 9px 16px;
+}
+#welcomeSecondary:hover {
+    background-color: #f2f4f7;
+}
+#welcomeSecondary:pressed {
+    background-color: #e7eaef;
+}
+#welcomeSecondary:disabled {
+    color: #a0a4aa;
+    border-color: #e2e5ea;
+}
+#welcomeStatus {
+    color: #c0392b;
+    font-size: 12px;
+}
 """
 
 DARK_STYLESHEET = """
@@ -268,6 +346,84 @@ QSlider::handle:horizontal:hover {
 }
 #boardEditBar QLabel {
     color: #b8bbc0;
+}
+#welcomePage {
+    background-color: #1a1b1d;
+}
+#welcomeCard {
+    background-color: #26282b;
+    border: 1px solid #34373b;
+    border-radius: 16px;
+}
+#welcomeTitle {
+    color: #f2f3f5;
+    font-size: 24px;
+    font-weight: 600;
+}
+#welcomeSubtitle {
+    color: #9aa0a6;
+    font-size: 13px;
+}
+#welcomeFieldLabel {
+    color: #b8bcc2;
+    font-size: 12px;
+    font-weight: 600;
+}
+#welcomePage QCheckBox {
+    background-color: transparent;
+}
+#welcomePage QLineEdit, #welcomePage QComboBox {
+    background-color: #202124;
+    color: #e6e6e6;
+    border: 1px solid #3c3c3c;
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 13px;
+}
+#welcomePage QLineEdit:focus, #welcomePage QComboBox:focus {
+    border: 1px solid #3a7bd5;
+}
+#welcomePrimary {
+    background-color: #3a7bd5;
+    color: #ffffff;
+    border: 1px solid #3a7bd5;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-weight: 600;
+}
+#welcomePrimary:hover {
+    background-color: #4a8ae0;
+    border-color: #4a8ae0;
+}
+#welcomePrimary:pressed {
+    background-color: #2f6bbd;
+    border-color: #2f6bbd;
+}
+#welcomePrimary:disabled {
+    background-color: #33465e;
+    border-color: #33465e;
+    color: #8fa3ba;
+}
+#welcomeSecondary {
+    background-color: #2f3237;
+    color: #e6e6e6;
+    border: 1px solid #45484d;
+    border-radius: 8px;
+    padding: 9px 16px;
+}
+#welcomeSecondary:hover {
+    background-color: #3a3e44;
+}
+#welcomeSecondary:pressed {
+    background-color: #2a2d31;
+}
+#welcomeSecondary:disabled {
+    color: #6a6e73;
+    border-color: #3a3d41;
+}
+#welcomeStatus {
+    color: #ff6b6b;
+    font-size: 12px;
 }
 """
 

@@ -19,6 +19,7 @@ REGISTER_ENDPOINT = "/v1/accounts/register"
 LOGIN_ENDPOINT = "/v1/accounts/login"
 LOGOUT_ENDPOINT = "/v1/accounts/logout"
 ME_ENDPOINT = "/v1/accounts/me"
+RENAME_ENDPOINT = "/v1/accounts/rename"
 PACKS_ENDPOINT = "/v1/pay/packs"
 ORDERS_ENDPOINT = "/v1/pay/orders"
 
@@ -29,6 +30,7 @@ ACCOUNT_TIMEOUT = 30.0
 ERROR_KEYS = {
     "username_taken": "cloud_username_taken",
     "username_invalid": "cloud_username_invalid",
+    "username_unchanged": "cloud_username_unchanged",
     "password_too_short": "cloud_password_too_short",
     "bad_credentials": "cloud_bad_credentials",
     "missing_token": "cloud_signin_required",
@@ -172,6 +174,17 @@ def sign_out(server_url, token, language="zh-CN"):
 def fetch_account(server_url, token, language="zh-CN"):
     """Ask the server for the balance instead of trusting a cached number."""
     return _get(server_url, ME_ENDPOINT, token, language)
+
+
+def rename(server_url, token, username, language="zh-CN"):
+    """Change the login name. Costs credits; the server decides how many."""
+    return _post(
+        server_url,
+        RENAME_ENDPOINT,
+        {"username": username},
+        language,
+        token=token,
+    )
 
 
 def fetch_packs(server_url, language="zh-CN"):

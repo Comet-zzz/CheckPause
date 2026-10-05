@@ -29,8 +29,8 @@ from checkpause.config import (
 )
 from checkpause.core.engine import compact_analysis
 from checkpause.data.profile import (
+    clear_history,
     create_profile,
-    delete_profile,
     load_profile,
     set_board_theme,
     set_eval_depth,
@@ -39,23 +39,26 @@ from checkpause.data.profile import (
     set_piece_set,
     set_sound_set,
     set_theme,
+    set_username,
     update_profile,
 )
 from checkpause.data.settings import (
     MODE_CLOUD,
+    MODE_LOCAL,
     clear_account,
     get_account,
     get_api_config,
     save_account,
     save_api_config,
     save_balance,
+    set_ai_mode,
 )
 from checkpause.gui.dialogs import (
     api_settings_dialog,
     choose_language_dialog,
     cloud_account_dialog,
     confirm_close_dialog,
-    confirm_delete_dialog,
+    confirm_dialog,
     show_about,
     show_update_dialog,
 )
@@ -239,6 +242,7 @@ class MainWindow(QMainWindow):
         self.board.index_changed.connect(self.analysis_page.set_current_ply)
         self.chat_page.send_requested.connect(self._send_chat)
         self.chat_page.reset_requested.connect(self._reset_chat)
+        self.stats_page.history_cleared.connect(self._clear_history)
 
         self.tabs = QTabWidget()
         self.tabs.addTab(self.analysis_page, "")
@@ -296,12 +300,9 @@ class MainWindow(QMainWindow):
         self._act_cloud_account.triggered.connect(self._open_cloud_account)
         self._act_language = QAction(self)
         self._act_language.triggered.connect(self._change_language)
-        self._act_delete = QAction(self)
-        self._act_delete.triggered.connect(self._delete_profile)
         self._menu_settings.addAction(self._act_api_settings)
         self._menu_settings.addAction(self._act_cloud_account)
         self._menu_settings.addAction(self._act_language)
-        self._menu_settings.addAction(self._act_delete)
 
         self._menu_personalization = menubar.addMenu("")
 
@@ -389,7 +390,10 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentWidget(self._welcome)
         self._rail.set_active(None)
 
-    def _on_welcome_started(self, username, language):
+    def _on_welcome_started(self, result):
+        username = result.get("username") or "player"
+        language = result.get("language", "zh-CN")
+        mode = result.get("mode", MODE_LOCAL)
         self.profile = create_profile(username, language)
         self._language = language
         self._theme = self.profile.get("theme", LIGHT)
@@ -403,6 +407,18 @@ class MainWindow(QMainWindow):
         self._piece_actions[self._piece_set].setChecked(True)
         self._board_actions[self._board_theme].setChecked(True)
         self._sound_actions[self._sound_set].setChecked(True)
+        # The cloud account is the identity; offline just leaves it unset.
+        set_ai_mode(mode)
+        self._ai_mode = mode
+        account = result.get("account")
+        if account and account.get("token"):
+            save_account(
+                account.get("username", ""),
+                account["token"],
+                account.get("balance"),
+            )
+        self._account = get_account()
+        self._refresh_account_menu()
         self._apply_theme()
         self._apply_board_preferences()
         self._enter_main()
@@ -417,7 +433,6 @@ class MainWindow(QMainWindow):
         self._act_api_settings.setText(t("action_api_settings", self._language))
         self._refresh_account_menu()
         self._act_language.setText(t("action_change_language", self._language))
-        self._act_delete.setText(t("action_delete_data", self._language))
         self._act_check_update.setText(t("action_check_update", self._language))
         self._act_about.setText(t("action_about", self._language))
 
@@ -729,6 +744,16 @@ class MainWindow(QMainWindow):
         else:
             clear_account()
         self._account = get_account()
+        action = result.get("action", "")
+        if action in ("sign_in", "register"):
+            # Signing in is a choice to use the cloud tier; local stays one
+            # menu click away in API settings.
+            set_ai_mode(MODE_CLOUD)
+            self._ai_mode = MODE_CLOUD
+        elif action == "rename" and self.profile:
+            # The cloud name is the identity, so the local display follows it.
+            self.profile = set_username(self.profile, self._account.get("username", ""))
+            self._refresh_stats()
         self._refresh_account_menu()
 
     def _reset_chat(self):
@@ -884,38 +909,18 @@ class MainWindow(QMainWindow):
             self.profile = set_language(self.profile, chosen)
         self._retranslate()
 
-    def _delete_profile(self):
-        if not confirm_delete_dialog(self, self._language):
+    def _clear_history(self):
+        if not self.profile:
             return
-        delete_profile()
-        self.profile = None
-        self._theme = LIGHT
-        self._piece_set = DEFAULT_PIECE_SET
-        self._board_theme = DEFAULT_BOARD_THEME
-        self._sound_set = DEFAULT_SOUND_SET
-        self._hint_enabled = DEFAULT_HINT_ENABLED
-        self._eval_depth = DEFAULT_EVAL_DEPTH
-        self._eval_failed = False
-        self._stop_eval_worker()
-        self._act_light.setChecked(True)
-        self._piece_actions[DEFAULT_PIECE_SET].setChecked(True)
-        self._board_actions[DEFAULT_BOARD_THEME].setChecked(True)
-        self._sound_actions[DEFAULT_SOUND_SET].setChecked(True)
-        self._apply_theme()
-        self._apply_board_preferences()
-        self._messages = []
-        self._results = []
-        self._current_pgn = ""
-        self.board.clear()
-        self.analysis_page.clear()
-        self.analysis_page.set_accuracy(None)
-        self.analysis_page.set_progress(0)
-        self.chat_page.clear_history()
-        self.play_page.reset()
-        self.puzzle_page.reset()
-        self._module = "analysis"
+        if not confirm_dialog(
+            self,
+            self._language,
+            "stat_clear_history_title",
+            "stat_clear_history_text",
+        ):
+            return
+        self.profile = clear_history(self.profile)
         self._refresh_stats()
-        self._show_welcome()
 
     def closeEvent(self, event):
         if not confirm_close_dialog(self, self._language):

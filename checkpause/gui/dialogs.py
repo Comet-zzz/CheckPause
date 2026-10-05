@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QHBoxLayout,
+    QInputDialog,
     QLabel,
     QLineEdit,
     QMessageBox,
@@ -183,7 +184,7 @@ def cloud_account_dialog(parent, language, config=None):
     config = config or {}
     server_url = (config.get("server_url") or "").strip() or DEFAULT_SERVER_URL
     account = dict(config.get("account") or {})
-    changed = {"value": False}
+    changed = {"value": False, "action": ""}
     busy = {"worker": None}
 
     dialog = QDialog(parent)
@@ -212,6 +213,7 @@ def cloud_account_dialog(parent, language, config=None):
 
     sign_in_button = QPushButton(t("cloud_account_sign_in", language))
     register_button = QPushButton(t("cloud_account_register", language))
+    rename_button = QPushButton(t("cloud_account_rename", language))
     refresh_button = QPushButton(t("cloud_account_refresh", language))
     sign_out_button = QPushButton(t("cloud_account_sign_out", language))
     close_button = QPushButton(t("cloud_account_close", language))
@@ -236,6 +238,7 @@ def cloud_account_dialog(parent, language, config=None):
     for button in (
         sign_in_button,
         register_button,
+        rename_button,
         refresh_button,
         sign_out_button,
     ):
@@ -266,7 +269,7 @@ def cloud_account_dialog(parent, language, config=None):
     # A hidden input still leaves its label behind, which reads as a bug, so the
     # labels move with their fields.
     credential_labels = [(field, form.labelForField(field)) for field in credentials]
-    session_buttons = (refresh_button, sign_out_button)
+    session_buttons = (rename_button, refresh_button, sign_out_button)
     topup_widgets = (topup_label, pack_combo, buy_button, topup_status)
     everything = credentials + session_buttons + topup_widgets + (close_button, server_field)
 
@@ -346,11 +349,13 @@ def cloud_account_dialog(parent, language, config=None):
             return
 
         changed["value"] = True
+        changed["action"] = action
         account.update(
             {
                 "username": (result.get("account") or {}).get("username", ""),
                 "token": result.get("token", ""),
                 "balance": (result.get("account") or {}).get("balance"),
+                "rename_fee": (result.get("account") or {}).get("rename_fee"),
             }
         )
         finish()
@@ -363,6 +368,12 @@ def cloud_account_dialog(parent, language, config=None):
                     language,
                     username=account["username"],
                 ),
+            )
+        elif action == "rename":
+            QMessageBox.information(
+                dialog,
+                t("cloud_rename_title", language),
+                t("cloud_rename_done", language, username=account["username"]),
             )
         elif action == "me" and pack_combo.count() == 0 and signed_in():
             # The prices are the server's to decide; ask once per dialog.
@@ -436,6 +447,42 @@ def cloud_account_dialog(parent, language, config=None):
     def sign_out():
         run("sign_out", token=account.get("token", ""))
 
+    def rename():
+        if not signed_in():
+            return
+        new_name, ok = QInputDialog.getText(
+            dialog,
+            t("cloud_rename_title", language),
+            t("cloud_rename_prompt", language),
+        )
+        if not ok:
+            return
+        new_name = new_name.strip()
+        if not new_name:
+            return
+        fee = account.get("rename_fee") or 0
+        balance = account.get("balance")
+        if balance is not None and balance < fee:
+            QMessageBox.warning(
+                dialog,
+                t("cloud_rename_title", language),
+                t("cloud_rename_no_credit", language, fee=fee),
+            )
+            return
+        answer = QMessageBox.question(
+            dialog,
+            t("cloud_rename_title", language),
+            t(
+                "cloud_rename_fee",
+                language,
+                fee=fee,
+                balance=balance if balance is not None else "?",
+            ),
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        run("rename", token=account.get("token", ""), username=new_name)
+
     def buy():
         if pack_combo.count() == 0:
             return
@@ -466,6 +513,7 @@ def cloud_account_dialog(parent, language, config=None):
             return
         stop_polling()
         changed["value"] = True
+        changed["action"] = "order_status"
         account["balance"] = order.get("balance")
         topup_status.setText(t("cloud_topup_done", language, balance=order.get("balance")))
         show_status()
@@ -504,6 +552,7 @@ def cloud_account_dialog(parent, language, config=None):
 
     sign_in_button.clicked.connect(sign_in)
     register_button.clicked.connect(register)
+    rename_button.clicked.connect(rename)
     refresh_button.clicked.connect(lambda: run("me", token=account.get("token", "")))
     sign_out_button.clicked.connect(sign_out)
     buy_button.clicked.connect(buy)
@@ -515,13 +564,16 @@ def cloud_account_dialog(parent, language, config=None):
         run("me", token=account.get("token", ""))
 
     dialog.exec()
-    return account if changed["value"] else None
+    if not changed["value"]:
+        return None
+    return dict(account, action=changed["action"])
 
 
-def confirm_delete_dialog(parent, language="zh-CN"):
+def confirm_dialog(parent, language, title_key, text_key):
+    """A yes/no warning whose wording comes from two i18n keys."""
     box = QMessageBox(parent)
-    box.setWindowTitle(t("confirm_delete_title", language))
-    box.setText(t("confirm_delete_text", language))
+    box.setWindowTitle(t(title_key, language))
+    box.setText(t(text_key, language))
     box.setIcon(QMessageBox.Icon.Warning)
     yes_button = box.addButton(t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole)
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)

@@ -101,6 +101,15 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(len(updated["history"]), 1)
         self.assertEqual(updated["history"][0]["accuracy"], 88.0)
 
+    def test_clear_history_keeps_the_profile_but_forgets_games(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 88.0, "1. e4 e5")
+        cleared = profile.clear_history(created)
+        self.assertEqual(cleared["username"], "Tester")
+        self.assertEqual(cleared["total_games"], 0)
+        self.assertIsNone(cleared["latest_accuracy"])
+        self.assertEqual(cleared["history"], [])
+
     def test_delete_profile(self):
         profile.create_profile("Tester")
         self.assertTrue(profile.delete_profile())

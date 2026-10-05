@@ -1,7 +1,9 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QHBoxLayout,
     QHeaderView,
     QLabel,
+    QPushButton,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
@@ -15,6 +17,8 @@ from checkpause.i18n import t
 
 class StatsPage(QWidget):
     COLUMNS = ("hist_date", "hist_performance")
+
+    history_cleared = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -33,6 +37,13 @@ class StatsPage(QWidget):
         self._table.verticalHeader().setVisible(False)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
 
+        self._clear_button = QPushButton()
+        self._clear_button.setEnabled(False)
+        self._clear_button.clicked.connect(self.history_cleared.emit)
+        footer = QHBoxLayout()
+        footer.addStretch(1)
+        footer.addWidget(self._clear_button)
+
         layout = QVBoxLayout(self)
         layout.addWidget(self._username_label)
         layout.addWidget(self._total_label)
@@ -40,6 +51,7 @@ class StatsPage(QWidget):
         layout.addWidget(self._latest_label)
         layout.addWidget(self._empty_label)
         layout.addWidget(self._table, 1)
+        layout.addLayout(footer)
 
         self.retranslate(self._language)
 
@@ -47,6 +59,7 @@ class StatsPage(QWidget):
         if not profile:
             self._table.setRowCount(0)
             self._empty_label.setVisible(True)
+            self._clear_button.setEnabled(False)
             return
 
         self._username_label.setText(
@@ -78,6 +91,7 @@ class StatsPage(QWidget):
             self._table.setItem(row, 0, date_item)
             self._table.setItem(row, 1, rating_item)
         self._empty_label.setVisible(not history)
+        self._clear_button.setEnabled(bool(history))
 
     def _rating_text(self, accuracy):
         key = rating_key(accuracy)
@@ -89,3 +103,4 @@ class StatsPage(QWidget):
         self._language = language
         self._table.setHorizontalHeaderLabels([t(key, language) for key in self.COLUMNS])
         self._table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._clear_button.setText(t("stat_clear_history", language))

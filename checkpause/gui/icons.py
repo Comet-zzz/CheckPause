@@ -88,6 +88,12 @@ def rail_icon(theme, name, size=20):
     return icon
 
 
+@cache
+def app_logo(pixels):
+    """The app mark at one size, for the welcome card."""
+    return _pixmap("app_icon", pixels)
+
+
 @lru_cache(maxsize=1)
 def app_icon():
     """Window / taskbar icon, rendered at native sizes without re-tinting."""

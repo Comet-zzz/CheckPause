@@ -259,6 +259,40 @@ class AccountTests(unittest.TestCase):
         with mock.patch.object(cloud.httpx, "post", side_effect=httpx.ConnectError("refused")):
             cloud.sign_out("http://server", "tok")
 
+    def test_rename_posts_the_new_name_with_the_token(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["json"] = kwargs.get("json")
+            seen["headers"] = kwargs.get("headers")
+            return FakeResponse(200, body={"username": "renamed", "balance": 40})
+
+        with mock.patch.object(cloud.httpx, "post", capture):
+            account = cloud.rename("http://server/", "tok", "renamed")
+
+        self.assertEqual(seen["url"], "http://server/v1/accounts/rename")
+        self.assertEqual(seen["json"], {"username": "renamed"})
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
+        self.assertEqual(account["username"], "renamed")
+
+    def test_a_rename_without_credits_is_explained(self):
+        body = {
+            "detail": {
+                "code": "no_credits",
+                "message": "no",
+                "balance": 10,
+                "needed": 60,
+            }
+        }
+        with (
+            patched_post(FakeResponse(402, body=body)),
+            self.assertRaises(cloud.CloudRequestError) as caught,
+        ):
+            cloud.rename("http://server", "tok", "renamed")
+        self.assertEqual(caught.exception.code, "no_credits")
+        self.assertIn("CP积分", str(caught.exception))
+
 
 class TopUpTests(unittest.TestCase):
     def test_the_packs_come_from_the_server(self):
