@@ -1,10 +1,10 @@
 {
-  "latest": "1.8.4",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.8.4.exe",
+  "latest": "1.9.0",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.9.0.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.8.4.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.8.4-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.8.4-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.9.0.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.9.0-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.9.0-macOS-Intel.dmg"
   },
-  "notes": "实时分析升级为多主线、逐层加深，并新增数字评分；修复了吃子将军与终局音效等问题。"
+  "notes": "首启页改为云端账号登录/注册，也可离线使用；改名收费 60 CP积分，「删除数据」改为统计页删除历史。"
 }
