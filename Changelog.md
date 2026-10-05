@@ -1,3 +1,64 @@
+# v1.9.0 – Cloud Account Onboarding & History Reset
+
+> **首启页重做为云端账号引导：登录或注册云端账号，或直接进入离线模式；去掉本机昵称，改名收费 60 CP积分，「删除用户数据」改为统计页的「删除历史数据」。** 首次启动不再需要设置一个和账号无关的本机用户名。现在首启就是一个卡片式的账号页：用户名加密码即可注册或登录，成功后自动切到云端模式；网络不通时点「使用离线模式」即可进入（本机显示名为 player，联网后在设置里登录）。云端账号支持付费改名（60 CP积分）。原「设置 → 删除用户数据」入口移除，改为在统计面板删除对局历史。
+>
+> **The first-run page is now a cloud-account guide: sign in or sign up, or drop straight into offline mode. The separate local nickname is gone, renaming costs 60 CP credits, and "Delete user data" becomes "Delete history" in Statistics.** First launch no longer asks for a local username that had nothing to do with your account. It is now a card-based account page: enter a username and password to sign up or sign in, then the app switches to cloud mode. If the network is unavailable, choose "Offline mode" (the local name is player; sign in later from Settings). Cloud accounts can be renamed for 60 CP credits. The old "Delete user data" entry is gone, replaced by deleting game history from the Statistics panel.
+
+---
+
+## 🎯 What's New
+
+### ☁️ Cloud account on first launch
+- 首启页改为云端账号页：用户名 + 密码，注册或登录；成功后自动切到云端模式。
+- 网络不通时可「使用离线模式」：本地档案名为 `player`、走免费本地模式，联网后在「设置 → 云端账号」登录即可。
+- 卡片式界面：应用标志、标题层级、字段标签、主次按钮，浅色/深色主题都适配。
+
+- First launch is now a cloud-account page: username + password to sign up or sign in, then it switches to cloud mode.
+- When the network is unavailable, "Offline mode" continues as a local profile named `player` on the free local tier; sign in later from Settings > Cloud account.
+- A card layout with the app mark, a clear title hierarchy, field labels and primary/secondary buttons, in both light and dark themes.
+
+### ✏️ Paid username change
+- 「设置 → 云端账号」新增「修改用户名」，收费 **60 CP积分**；余额不足会先提示。
+- 费用由服务端决定（随账号返回 `rename_fee`），改费用无需重发客户端。
+
+- Settings > Cloud account gains "Change username" for **60 CP credits**; a short balance is caught before the request.
+- The price comes from the server (`rename_fee` on the account), so changing it needs no client release.
+
+### 🧹 Delete history, not the whole account
+- 移除「设置 → 删除用户数据」；统计面板底部新增「删除历史数据」，只清空对局历史与相关统计，保留账号与设置。
+- 顺带修好一个以前存在的bug：删档不会退出云端账号。
+
+- Removed Settings → Delete user data; Statistics now has "Delete history", which clears only the recorded games and their stats while keeping the profile.
+- This also fixes an old inconsistency: deleting the profile used to leave you signed in to the cloud account.
+
+## 🛠️ Full Changelog
+- feat(welcome): make the first launch a cloud-account page with an offline mode
+- feat(welcome): redesign the page as a themed card with the app logo
+- feat(account): charge a rename fee and add a Change username action
+- feat(server): add POST /v1/accounts/rename, charged in one transaction
+- feat(settings): switch to cloud mode after signing in
+- feat(stats): delete game history from the Statistics panel
+- refactor(profile): drop the separate local nickname entry
+- refactor(welcome): stop asking for a local username on first launch
+- chore(server): add CHECKPAUSE_RENAME_FEE_CREDITS (default 60)
+- chore(version): bump the app version to 1.9.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 首启不再设置本机昵称；离线用户本机显示名为 `player`。旧档案不受影响。
+- 云端账号改名收费 **60 CP积分**，且需要服务端升级到含 `/v1/accounts/rename` 的版本。
+- 「设置 → 删除用户数据」已移除，改用统计面板的「删除历史数据」。
+
+- First launch no longer sets a local nickname; offline users show as `player`. Existing profiles are unaffected.
+- Renaming a cloud account costs **60 CP credits** and needs a server that has `/v1/accounts/rename`.
+- Settings → Delete user data is gone; use Delete history in Statistics instead.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.4...v1.9.0
+
 # v1.8.4 – Multi-Line Live Analysis & Game-End Sounds
 
 > **实时分析升级为多主线、逐层加深，并新增数字评分；修复了音效的bug** 面板模式下，引擎常驻并一路加深，最多同时给出三条推荐着法，最优一条最粗、其余依次变细变淡，推荐会随深度变化；评估条旁新增数字评分。使盘面更美观符合逻辑。
