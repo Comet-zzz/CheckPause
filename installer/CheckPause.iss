@@ -54,6 +54,12 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 
+; Setup picks its language from the Windows UI language: the .isl files carry
+; LanguageID ($0804 simplified Chinese, $0409 English), so a Chinese Windows
+; installs in Chinese and every other language falls back to English (the
+; first [Languages] entry). The dialog only appears when nothing matches.
+ShowLanguageDialog=auto
+
 ; Close a running CheckPause so the update can overwrite its files.
 ; RestartApplications is off: the [Run] entry below already offers a launch,
 ; and restarting here would start a second copy.
@@ -66,6 +72,9 @@ OutputDir=..\dist
 OutputBaseFilename={#AppName}_Setup_{#AppVersion}
 
 [Languages]
+; English is listed first on purpose: it is the fallback for systems whose
+; language Setup cannot match (see ShowLanguageDialog above).
+Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Inno Setup does not bundle the Simplified Chinese translation, so it is kept
 ; in this repo (installer\languages\ChineseSimplified.isl). Official source:
 ; https://jrsoftware.org/files/istrans/  (maintained by Zhenghan Yang)
@@ -76,7 +85,6 @@ Name: "chinesesimplified"; MessagesFile: "languages\ChineseSimplified.isl"
 Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
   #endif
 #endif
-Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"

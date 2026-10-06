@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QLocale, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
@@ -88,6 +88,13 @@ MODULES = (
 )
 
 
+def _system_language():
+    """First-run language: Simplified Chinese on Chinese systems, else English."""
+    if QLocale.system().name().startswith("zh"):
+        return "zh-CN"
+    return "en-US"
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -95,7 +102,7 @@ class MainWindow(QMainWindow):
         if app is not None:
             app.setWindowIcon(app_icon())
         self.profile = load_profile()
-        self._language = (self.profile or {}).get("language", "zh-CN")
+        self._language = (self.profile or {}).get("language") or _system_language()
         self._theme = (self.profile or {}).get("theme", LIGHT)
         self._piece_set = (self.profile or {}).get("piece_set", DEFAULT_PIECE_SET)
         self._board_theme = (self.profile or {}).get("board_theme", DEFAULT_BOARD_THEME)

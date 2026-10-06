@@ -294,11 +294,10 @@ class BoardWidget(QWidget):
                 chess.PAWN: "piece_pawn",
             }[piece_type]
             color_key = "play_side_white" if color == chess.WHITE else "play_side_black"
-            button.setToolTip(t(color_key, language) + " " + t(name, language))
-        self._erase_button.setToolTip(t("edit_erase", language))
+            button.setAccessibleName(t(color_key, language) + " " + t(name, language))
+        self._erase_button.setAccessibleName(t("edit_erase", language))
         self._edit_turn_label.setText(t("edit_turn_label", language))
         self._castling_label.setText(t("edit_castling_label", language))
-        self._castling_label.setToolTip(t("edit_castling_hint", language))
         self._ep_label.setText(t("edit_ep_label", language))
         self._btn_edit_start.setText(t("btn_edit_start", language))
         self._btn_edit_empty.setText(t("btn_edit_empty", language))
@@ -1033,15 +1032,14 @@ class BoardWidget(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._btn_first.setToolTip(t("btn_first", language))
-        self._btn_prev.setToolTip(t("btn_prev", language))
-        self._btn_next.setToolTip(t("btn_next", language))
-        self._btn_last.setToolTip(t("btn_last", language))
-        self._btn_flip.setToolTip(t("btn_flip", language))
-        self._btn_edit.setToolTip(t("btn_edit_board", language))
+        self._btn_first.setAccessibleName(t("btn_first", language))
+        self._btn_prev.setAccessibleName(t("btn_prev", language))
+        self._btn_next.setAccessibleName(t("btn_next", language))
+        self._btn_last.setAccessibleName(t("btn_last", language))
+        self._btn_flip.setAccessibleName(t("btn_flip", language))
+        self._btn_edit.setAccessibleName(t("btn_edit_board", language))
         self._eval_check.setText(t("hint_toggle", language))
         self._eval_depth_label.setText(t("eval_depth", language))
-        self._eval_check.setToolTip(t("hint_toggle_hint", language))
         self._retranslate_edit_bar(language)
         self._canvas.place_eval_controls()
         self.render()

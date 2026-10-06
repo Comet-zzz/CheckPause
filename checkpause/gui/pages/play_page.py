@@ -2,7 +2,7 @@ import time
 
 import chess
 import chess.pgn
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -29,7 +29,6 @@ from checkpause.config import (
 from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
 from checkpause.core.play_session import PlaySession
-from checkpause.gui.icons import nav_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
@@ -56,6 +55,7 @@ class PlayPage(QWidget):
         self._engine_worker = None
         self._engine_error = None
         self._clock_active = "unset"
+        self._started = False
 
         self._clock_timer = QTimer(self)
         self._clock_timer.setInterval(CLOCK_TICK_MS)
@@ -79,7 +79,7 @@ class PlayPage(QWidget):
         layout.addWidget(splitter)
 
         self.retranslate(self._language)
-        self._new_game()
+        self._prepare_game()
 
     def _build_panel(self):
         panel = QWidget()
@@ -94,15 +94,23 @@ class PlayPage(QWidget):
         clock_row = QHBoxLayout()
         clock_row.addWidget(self._clock_white)
         clock_row.addStretch(1)
-        self._btn_pause = QPushButton()
-        self._btn_pause.setMinimumWidth(44)
-        self._btn_pause.setIconSize(QSize(18, 18))
-        self._btn_pause.clicked.connect(self._toggle_pause)
-        clock_row.addWidget(self._btn_pause)
-        clock_row.addStretch(1)
         clock_row.addWidget(self._clock_black)
         self._clock_row = QWidget()
         self._clock_row.setLayout(clock_row)
+
+        self._status_label = QLabel()
+        self._status_label.setWordWrap(True)
+
+        self._summary_label = QLabel()
+        self._summary_label.setWordWrap(True)
+        self._btn_leave = QPushButton()
+        self._btn_leave.clicked.connect(self._leave_game)
+        summary_row = QHBoxLayout()
+        summary_row.setContentsMargins(0, 0, 0, 0)
+        summary_row.addWidget(self._summary_label, 1)
+        summary_row.addWidget(self._btn_leave)
+        self._summary_row = QWidget()
+        self._summary_row.setLayout(summary_row)
 
         self._side_label = QLabel()
         self._side_combo = QComboBox()
@@ -131,48 +139,65 @@ class PlayPage(QWidget):
         self._endgame_combo = QComboBox()
         self._endgame_combo.currentIndexChanged.connect(self._on_endgame_changed)
 
-        self._btn_new = QPushButton()
-        self._btn_new.clicked.connect(self._new_game)
+        setup = QGridLayout()
+        setup.addWidget(self._side_label, 0, 0)
+        setup.addWidget(self._side_combo, 0, 1)
+        setup.addWidget(self._time_label, 0, 2)
+        setup.addWidget(self._time_combo, 0, 3)
+        setup.addWidget(self._level_label, 1, 0)
+        setup.addWidget(self._level_slider, 1, 1, 1, 2)
+        setup.addWidget(self._level_value, 1, 3)
+        setup.addWidget(self._opening_label, 2, 0)
+        setup.addWidget(self._opening_combo, 2, 1, 1, 3)
+        setup.addWidget(self._endgame_label, 3, 0)
+        setup.addWidget(self._endgame_combo, 3, 1, 1, 3)
+        self._btn_start = QPushButton()
+        self._btn_start.clicked.connect(self._start_game)
+        setup.addWidget(self._btn_start, 4, 0, 1, 4)
+
+        self._setup_section = QWidget()
+        setup_layout = QVBoxLayout(self._setup_section)
+        setup_layout.setContentsMargins(0, 0, 0, 0)
+        setup_layout.addLayout(setup)
+
+        self._btn_pause = QPushButton()
+        self._btn_pause.clicked.connect(self._toggle_pause)
         self._btn_undo = QPushButton()
         self._btn_undo.clicked.connect(self._undo)
         self._btn_resign = QPushButton()
         self._btn_resign.clicked.connect(self._resign)
+        self._btn_rematch = QPushButton()
+        self._btn_rematch.clicked.connect(self._rematch)
         self._btn_import = QPushButton()
         self._btn_import.clicked.connect(self._import_to_analysis)
 
-        controls = QGridLayout()
-        controls.addWidget(self._side_label, 0, 0)
-        controls.addWidget(self._side_combo, 0, 1)
-        controls.addWidget(self._time_label, 0, 2)
-        controls.addWidget(self._time_combo, 0, 3)
-        controls.addWidget(self._level_label, 1, 0)
-        controls.addWidget(self._level_slider, 1, 1, 1, 2)
-        controls.addWidget(self._level_value, 1, 3)
-        controls.addWidget(self._opening_label, 2, 0)
-        controls.addWidget(self._opening_combo, 2, 1, 1, 3)
-        controls.addWidget(self._endgame_label, 3, 0)
-        controls.addWidget(self._endgame_combo, 3, 1, 1, 3)
-        controls.addWidget(self._btn_new, 4, 0, 1, 2)
-        controls.addWidget(self._btn_import, 4, 2, 1, 2)
-
-        buttons = QHBoxLayout()
-        buttons.addWidget(self._btn_undo)
-        buttons.addWidget(self._btn_resign)
-
-        self._result_label = QLabel()
-        self._result_label.setWordWrap(True)
+        primary_actions = QHBoxLayout()
+        primary_actions.addWidget(self._btn_pause)
+        primary_actions.addWidget(self._btn_undo)
+        primary_actions.addWidget(self._btn_resign)
+        secondary_actions = QHBoxLayout()
+        secondary_actions.addWidget(self._btn_rematch)
+        secondary_actions.addWidget(self._btn_import)
+        actions = QVBoxLayout()
+        actions.setContentsMargins(0, 0, 0, 0)
+        actions.addLayout(primary_actions)
+        actions.addLayout(secondary_actions)
+        self._action_row = QWidget()
+        self._action_row.setLayout(actions)
 
         layout.addWidget(self._clock_row)
-        layout.addLayout(controls)
-        layout.addLayout(buttons)
+        layout.addWidget(self._status_label)
+        layout.addWidget(self._summary_row)
+        layout.addWidget(self._setup_section)
+        layout.addWidget(self._action_row)
         layout.addWidget(self._move_list, 1)
-        layout.addWidget(self._result_label)
         self.panel = panel
         return panel
 
-    def _new_game(self):
+    def _prepare_game(self):
         self._stop_engine_worker()
         self._engine_error = None
+        self._started = False
         endgame = self._selected_endgame()
         opening = None if endgame is not None else self._selected_opening()
         self._session.new_game(
@@ -186,14 +211,77 @@ class PlayPage(QWidget):
         self.board.set_paused(False)
         self.board.set_interactive(True, self._session.human_color)
         self._sync_views()
-        self._render_result()
-        self._update_pause_button()
-        self._update_buttons()
+        self._update_panel_state()
+
+    def _start_game(self):
+        if self._started:
+            return
+        self._started = True
+        self._update_panel_state()
         self._sync_clock_timer()
-        # Let the clock labels show the reset time right away.
-        self._update_clock_labels()
         if self._session.board.turn != self._session.human_color:
             self._start_engine()
+
+    def _leave_game(self):
+        session = self._session
+        if self._started and not session.game_over and session.can_undo():
+            answer = QMessageBox.question(
+                self,
+                t("app_title", self._language),
+                t("play_leave_confirm", self._language),
+            )
+            if answer != QMessageBox.StandardButton.Yes:
+                return
+        self._prepare_game()
+
+    def _rematch(self):
+        if not self._session.game_over:
+            return
+        self._prepare_game()
+        self._start_game()
+
+    def _update_panel_state(self):
+        self._setup_section.setVisible(not self._started)
+        self._summary_row.setVisible(self._started)
+        self._action_row.setVisible(self._started)
+        self._update_summary()
+        self._update_clock_labels()
+        self._update_buttons()
+
+    def _update_summary(self):
+        tier = t("play_level_" + play_rating_tier(self._level_rating), self._language)
+        side_key = (
+            "play_side_white" if self._session.human_color == chess.WHITE else "play_side_black"
+        )
+        parts = [
+            t(side_key, self._language),
+            t("play_time_" + self._time_control()["id"], self._language),
+            tier,
+        ]
+        if self._endgame_index > 0 and self._endgame_combo.count() > self._endgame_index:
+            parts.append(self._endgame_combo.currentText())
+        elif self._opening_index > 0 and self._opening_combo.count() > self._opening_index:
+            parts.append(self._opening_combo.currentText())
+        self._summary_label.setText(" · ".join(parts))
+
+    def _update_status(self):
+        session = self._session
+        thinking = self._engine_worker is not None and self._engine_worker.isRunning()
+        if session.result_kind is not None:
+            text = t("play_result_" + session.result_kind, self._language)
+        elif self._engine_error is not None:
+            text = t("play_engine_error", self._language, error=self._engine_error)
+        elif not self._started:
+            text = ""
+        elif session.paused:
+            text = t("play_status_paused", self._language)
+        elif thinking:
+            text = t("play_status_engine_thinking", self._language)
+        else:
+            text = t("play_status_your_turn", self._language)
+        self._status_label.setText(text)
+        self._status_label.setVisible(bool(text))
+        self._status_label.setStyleSheet("font-weight: bold;" if session.result_kind else "")
 
     def _sync_views(self, animate=False):
         moves = self._session.moves
@@ -225,18 +313,12 @@ class PlayPage(QWidget):
         return None
 
     def _sync_clock_timer(self):
-        if not self.isVisible() or not self._session.clock_should_run():
+        if not self.isVisible() or not self._started or not self._session.clock_should_run():
             self._clock_timer.stop()
             return
         if not self._clock_timer.isActive():
             self._session.start_clock(time.monotonic())
             self._clock_timer.start()
-
-    def _reset_clock(self):
-        self._session.set_time_control(self._time_control())
-        self._session.reset_clock(time.monotonic())
-        self._sync_clock_timer()
-        self._update_clock_labels()
 
     def _on_clock_tick(self):
         flagged = self._session.tick(time.monotonic())
@@ -244,14 +326,14 @@ class PlayPage(QWidget):
             self._session.timeout(flagged)
             self._clock_timer.stop()
             self.board.clear_selection()
-            self._render_result()
             self._update_buttons()
         self._update_clock_labels()
 
     def _update_clock_labels(self):
         session = self._session
-        self._clock_row.setVisible(session.clock_enabled)
-        if not session.clock_enabled:
+        visible = self._started and session.clock_enabled
+        self._clock_row.setVisible(visible)
+        if not visible:
             return
         active = (
             None if session.game_over or session.paused or not session.moves else session.board.turn
@@ -284,17 +366,15 @@ class PlayPage(QWidget):
     def _update_pause_button(self):
         paused = self._session.paused
         key = "play_resume" if paused else "play_pause"
-        tooltip_key = "play_resume_tooltip" if paused else "play_pause_tooltip"
-        icon_name = "resume" if paused else "pause"
-        self._btn_pause.setIcon(nav_icon(self._theme, icon_name))
-        self._btn_pause.setAccessibleName(t(key, self._language))
-        self._btn_pause.setToolTip(t(tooltip_key, self._language))
+        label = t(key, self._language)
+        self._btn_pause.setText(label)
+        self._btn_pause.setAccessibleName(label)
 
     def _on_time_changed(self, _index):
         time_id = self._time_combo.currentData()
-        if time_id:
+        if time_id and time_id != self._time_id:
             self._time_id = time_id
-            self._reset_clock()
+            self._prepare_game()
 
     def _on_opening_changed(self, index):
         if index < 0:
@@ -305,7 +385,7 @@ class PlayPage(QWidget):
             self._endgame_combo.setCurrentIndex(0)
             self._endgame_combo.blockSignals(False)
             self._endgame_index = 0
-        self._new_game()
+        self._prepare_game()
 
     def _on_endgame_changed(self, index):
         if index < 0:
@@ -316,14 +396,14 @@ class PlayPage(QWidget):
             self._opening_combo.setCurrentIndex(0)
             self._opening_combo.blockSignals(False)
             self._opening_index = 0
-        self._new_game()
+        self._prepare_game()
 
     def _on_side_changed(self, _index):
         color = self._side_combo.currentData()
         if color is None or color == self._session.human_color:
             return
         self._session.human_color = color
-        self._new_game()
+        self._prepare_game()
 
     def _on_level_changed(self, value):
         rating = clamp_play_rating(int(round(value / PLAY_RATING_STEP)) * PLAY_RATING_STEP)
@@ -336,18 +416,6 @@ class PlayPage(QWidget):
 
     def _update_level_display(self):
         self._level_value.setText(str(self._level_rating))
-        tier = t(
-            "play_level_" + play_rating_tier(self._level_rating),
-            self._language,
-        )
-        self._level_slider.setToolTip(
-            t(
-                "play_level_hint",
-                self._language,
-                tier=tier,
-                rating=self._level_rating,
-            )
-        )
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
@@ -375,6 +443,7 @@ class PlayPage(QWidget):
         self._push_move(move)
 
     def _push_move(self, move):
+        self._start_game()
         self._session.push(move)
         self._sync_clock_timer()
         self._sync_views(animate=True)
@@ -424,6 +493,7 @@ class PlayPage(QWidget):
         self._engine_error = error
         self._clock_timer.stop()
         self._update_clock_labels()
+        self._update_status()
         QMessageBox.warning(
             self,
             t("app_title", self._language),
@@ -443,7 +513,6 @@ class PlayPage(QWidget):
         self._clock_timer.stop()
         self._update_clock_labels()
         self.board.clear_selection()
-        self._render_result()
         self._update_buttons()
         return True
 
@@ -457,7 +526,6 @@ class PlayPage(QWidget):
         self._sync_views()
         self._sync_clock_timer()
         self._update_clock_labels()
-        self._render_result()
         self._update_buttons()
         if session.board.turn != session.human_color:
             self._start_engine()
@@ -469,44 +537,28 @@ class PlayPage(QWidget):
         self._clock_timer.stop()
         self._update_clock_labels()
         self.board.clear_selection()
-        self._render_result()
         self._update_buttons()
 
     def _import_to_analysis(self):
         if self._session.moves:
             self.analysis_requested.emit(self._pgn())
 
-    def _render_result(self):
-        if self._session.result_kind is None:
-            self._result_label.clear()
-        else:
-            self._result_label.setText(
-                t(
-                    "play_result_" + self._session.result_kind,
-                    self._language,
-                )
-            )
-
     def _update_buttons(self):
         session = self._session
         thinking = self._engine_worker is not None and self._engine_worker.isRunning()
         self._btn_undo.setEnabled(
-            session.can_undo() and not thinking and not session.game_over and not session.paused
+            self._started
+            and session.can_undo()
+            and not thinking
+            and not session.game_over
+            and not session.paused
         )
-        self._btn_resign.setEnabled(bool(session.moves) and not session.game_over)
-        self._btn_pause.setEnabled(not session.game_over and not thinking)
-        self._btn_import.setEnabled(bool(session.moves))
-        self._update_setup_controls()
-
-    def _update_setup_controls(self):
-        locked = self._session.can_undo()
-        for combo in (
-            self._side_combo,
-            self._time_combo,
-            self._opening_combo,
-            self._endgame_combo,
-        ):
-            combo.setEnabled(not locked)
+        self._btn_resign.setEnabled(self._started and bool(session.moves) and not session.game_over)
+        self._btn_pause.setEnabled(self._started and not session.game_over and not thinking)
+        self._btn_rematch.setVisible(session.game_over)
+        self._btn_import.setEnabled(self._started and bool(session.moves))
+        self._update_pause_button()
+        self._update_status()
 
     def set_theme(self, theme):
         self._theme = theme
@@ -552,7 +604,7 @@ class PlayPage(QWidget):
         if self._endgame_combo.count():
             self._endgame_combo.setCurrentIndex(0)
         self._endgame_combo.blockSignals(False)
-        self._new_game()
+        self._prepare_game()
 
     def _stop_engine_worker(self):
         worker = self._engine_worker
@@ -620,13 +672,15 @@ class PlayPage(QWidget):
         self._time_label.setText(t("play_time_label", language))
         self._opening_label.setText(t("play_opening_label", language))
         self._endgame_label.setText(t("play_endgame_label", language))
-        self._btn_new.setText(t("play_new_game", language))
+        self._btn_start.setText(t("play_start", language))
+        self._btn_leave.setText(t("play_leave_game", language))
+        self._btn_rematch.setText(t("play_new_game", language))
         self._btn_undo.setText(t("play_undo", language))
         self._btn_resign.setText(t("play_resign", language))
         self._btn_import.setText(t("play_import", language))
 
-        self._render_result()
         self._update_pause_button()
         self._update_level_display()
         self._update_clock_labels()
+        self._update_summary()
         self._update_buttons()

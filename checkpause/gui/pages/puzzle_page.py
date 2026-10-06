@@ -617,7 +617,7 @@ class PuzzlePage(QWidget):
         self._btn_hint.setText(t("puzzle_hint", language))
         self._btn_retry.setText(t("puzzle_retry", language))
         self._btn_jump.setText(t("puzzle_jump", language))
-        self._jump_edit.setToolTip(t("puzzle_jump_tip", language))
+        self._jump_edit.setAccessibleName(t("puzzle_jump_tip", language))
         for row in range(self._collection_list.count()):
             item = self._collection_list.item(row)
             collection_id = item.data(Qt.ItemDataRole.UserRole)

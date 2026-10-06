@@ -76,4 +76,3 @@ class ModuleRail(QWidget):
         for entry in self._modules.values():
             label = t(entry["label_key"], language)
             entry["button"].setText(label)
-            entry["button"].setToolTip(label)
