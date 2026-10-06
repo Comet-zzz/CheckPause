@@ -1,3 +1,55 @@
+# v1.9.1 – Play Screen Rework & System Language
+
+> **对弈页的界面逻辑重新梳理：配置与对局分开，信息层级更清晰、操作更顺手。安装包与首次启动按系统语言自动选中中文或英文，所有悬停提示一并删除。** 局中「退出本局」会先确认，改配置不再悄悄丢掉进行中的棋局。
+>
+> **The Play screen's layout logic has been reworked, separating setup from play with a clearer hierarchy and smoother controls. The installer and the first launch pick Chinese or English from the system language, and every hover tooltip is gone.** Leaving a game in progress now asks first, instead of a setting change silently discarding it.
+
+---
+
+## 🎯 What's New
+
+### ♟️ Play screen logic reworked
+- 重新梳理了对弈页的界面逻辑：配置与对局分开，开局前只管设置，开局后只保留对局需要的信息，层级更清晰。
+- 时钟、结果与操作按钮重新归位，暂停、悔棋、认输等操作更顺手。
+
+- Reworked the Play screen's layout logic: setup and play are now separate, so the panel only shows what the current step needs.
+- Clocks, the result and the action buttons are regrouped, making pausing, undoing and resigning feel natural.
+
+### 🈯 System language, on install and first launch
+- 安装包按 Windows 界面语言选向导语言：中文系统直接用中文，其它语言默认英文，只有无法识别时才弹选择框。
+- 首次启动的应用界面同样跟随系统语言（此前一律中文）；已有档案不受影响。
+
+- The installer picks its wizard language from the Windows UI language: Chinese on Chinese systems, English everywhere else, with a chooser only when nothing matches.
+- The first launch follows the system language as well (it used to always start in Chinese); existing profiles are unaffected.
+
+### 🧹 A quieter interface
+- 删除所有按钮的悬停提示气泡；纯图标按钮（棋盘导航、翻转、编辑棋子等）把文字移入读屏用的无障碍名称。
+
+- Every hover tooltip is gone; icon-only controls (board navigation, flip, piece palette) move their text into accessible names for screen readers.
+
+## 🛠️ Full Changelog
+- feat(play): split the Play screen into setup and playing states
+- feat(play): keep clocks and the result in a fixed header
+- feat(play): allow pausing without a clock and a rematch after the game
+- feat(play): confirm before leaving a game in progress
+- feat(installer): choose the wizard language from the Windows UI language
+- feat(startup): default the interface language to the system language
+- refactor(gui): drop every hover tooltip but keep accessible names
+- chore(i18n): simplify the turn and leave-game wording
+- chore(version): bump the app version to 1.9.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.9.0...v1.9.1
+
 # v1.9.0 – Cloud Account Onboarding & History Reset
 
 > **首启页重做为云端账号引导：登录或注册云端账号，或直接进入离线模式；去掉本机昵称，改名收费 60 CP积分，「删除用户数据」改为统计页的「删除历史数据」。** 首次启动不再需要设置一个和账号无关的本机用户名。现在首启就是一个卡片式的账号页：用户名加密码即可注册或登录，成功后自动切到云端模式；网络不通时点「使用离线模式」即可进入（本机显示名为 player，联网后在设置里登录）。云端账号支持付费改名（60 CP积分）。原「设置 → 删除用户数据」入口移除，改为在统计面板删除对局历史。
