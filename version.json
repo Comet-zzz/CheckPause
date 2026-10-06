@@ -1,10 +1,10 @@
 {
-  "latest": "1.9.0",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_1.9.0.exe",
+  "latest": "1.9.1",
+  "url": "http://43.108.99.244/download/CheckPause_Setup_1.9.1.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.9.0.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.9.0-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.9.0-macOS-Intel.dmg"
+    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_1.9.1.exe",
+    "macos-arm64": "http://43.108.99.244/download/CheckPause-1.9.1-macOS-M-series.dmg",
+    "macos-x86_64": "http://43.108.99.244/download/CheckPause-1.9.1-macOS-Intel.dmg"
   },
-  "notes": "首启页改为云端账号登录/注册，也可离线使用；改名收费 60 CP积分，「删除数据」改为统计页删除历史。"
+  "notes": "对弈页界面逻辑重新梳理，配置与对局分开；安装包与首次启动按系统语言自动选中中文或英文；删除所有悬停提示。"
 }
