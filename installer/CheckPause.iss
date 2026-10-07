@@ -54,6 +54,13 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 
+; Privacy policy / terms, shown once during installation (the accept page) and
+; never inside the running app. This English file is the fallback; each
+; [Languages] entry below overrides it with its own file, so a Simplified
+; Chinese Windows sees agreement.zh.txt and everything else sees the English
+; one. The Chinese file is UTF-8 with BOM so the text renders on every locale.
+LicenseFile=agreement.en.txt
+
 ; Setup picks its language from the Windows UI language: the .isl files carry
 ; LanguageID ($0804 simplified Chinese, $0409 English), so a Chinese Windows
 ; installs in Chinese and every other language falls back to English (the
@@ -73,16 +80,19 @@ OutputBaseFilename={#AppName}_Setup_{#AppVersion}
 
 [Languages]
 ; English is listed first on purpose: it is the fallback for systems whose
-; language Setup cannot match (see ShowLanguageDialog above).
-Name: "english"; MessagesFile: "compiler:Default.isl"
+; language Setup cannot match (see ShowLanguageDialog above). Each entry points
+; at the agreement in that language, so the accept page follows the detected UI
+; language: Simplified Chinese Windows get the Chinese text, all others the
+; English one.
+Name: "english"; MessagesFile: "compiler:Default.isl"; LicenseFile: "agreement.en.txt"
 ; Inno Setup does not bundle the Simplified Chinese translation, so it is kept
 ; in this repo (installer\languages\ChineseSimplified.isl). Official source:
 ; https://jrsoftware.org/files/istrans/  (maintained by Zhenghan Yang)
 #ifdef ChineseIslBundled
-Name: "chinesesimplified"; MessagesFile: "languages\ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "languages\ChineseSimplified.isl"; LicenseFile: "agreement.zh.txt"
 #else
   #ifdef ChineseIslCompiler
-Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
+Name: "chinesesimplified"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"; LicenseFile: "agreement.zh.txt"
   #endif
 #endif
 

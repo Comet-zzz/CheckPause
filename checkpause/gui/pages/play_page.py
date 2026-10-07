@@ -2,7 +2,7 @@ import time
 
 import chess
 import chess.pgn
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QGridLayout,
@@ -29,6 +29,7 @@ from checkpause.config import (
 from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
 from checkpause.core.play_session import PlaySession
+from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
@@ -78,8 +79,20 @@ class PlayPage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(splitter)
 
+        self._apply_icons()
         self.retranslate(self._language)
         self._prepare_game()
+
+    def _apply_icons(self):
+        for button, name, on_accent in (
+            (self._btn_start, "play", True),
+            (self._btn_undo, "undo", False),
+            (self._btn_rematch, "reset", False),
+            (self._btn_import, "import", False),
+        ):
+            button.setIcon(action_icon(self._theme, name, on_accent=on_accent))
+            button.setIconSize(QSize(16, 16))
+        self._update_pause_button()
 
     def _build_panel(self):
         panel = QWidget()
@@ -90,7 +103,9 @@ class PlayPage(QWidget):
         for clock in (self._clock_white, self._clock_black):
             clock_font = clock.font()
             clock_font.setPointSize(clock_font.pointSize() + 2)
+            clock_font.setBold(True)
             clock.setFont(clock_font)
+            clock.setProperty("clockActive", False)
         clock_row = QHBoxLayout()
         clock_row.addWidget(self._clock_white)
         clock_row.addStretch(1)
@@ -140,6 +155,8 @@ class PlayPage(QWidget):
         self._endgame_combo.currentIndexChanged.connect(self._on_endgame_changed)
 
         setup = QGridLayout()
+        setup.setHorizontalSpacing(10)
+        setup.setVerticalSpacing(10)
         setup.addWidget(self._side_label, 0, 0)
         setup.addWidget(self._side_combo, 0, 1)
         setup.addWidget(self._time_label, 0, 2)
@@ -152,12 +169,14 @@ class PlayPage(QWidget):
         setup.addWidget(self._endgame_label, 3, 0)
         setup.addWidget(self._endgame_combo, 3, 1, 1, 3)
         self._btn_start = QPushButton()
+        self._btn_start.setObjectName("primaryButton")
         self._btn_start.clicked.connect(self._start_game)
         setup.addWidget(self._btn_start, 4, 0, 1, 4)
 
         self._setup_section = QWidget()
+        self._setup_section.setObjectName("panelCard")
         setup_layout = QVBoxLayout(self._setup_section)
-        setup_layout.setContentsMargins(0, 0, 0, 0)
+        setup_layout.setContentsMargins(14, 14, 14, 14)
         setup_layout.addLayout(setup)
 
         self._btn_pause = QPushButton()
@@ -165,6 +184,7 @@ class PlayPage(QWidget):
         self._btn_undo = QPushButton()
         self._btn_undo.clicked.connect(self._undo)
         self._btn_resign = QPushButton()
+        self._btn_resign.setObjectName("dangerButton")
         self._btn_resign.clicked.connect(self._resign)
         self._btn_rematch = QPushButton()
         self._btn_rematch.clicked.connect(self._rematch)
@@ -281,7 +301,12 @@ class PlayPage(QWidget):
             text = t("play_status_your_turn", self._language)
         self._status_label.setText(text)
         self._status_label.setVisible(bool(text))
-        self._status_label.setStyleSheet("font-weight: bold;" if session.result_kind else "")
+        self._set_property(self._status_label, "emphasis", bool(session.result_kind))
+
+    def _set_property(self, widget, name, value):
+        widget.setProperty(name, value)
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
 
     def _sync_views(self, animate=False):
         moves = self._session.moves
@@ -350,7 +375,7 @@ class PlayPage(QWidget):
                 f"{PlaySession.format_clock(session.clock_remaining[color])}"
             )
             if active_changed:
-                label.setStyleSheet("font-weight: bold;" if color == active else "color: #8a8a8a;")
+                self._set_property(label, "clockActive", color == active)
 
     def _toggle_pause(self):
         self._session.toggle_pause()
@@ -369,6 +394,8 @@ class PlayPage(QWidget):
         label = t(key, self._language)
         self._btn_pause.setText(label)
         self._btn_pause.setAccessibleName(label)
+        self._btn_pause.setIcon(action_icon(self._theme, "resume" if paused else "pause"))
+        self._btn_pause.setIconSize(QSize(16, 16))
 
     def _on_time_changed(self, _index):
         time_id = self._time_combo.currentData()
@@ -564,7 +591,7 @@ class PlayPage(QWidget):
         self._theme = theme
         self.board.set_theme(theme)
         self._move_list.set_theme(theme)
-        self._update_pause_button()
+        self._apply_icons()
 
     def set_piece_set(self, name):
         self.board.set_piece_set(name)

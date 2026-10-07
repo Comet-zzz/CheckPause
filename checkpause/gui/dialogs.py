@@ -18,8 +18,10 @@ from PySide6.QtWidgets import (
 from checkpause import APP_VERSION, AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
 from checkpause.data.settings import (
     DEFAULT_SERVER_URL,
-    MODE_CLOUD,
     MODE_LOCAL,
+    get_api_key,
+    get_base_url,
+    get_model,
 )
 from checkpause.gui.workers import AccountWorker
 from checkpause.i18n import t
@@ -57,32 +59,24 @@ def choose_language_dialog(parent, current="zh-CN"):
     return None
 
 
-def api_settings_dialog(parent, language, config=None):
-    config = config or {}
+def api_settings_dialog(parent, language):
+    """The bring-your-own-key path.
+
+    The cloud account is the ordinary way in and has its own menu entry; this
+    dialog is the advanced option for a user who has their own key. It asks for
+    the key, the endpoint and the model, all of them the user's to choose: the
+    app ships no provider and suggests no address. Saving is also choosing to
+    run against what was entered, which is why the result carries the local
+    mode.
+    """
     dialog = QDialog(parent)
     dialog.setWindowTitle(t("api_settings_title", language))
     dialog.setMinimumWidth(520)
 
-    hint = QLabel(t("api_settings_hint", language))
-    hint.setWordWrap(True)
-
-    mode_combo = QComboBox()
-    mode_combo.addItem(t("mode_local", language), MODE_LOCAL)
-    mode_combo.addItem(t("mode_cloud", language), MODE_CLOUD)
-    if config.get("mode") == MODE_CLOUD:
-        mode_combo.setCurrentIndex(1)
-
-    mode_hint = QLabel()
-    mode_hint.setWordWrap(True)
-
-    server_field = QLineEdit()
-    server_field.setPlaceholderText("http://...")
-    server_field.setText(config.get("server_url", "") or "")
-
     key_field = QLineEdit()
     key_field.setEchoMode(QLineEdit.EchoMode.Password)
     key_field.setPlaceholderText(t("api_key_placeholder", language))
-    key_field.setText(config.get("api_key", "") or "")
+    key_field.setText(get_api_key())
 
     show_toggle = QCheckBox(t("api_key_show", language))
     show_toggle.toggled.connect(
@@ -92,65 +86,47 @@ def api_settings_dialog(parent, language, config=None):
     )
 
     base_field = QLineEdit()
-    base_field.setPlaceholderText(t("api_base_url_placeholder", language))
-    base_field.setText(config.get("base_url", "") or "")
+    base_field.setText(get_base_url())
 
     model_field = QLineEdit()
-    model_field.setPlaceholderText(t("api_model_placeholder", language))
-    model_field.setText(config.get("model", "") or "")
+    model_field.setText(get_model())
 
     form = QFormLayout()
     form.setHorizontalSpacing(16)
     form.setVerticalSpacing(10)
-    form.addRow(t("ai_mode_label", language), mode_combo)
-    form.addRow("", mode_hint)
-    form.addRow(t("server_url_label", language), server_field)
     form.addRow(t("api_key_label", language), key_field)
     form.addRow("", show_toggle)
     form.addRow(t("api_base_url_label", language), base_field)
     form.addRow(t("api_model_label", language), model_field)
 
-    # The provider fields belong to local mode only, so in cloud mode they are
-    # hidden rather than greyed out: they have no meaning there, and leaving
-    # them on screen would only invite a pointless edit.
-    provider_fields = (key_field, show_toggle, base_field, model_field)
-    provider_rows = [(field, form.labelForField(field)) for field in provider_fields]
-
-    def refresh_mode():
-        """Show only the fields the chosen mode actually needs."""
-        cloud = mode_combo.currentData() == MODE_CLOUD
-        mode_hint.setText(t("mode_cloud_hint" if cloud else "mode_local_hint", language))
-        hint.setVisible(not cloud)
-        for field, label in provider_rows:
-            field.setVisible(not cloud)
-            field.setEnabled(not cloud)
-            if label is not None:
-                label.setVisible(not cloud)
-        server_field.setEnabled(cloud)
-
-    mode_combo.currentIndexChanged.connect(refresh_mode)
-    refresh_mode()
-
     buttons = QDialogButtonBox(
         QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
     )
-    buttons.button(QDialogButtonBox.StandardButton.Ok).setText(t("btn_yes", language))
+    ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
+    ok_button.setText(t("btn_yes", language))
+    ok_button.setObjectName("primaryButton")
     buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("btn_no", language))
 
     def on_accept():
-        if mode_combo.currentData() == MODE_CLOUD:
-            if not server_field.text().strip():
-                QMessageBox.warning(
-                    dialog,
-                    t("api_settings_title", language),
-                    t("server_url_empty", language),
-                )
-                return
-        elif not key_field.text().strip():
+        if not key_field.text().strip():
             QMessageBox.warning(
                 dialog,
                 t("api_settings_title", language),
                 t("api_key_empty", language),
+            )
+            return
+        if not base_field.text().strip():
+            QMessageBox.warning(
+                dialog,
+                t("api_settings_title", language),
+                t("api_base_url_empty", language),
+            )
+            return
+        if not model_field.text().strip():
+            QMessageBox.warning(
+                dialog,
+                t("api_settings_title", language),
+                t("api_model_empty", language),
             )
             return
         dialog.accept()
@@ -159,14 +135,12 @@ def api_settings_dialog(parent, language, config=None):
     buttons.rejected.connect(dialog.reject)
 
     layout = QVBoxLayout(dialog)
-    layout.addWidget(hint)
     layout.addLayout(form)
     layout.addWidget(buttons)
 
     if dialog.exec() == QDialog.DialogCode.Accepted:
         return {
-            "mode": mode_combo.currentData(),
-            "server_url": server_field.text().strip(),
+            "mode": MODE_LOCAL,
             "api_key": key_field.text().strip(),
             "base_url": base_field.text().strip(),
             "model": model_field.text().strip(),
@@ -212,6 +186,7 @@ def cloud_account_dialog(parent, language, config=None):
     status.setWordWrap(True)
 
     sign_in_button = QPushButton(t("cloud_account_sign_in", language))
+    sign_in_button.setObjectName("primaryButton")
     register_button = QPushButton(t("cloud_account_register", language))
     rename_button = QPushButton(t("cloud_account_rename", language))
     refresh_button = QPushButton(t("cloud_account_refresh", language))
@@ -222,6 +197,7 @@ def cloud_account_dialog(parent, language, config=None):
     # packs it offers and then hands the browser over to the payment page.
     pack_combo = QComboBox()
     buy_button = QPushButton(t("cloud_topup_buy", language))
+    buy_button.setObjectName("primaryButton")
     topup_label = QLabel(t("cloud_topup_label", language))
     topup_status = QLabel()
     topup_status.setWordWrap(True)
@@ -375,6 +351,10 @@ def cloud_account_dialog(parent, language, config=None):
                 t("cloud_rename_title", language),
                 t("cloud_rename_done", language, username=account["username"]),
             )
+        elif action == "sign_out":
+            # A logout ends the dialog rather than leaving the user on a
+            # just-emptied form; the window then returns to the sign-in screen.
+            dialog.accept()
         elif action == "me" and pack_combo.count() == 0 and signed_in():
             # The prices are the server's to decide; ask once per dialog.
             run("packs")
@@ -576,6 +556,7 @@ def confirm_dialog(parent, language, title_key, text_key):
     box.setText(t(text_key, language))
     box.setIcon(QMessageBox.Icon.Warning)
     yes_button = box.addButton(t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole)
+    yes_button.setObjectName("dangerButton")
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
     return box.clickedButton() is yes_button
@@ -587,6 +568,7 @@ def confirm_close_dialog(parent, language="zh-CN"):
     box.setText(t("confirm_close_text", language))
     box.setIcon(QMessageBox.Icon.Question)
     yes_button = box.addButton(t("btn_yes", language), QMessageBox.ButtonRole.AcceptRole)
+    yes_button.setObjectName("primaryButton")
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
     return box.clickedButton() is yes_button
@@ -619,11 +601,11 @@ def show_about(parent, language):
 
     pieces = QLabel(t("about_pieces", language))
     pieces.setWordWrap(True)
-    pieces.setStyleSheet("color: #8a8a8a;")
+    pieces.setObjectName("mutedLabel")
 
     puzzles = QLabel(t("about_puzzles", language))
     puzzles.setWordWrap(True)
-    puzzles.setStyleSheet("color: #8a8a8a;")
+    puzzles.setObjectName("mutedLabel")
 
     buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
     buttons.button(QDialogButtonBox.StandardButton.Close).setText(t("about_close", language))
@@ -661,6 +643,7 @@ def show_update_dialog(parent, language, info):
         box.setInformativeText(info.notes)
 
     download = box.addButton(t("update_download", language), QMessageBox.ButtonRole.AcceptRole)
+    download.setObjectName("primaryButton")
     box.addButton(t("update_later", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
 

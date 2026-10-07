@@ -119,9 +119,12 @@ class WelcomePage(QWidget):
         card_layout.addWidget(self._status)
         card_layout.addSpacing(10)
 
+        self._register.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        card_layout.addWidget(self._register)
+
         buttons = QHBoxLayout()
         buttons.setSpacing(8)
-        for button in (self._register, self._sign_in, self._offline):
+        for button in (self._sign_in, self._offline):
             button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
             buttons.addWidget(button)
         card_layout.addLayout(buttons)

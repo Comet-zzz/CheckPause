@@ -1,4 +1,4 @@
-from PySide6.QtCore import Signal
+from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
     QHBoxLayout,
@@ -12,6 +12,8 @@ from PySide6.QtWidgets import (
 )
 
 from checkpause.core.rating import rating_key
+from checkpause.gui.icons import action_icon
+from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.i18n import t
 
@@ -26,6 +28,7 @@ class AnalysisPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
+        self._theme = LIGHT
 
         self._editor = QPlainTextEdit()
         self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
@@ -50,12 +53,14 @@ class AnalysisPage(QWidget):
         self._btn_toggle = QPushButton()
         self._btn_toggle.clicked.connect(self._toggle_view)
         self._btn_analyze = QPushButton()
+        self._btn_analyze.setObjectName("primaryButton")
         self._btn_analyze.clicked.connect(self._on_analyze)
         self._btn_stop = QPushButton()
         self._btn_stop.setEnabled(False)
         self._btn_stop.clicked.connect(self.stop_requested.emit)
 
         button_row = QHBoxLayout()
+        button_row.setSpacing(6)
         button_row.addWidget(self._btn_open)
         button_row.addWidget(self._btn_clear)
         button_row.addWidget(self._btn_toggle)
@@ -66,10 +71,13 @@ class AnalysisPage(QWidget):
         self._progress = QProgressBar()
         self._progress.setRange(0, 100)
         self._progress.setValue(0)
+        self._progress.setTextVisible(False)
 
         self._accuracy_label = QLabel()
+        self._accuracy_label.setObjectName("accuracyLabel")
         self._accuracy_label.setVisible(False)
         self._status_label = QLabel()
+        self._status_label.setObjectName("mutedLabel")
         self._status_label.setWordWrap(True)
 
         layout = QVBoxLayout(self)
@@ -79,6 +87,7 @@ class AnalysisPage(QWidget):
         layout.addWidget(self._accuracy_label)
         layout.addWidget(self._status_label)
 
+        self._apply_icons()
         self.retranslate(self._language)
 
     def pgn_text(self):
@@ -108,7 +117,21 @@ class AnalysisPage(QWidget):
         self.show_editor()
 
     def set_theme(self, theme):
+        self._theme = theme
         self._move_list.set_theme(theme)
+        self._apply_icons()
+
+    def _apply_icons(self):
+        for button, name in (
+            (self._btn_open, "open"),
+            (self._btn_clear, "trash"),
+            (self._btn_stop, "stop"),
+        ):
+            button.setIcon(action_icon(self._theme, name))
+            button.setIconSize(QSize(16, 16))
+        self._btn_analyze.setIcon(action_icon(self._theme, "analyze", on_accent=True))
+        self._btn_analyze.setIconSize(QSize(16, 16))
+        self._update_toggle()
 
     def set_progress(self, percent):
         self._progress.setValue(percent)
@@ -150,6 +173,9 @@ class AnalysisPage(QWidget):
         key = "btn_edit_pgn" if in_list else "btn_show_moves"
         self._btn_toggle.setText(t(key, self._language))
         self._btn_toggle.setEnabled(in_list or bool(self.pgn_text()))
+        name = "edit" if in_list else "list"
+        self._btn_toggle.setIcon(action_icon(self._theme, name))
+        self._btn_toggle.setIconSize(QSize(16, 16))
 
     def _on_analyze(self):
         text = self.pgn_text()

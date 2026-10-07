@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from checkpause import APP_VERSION
 from checkpause.assets import (
     BOARD_THEMES,
     DEFAULT_BOARD_THEME,
@@ -27,6 +28,7 @@ from checkpause.config import (
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
+from checkpause.core import collect
 from checkpause.core.engine import compact_analysis
 from checkpause.data.profile import (
     clear_history,
@@ -150,10 +152,12 @@ class MainWindow(QMainWindow):
         shell_layout.addWidget(self._stack, 1)
         self.setCentralWidget(shell)
 
-        if self.profile:
-            self._enter_main()
-        else:
+        # A cloud profile with no account was logged out, so open on the
+        # sign-in screen rather than the main view.
+        if not self.profile or self._is_signed_out_cloud():
             self._show_welcome()
+        else:
+            self._enter_main()
 
         self._apply_theme()
         self._apply_board_preferences()
@@ -389,6 +393,10 @@ class MainWindow(QMainWindow):
         self._retranslate()
         self._refresh_stats()
         self._ensure_eval_worker()
+
+    def _is_signed_out_cloud(self):
+        """True when cloud was chosen but no account is signed in any more."""
+        return self._ai_mode == MODE_CLOUD and not self._account.get("token")
 
     def _show_welcome(self):
         self.setWindowTitle(t("app_title", self._language))
@@ -658,6 +666,20 @@ class MainWindow(QMainWindow):
         self._chat_worker.start()
 
     def _on_chat_done(self, full_reply):
+        if self._ai_mode == MODE_LOCAL:
+            # A local reply never reaches the server, so a de-identified copy is
+            # offered for training unless the user has turned that off. The first
+            # two entries are the system prompt and the game material, which the
+            # sample carries separately, so only the conversation is passed on.
+            collect.maybe_send_local_sample(
+                self._server_url,
+                self._current_pgn,
+                self._current_analysis,
+                self._messages[2:],
+                full_reply,
+                self._language,
+                APP_VERSION,
+            )
         self._messages.append({"role": "assistant", "content": full_reply})
 
     def _on_chat_failed(self, error):
@@ -752,6 +774,13 @@ class MainWindow(QMainWindow):
             clear_account()
         self._account = get_account()
         action = result.get("action", "")
+        if action == "sign_out":
+            # Logging out is a full logout: go back to the sign-in screen the
+            # app started on, instead of leaving the user in the main view with
+            # no account behind it.
+            self._refresh_account_menu()
+            self._show_welcome()
+            return
         if action in ("sign_in", "register"):
             # Signing in is a choice to use the cloud tier; local stays one
             # menu click away in API settings.
@@ -889,7 +918,7 @@ class MainWindow(QMainWindow):
             worker.deleteLater()
 
     def _open_api_settings(self):
-        result = api_settings_dialog(self, self._language, get_api_config())
+        result = api_settings_dialog(self, self._language)
         if not result:
             return
         save_api_config(
@@ -897,10 +926,8 @@ class MainWindow(QMainWindow):
             result["base_url"],
             result["model"],
             mode=result["mode"],
-            server_url=result["server_url"],
         )
         self._ai_mode = result["mode"]
-        self._server_url = result["server_url"]
         QMessageBox.information(
             self,
             t("api_settings_title", self._language),

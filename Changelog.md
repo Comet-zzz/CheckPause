@@ -1,3 +1,58 @@
+# v2.0.0 – Interface Overhaul & Smoother Flows
+
+> **一次整体性的界面重做：重新梳理了配色、图标与各页面的布局层级，外观更统一、更耐看，日常操作也更顺手；同时更新了安全与隐私相关的说明。**
+>
+> **A full interface overhaul: colour, icons and the layout hierarchy across every screen have been reworked for a more consistent, comfortable look and smoother everyday use, alongside updated security and privacy terms.**
+
+---
+
+## 🎯 What's New
+
+### 🎨 Refreshed look and feel
+- 重新设计并统一了全局配色与视觉样式，浅色与深色主题一并调整，各页面观感更一致。
+- 重绘图标体系，按钮、侧栏与状态提示风格统一，信息一眼可辨。
+- 打磨了卡片、留白与排版细节，界面更整洁。
+
+- Redesigned and unified the global colour scheme and visual style, reworking the light and dark themes together so every screen looks consistent.
+- Redrew the icon set so buttons, the side rail and status hints share one language and read at a glance.
+- Polished cards, spacing and typography for a cleaner surface.
+
+### 🧭 Smoother use of the app
+- 重新梳理了主要页面的布局与信息层级，常用操作的位置更符合直觉。
+- 面板、对弈、题库与统计之间的切换和状态保持一致，交互反馈更明确。
+- 打磨了若干细节交互，减少多余步骤。
+
+- Reworked the layout and information hierarchy of the main pages so common actions sit where they are expected.
+- Kept the switching and state between Panel, Play, Puzzles and Statistics consistent, with clearer feedback.
+- Polished a number of small interactions to cut out unnecessary steps.
+
+### 🔐 Security & privacy
+- 更新了安装协议与隐私政策，相关条款更加明确。
+- 加强了数据处理与运行安全方面的工作。
+
+- Updated the installation agreement and the privacy policy, with clearer terms.
+- Strengthened the handling of data and the security of day-to-day operation.
+
+## 🛠️ Full Changelog
+- feat(gui): overhaul the colour scheme and visual style across screens
+- feat(gui): redraw the icon set and unify light and dark themes
+- refactor(gui): streamline the layout and information hierarchy on the main pages
+- chore(gui): polish cards, spacing and typography
+- chore(security): update the installation agreement and privacy policy
+- chore(version): bump the app version to 2.0.0
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.9.1...v2.0.0
+
 # v1.9.1 – Play Screen Rework & System Language
 
 > **对弈页的界面逻辑重新梳理：配置与对局分开，信息层级更清晰、操作更顺手。安装包与首次启动按系统语言自动选中中文或英文，所有悬停提示一并删除。** 局中「退出本局」会先确认，改配置不再悄悄丢掉进行中的棋局。

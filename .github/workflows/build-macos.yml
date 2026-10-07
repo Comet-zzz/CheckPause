@@ -84,6 +84,11 @@ jobs:
           stage="$(mktemp -d)"
           cp -R dist/CheckPause.app "$stage/"
           ln -s /Applications "$stage/Applications"
+          # macOS has no install-time accept page and no language picker, so
+          # both language versions travel in the disk image next to the app and
+          # are what "installing" agrees to.
+          cp installer/agreement.zh.txt "$stage/CheckPause-Agreement-zh.txt"
+          cp installer/agreement.en.txt "$stage/CheckPause-Agreement-en.txt"
           hdiutil create -volname CheckPause -srcfolder "$stage" -ov -format UDZO "dist/${name}.dmg"
           echo "path=dist/${name}.dmg" >> "$GITHUB_OUTPUT"
 

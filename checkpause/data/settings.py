@@ -1,20 +1,28 @@
 import json
 import os
+import secrets
 
 from checkpause.data.paths import SETTINGS_FILE, ensure_data_dir
 
-DEFAULT_BASE_URL = "https://api.deepseek.com"
-DEFAULT_MODEL = "deepseek-flash"
-
-# Where the paid tier sends its requests. The client only ever sends raw
-# material here; the tuned prompt stays on the server.
-DEFAULT_SERVER_URL = "https://checkpause.com"
+# No provider is baked in: the local tier is whatever the user configures. The
+# endpoint and the model have no default on purpose, so nothing here points at a
+# particular service.
 
 # The plain-HTTP IP this used before the domain existed. An install may have
 # saved it verbatim when the settings dialog was opened; treat it as "unset" so
 # upgrading moves to HTTPS instead of staying pinned to the old address. A
 # genuinely custom address is left alone.
 LEGACY_SERVER_URLS = ("http://43.108.99.244",)
+
+# Address and model an earlier version pre-filled on the user's behalf. They are
+# treated as "unset" too, so after an upgrade the dialog opens empty instead of
+# showing a provider the user never chose. A value the user typed is kept.
+LEGACY_BASE_URLS = ("https://api.deepseek.com",)
+LEGACY_MODELS = ("deepseek-flash",)
+
+# Where the paid tier sends its requests. The client only ever sends raw
+# material here; the tuned prompt stays on the server.
+DEFAULT_SERVER_URL = "https://checkpause.com"
 
 MODE_LOCAL = "local"  # bring your own API key, straight to the provider
 MODE_CLOUD = "cloud"  # through the CheckPause server
@@ -40,23 +48,24 @@ def save_settings(settings):
 
 
 def get_api_key():
-    key = (load_settings().get("api_key") or "").strip()
-    if key:
-        return key
-    return os.getenv("DEEPSEEK_API_KEY", "").strip()
+    return (load_settings().get("api_key") or "").strip()
 
 
 def get_base_url():
-    return (load_settings().get("base_url") or "").strip() or DEFAULT_BASE_URL
+    url = (load_settings().get("base_url") or "").strip()
+    return "" if url in LEGACY_BASE_URLS else url
 
 
 def get_model():
-    return (load_settings().get("model") or "").strip() or DEFAULT_MODEL
+    model = (load_settings().get("model") or "").strip()
+    return "" if model in LEGACY_MODELS else model
 
 
 def get_ai_mode():
+    # Cloud is the baseline: an account needs no configuration, and an install
+    # that has never chosen a mode is treated as one that wants the cloud path.
     mode = (load_settings().get("ai_mode") or "").strip()
-    return mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+    return mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_CLOUD
 
 
 def get_server_url():
@@ -118,7 +127,7 @@ def save_api_config(api_key, base_url, model, mode=None, server_url=None):
     settings["base_url"] = (base_url or "").strip()
     settings["model"] = (model or "").strip()
     if mode is not None:
-        settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+        settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_CLOUD
     if server_url is not None:
         settings["server_url"] = (server_url or "").strip()
     return save_settings(settings)
@@ -127,7 +136,7 @@ def save_api_config(api_key, base_url, model, mode=None, server_url=None):
 def set_ai_mode(mode):
     """Remember which tier the app should use, without touching the key."""
     settings = load_settings()
-    settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_LOCAL
+    settings["ai_mode"] = mode if mode in (MODE_LOCAL, MODE_CLOUD) else MODE_CLOUD
     return save_settings(settings)
 
 
@@ -139,3 +148,30 @@ def set_stockfish_path(path):
     settings = load_settings()
     settings["stockfish_path"] = (path or "").strip()
     return save_settings(settings)
+
+
+def get_share_reviews():
+    """Whether review content may be collected to improve the model.
+
+    There is no in-app switch for this: consent is given once, by accepting the
+    agreement shown during installation, so this is always true here. It exists
+    so the choice has one named place rather than being assumed in the client.
+    """
+    return True
+
+
+def get_install_id():
+    """A random per-install id, created once.
+
+    It gives the server something to count a rate limit against without knowing
+    who the user is. It is deliberately not derived from any hardware or account
+    value, so it identifies the install and nothing else.
+    """
+    settings = load_settings()
+    install_id = (settings.get("install_id") or "").strip()
+    if install_id:
+        return install_id
+    install_id = secrets.token_hex(16)
+    settings["install_id"] = install_id
+    save_settings(settings)
+    return install_id

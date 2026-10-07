@@ -16,13 +16,18 @@ from checkpause.resources import resource_path
 ICON_DIR = ("assets", "icons")
 
 NAV_COLORS = {
-    "light": {"normal": "#33363b", "disabled": "#b4b7bc"},
-    "dark": {"normal": "#d6d8dc", "disabled": "#5c6066"},
+    "light": {"normal": "#2a2e33", "active": "#000000", "disabled": "#b7bbbf"},
+    "dark": {"normal": "#d3d7db", "active": "#ffffff", "disabled": "#5f646a"},
 }
 
 RAIL_COLORS = {
     "light": "#4b4f57",
     "dark": "#b6bac1",
+}
+
+ON_ACCENT_COLORS = {
+    "light": {"normal": "#ffffff", "active": "#ffffff", "disabled": "#d6d9dd"},
+    "dark": {"normal": "#1b1e22", "active": "#111316", "disabled": "#8f9399"},
 }
 
 APP_ICON_SIZES = (16, 20, 24, 32, 40, 48, 64, 128, 256)
@@ -64,6 +69,33 @@ def nav_icon(theme, name, size=16):
         pixels = max(1, int(round(size * scale)))
         for mode, tint in (
             (QIcon.Mode.Normal, colors["normal"]),
+            (QIcon.Mode.Disabled, colors["disabled"]),
+        ):
+            pixmap = _pixmap(name, pixels, tint)
+            if pixmap is None:
+                continue
+            pixmap.setDevicePixelRatio(scale)
+            icon.addPixmap(pixmap, mode)
+    return icon
+
+
+@cache
+def action_icon(theme, name, size=16, on_accent=False):
+    """Icon for ordinary action buttons, including disabled and hover states.
+
+    ``on_accent`` picks the white variant for buttons painted in the accent
+    colour, where the regular dark tint would disappear.
+    """
+    if on_accent:
+        colors = ON_ACCENT_COLORS.get(theme, ON_ACCENT_COLORS["light"])
+    else:
+        colors = NAV_COLORS.get(theme, NAV_COLORS["light"])
+    icon = QIcon()
+    for scale in _SCALES:
+        pixels = max(1, int(round(size * scale)))
+        for mode, tint in (
+            (QIcon.Mode.Normal, colors["normal"]),
+            (QIcon.Mode.Active, colors["active"]),
             (QIcon.Mode.Disabled, colors["disabled"]),
         ):
             pixmap = _pixmap(name, pixels, tint)

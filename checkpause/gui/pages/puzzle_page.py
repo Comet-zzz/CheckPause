@@ -1,5 +1,5 @@
 import chess
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer
 from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
@@ -28,6 +28,8 @@ from checkpause.data.puzzles import (
     solved_indices,
     toggle_favorite,
 )
+from checkpause.gui.icons import action_icon
+from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.workers import PuzzleImportWorker
 from checkpause.i18n import t
@@ -37,6 +39,7 @@ class PuzzlePage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
+        self._theme = LIGHT
         self._collections = []
         self._info_items = []
         self._solved = set()
@@ -62,8 +65,22 @@ class PuzzlePage(QWidget):
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(splitter)
 
+        self._apply_icons()
         self.retranslate(self._language)
         self.refresh_collections()
+
+    def _apply_icons(self):
+        for button, name in (
+            (self._btn_import, "import"),
+            (self._btn_delete, "trash"),
+            (self._btn_prev, "nav_prev"),
+            (self._btn_next, "nav_next"),
+            (self._btn_hint, "hint"),
+            (self._btn_retry, "reset"),
+        ):
+            button.setIcon(action_icon(self._theme, name))
+            button.setIconSize(QSize(16, 16))
+        self._update_favorite_button()
 
     def _build_panel(self):
         panel = QWidget()
@@ -101,7 +118,7 @@ class PuzzlePage(QWidget):
         self._jump_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._jump_edit.returnPressed.connect(self._on_jump)
         self._jump_total = QLabel()
-        self._jump_total.setStyleSheet("color: gray;")
+        self._jump_total.setObjectName("mutedLabel")
         self._btn_jump = QPushButton()
         self._btn_jump.clicked.connect(self._on_jump)
 
@@ -429,6 +446,9 @@ class PuzzlePage(QWidget):
                 self._language,
             )
         )
+        name = "star_filled" if favorited else "star"
+        self._btn_favorite.setIcon(action_icon(self._theme, name))
+        self._btn_favorite.setIconSize(QSize(16, 16))
 
     def _retry(self):
         if self._puzzle is not None:
@@ -577,7 +597,9 @@ class PuzzlePage(QWidget):
         self._update_jump()
 
     def set_theme(self, theme):
+        self._theme = theme
         self.board.set_theme(theme)
+        self._apply_icons()
 
     def set_piece_set(self, name):
         self.board.set_piece_set(name)

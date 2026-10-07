@@ -18,9 +18,6 @@ from checkpause.gui.widgets.board.constants import (
     CHECK_RGBA,
     DRAG_LIFT,
     DRAG_THRESHOLD,
-    EVAL_BLACK_RGBA,
-    EVAL_BORDER_RGBA,
-    EVAL_WHITE_RGBA,
     HOVER_RGBA,
     LAST_MOVE_RGBA,
     SELECTED_RGBA,
@@ -259,8 +256,8 @@ class _BoardCanvas(QWidget):
         self.place_eval_controls()
 
     def _eval_bar_metrics(self, square):
-        bar_h = min(22.0, max(10.0, square * 0.24))
-        gap = max(3.0, square * 0.04)
+        bar_h = min(16.0, max(8.0, square * 0.18))
+        gap = max(4.0, square * 0.045)
         return bar_h, gap
 
     def _eval_row(self, x0, y0, board_size, square):
@@ -276,7 +273,9 @@ class _BoardCanvas(QWidget):
         bar_h, gap = self._eval_bar_metrics(square)
         controls_h = 0
         if owner._eval_available and controls is not None:
-            controls.adjustSize()
+            # Measure only: adjustSize() here would shrink the strip back to
+            # its size hint after place_eval_controls() stretched it.
+            controls.layout().activate()
             controls_h = controls.sizeHint().height()
         row_h = bar_h + (gap + controls_h if controls_h else 0)
         top_margin = y0
@@ -412,7 +411,7 @@ class _BoardCanvas(QWidget):
 
         self._draw_coordinates(painter, palette, x0, y0, board_size, square)
         if not owner._editable:
-            self._draw_eval_bar(painter, x0, y0, board_size, square)
+            self._draw_eval_bar(painter, palette, x0, y0, board_size, square)
 
         if animation is not None:
             self._draw_animation(painter, x0, y0, square, animation)
@@ -565,49 +564,48 @@ class _BoardCanvas(QWidget):
             rect = QRectF(x0 - label_w, y0 + row * square, label_w, square)
             painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(rank_index + 1))
 
-    def _draw_eval_bar(self, painter, x0, y0, board_size, square):
+    def _draw_eval_bar(self, painter, palette, x0, y0, board_size, square):
         owner = self._owner
         if not owner._eval_available or owner._editable:
             return
         rect, _ = self._eval_row(x0, y0, board_size, square)
         radius = rect.height() / 2.0
         ratio = max(0.0, min(1.0, self._eval_ratio))
+        track = rect.adjusted(0.6, 0.6, -0.6, -0.6)
 
         painter.save()
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
         shape = QPainterPath()
-        shape.addRoundedRect(rect, radius, radius)
+        shape.addRoundedRect(track, radius, radius)
         painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(*EVAL_BLACK_RGBA))
+        painter.setBrush(QColor(palette["eval_dark"]))
         painter.drawPath(shape)
 
         painter.setClipPath(shape)
         painter.fillRect(
             QRectF(
-                rect.left(),
-                rect.top(),
-                rect.width() * ratio,
-                rect.height(),
+                track.left(),
+                track.top(),
+                track.width() * ratio,
+                track.height(),
             ),
-            QColor(*EVAL_WHITE_RGBA),
+            QColor(palette["eval_light"]),
         )
         painter.setClipping(False)
 
-        notch = QColor(*EVAL_BORDER_RGBA)
-        notch.setAlpha(90)
+        notch = QColor(palette["eval_border"])
+        notch.setAlpha(70)
         pen = QPen(notch)
         pen.setWidthF(1.0)
         painter.setPen(pen)
-        center_x = rect.center().x()
-        painter.drawLine(QPointF(center_x, rect.top()), QPointF(center_x, rect.bottom()))
+        center_x = track.center().x()
+        painter.drawLine(QPointF(center_x, track.top()), QPointF(center_x, track.bottom()))
 
-        border = QColor(*EVAL_BORDER_RGBA)
-        border.setAlpha(150)
-        pen = QPen(border)
-        pen.setWidthF(1.0)
+        pen = QPen(QColor(palette["eval_border"]))
+        pen.setWidthF(1.2)
         painter.setPen(pen)
         painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(rect, radius, radius)
+        painter.drawRoundedRect(track, radius, radius)
         painter.restore()
 
     def _draw_live_arrows(self, painter, lines, x0, y0, square):

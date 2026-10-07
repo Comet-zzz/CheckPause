@@ -1,5 +1,6 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QFrame,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -14,6 +15,8 @@ from checkpause.core.rating import rating_key
 from checkpause.data.profile import get_avg_accuracy
 from checkpause.i18n import t
 
+_NO_VALUE = "—"
+
 
 class StatsPage(QWidget):
     COLUMNS = ("hist_date", "hist_performance")
@@ -25,17 +28,28 @@ class StatsPage(QWidget):
         self._language = "zh-CN"
 
         self._username_label = QLabel()
-        self._total_label = QLabel()
-        self._avg_label = QLabel()
-        self._latest_label = QLabel()
+        self._username_label.setObjectName("mutedLabel")
+
+        self._games_value = QLabel()
+        self._avg_value = QLabel()
+        self._latest_value = QLabel()
+        cards = QHBoxLayout()
+        cards.setSpacing(10)
+        self._games_caption = self._build_card(cards, self._games_value)
+        self._avg_caption = self._build_card(cards, self._avg_value)
+        self._latest_caption = self._build_card(cards, self._latest_value)
+
         self._empty_label = QLabel()
+        self._empty_label.setObjectName("mutedLabel")
         self._empty_label.setVisible(False)
 
         self._table = QTableWidget(0, len(self.COLUMNS))
         self._table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self._table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
+        self._table.setAlternatingRowColors(True)
         self._table.verticalHeader().setVisible(False)
         self._table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        self._table.horizontalHeader().setHighlightSections(False)
 
         self._clear_button = QPushButton()
         self._clear_button.setEnabled(False)
@@ -45,18 +59,32 @@ class StatsPage(QWidget):
         footer.addWidget(self._clear_button)
 
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
         layout.addWidget(self._username_label)
-        layout.addWidget(self._total_label)
-        layout.addWidget(self._avg_label)
-        layout.addWidget(self._latest_label)
+        layout.addLayout(cards)
         layout.addWidget(self._empty_label)
         layout.addWidget(self._table, 1)
         layout.addLayout(footer)
 
         self.retranslate(self._language)
 
+    def _build_card(self, row, value_label):
+        card = QFrame()
+        card.setObjectName("statCard")
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(14, 12, 14, 12)
+        card_layout.setSpacing(2)
+        value_label.setObjectName("statValue")
+        caption = QLabel()
+        caption.setObjectName("statCaption")
+        card_layout.addWidget(value_label)
+        card_layout.addWidget(caption)
+        row.addWidget(card, 1)
+        return caption
+
     def refresh(self, profile):
         if not profile:
+            self._set_values(None, None, None)
             self._table.setRowCount(0)
             self._empty_label.setVisible(True)
             self._clear_button.setEnabled(False)
@@ -65,20 +93,10 @@ class StatsPage(QWidget):
         self._username_label.setText(
             t("stat_username", self._language, username=profile.get("username", ""))
         )
-        self._total_label.setText(
-            t("stat_total_games", self._language, total=profile.get("total_games", 0))
-        )
-
-        avg = get_avg_accuracy(profile)
-        self._avg_label.setText(
-            t("stat_avg_accuracy", self._language, accuracy=avg)
-            if avg is not None
-            else t("stat_no_data", self._language)
-        )
-
-        latest = profile.get("latest_accuracy")
-        self._latest_label.setText(
-            t("stat_latest_accuracy", self._language, accuracy=latest) if latest is not None else ""
+        self._set_values(
+            profile.get("total_games", 0),
+            get_avg_accuracy(profile),
+            profile.get("latest_accuracy"),
         )
 
         history = profile.get("history", [])
@@ -93,6 +111,11 @@ class StatsPage(QWidget):
         self._empty_label.setVisible(not history)
         self._clear_button.setEnabled(bool(history))
 
+    def _set_values(self, total, avg, latest):
+        self._games_value.setText(_NO_VALUE if total is None else str(total))
+        self._avg_value.setText(_NO_VALUE if avg is None else f"{avg:.1f}%")
+        self._latest_value.setText(_NO_VALUE if latest is None else f"{latest}%")
+
     def _rating_text(self, accuracy):
         key = rating_key(accuracy)
         if key is None:
@@ -101,6 +124,10 @@ class StatsPage(QWidget):
 
     def retranslate(self, language):
         self._language = language
+        self._games_caption.setText(t("stat_games_caption", language))
+        self._avg_caption.setText(t("stat_avg_caption", language))
+        self._latest_caption.setText(t("stat_latest_caption", language))
+        self._empty_label.setText(t("stat_no_data", language))
         self._table.setHorizontalHeaderLabels([t(key, language) for key in self.COLUMNS])
         self._table.horizontalHeader().setDefaultAlignment(Qt.AlignmentFlag.AlignCenter)
         self._clear_button.setText(t("stat_clear_history", language))

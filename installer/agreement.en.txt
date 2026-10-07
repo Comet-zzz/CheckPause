@@ -1,0 +1,31 @@
+CheckPause End-User License Agreement and Privacy Policy
+
+Effective: 7 October 2026
+
+1. Acceptance
+1.1 These terms are entered into between the CheckPause author (the "Licensor") and you (the "User") concerning the installation and use of the software and related services (the "Software").
+1.2 Acceptance by any means, including clicking "I accept", completing installation, copying or running the Software, constitutes full and irrevocable agreement to all terms herein; if you do not agree, stop the installation and uninstall the Software.
+1.3 Data processing is governed by the Privacy Policy (https://checkpause.com/privacy), which forms an integral part of these terms; where they conflict, the Privacy Policy prevails.
+
+2. License
+2.1 The Software is proprietary. The Licensor grants a non-exclusive, non-transferable, non-sublicensable license for personal, non-commercial use on the User's own devices.
+2.2 The User shall not reverse engineer, decompile, disassemble, modify, rent, sell, distribute or otherwise use the Software without authorization, except where mandatory law provides otherwise.
+2.3 Third-party components (including the chess engine and artwork) are governed by their own licenses.
+
+3. Data Processing
+3.1 To provide and maintain the service, ensure security and improve the product (including training and optimizing related models), the Licensor collects and processes necessary data in accordance with the Privacy Policy.
+3.2 The purposes, categories, methods, scope, retention periods and the User's rights are governed by the Privacy Policy; acceptance of these terms constitutes consent to the processing described therein.
+3.3 The Licensor will not use the data for purposes unrelated to the foregoing, nor sell data to third parties.
+
+4. Disclaimer and Limitation of Liability
+4.1 The Software is provided "as is". To the maximum extent permitted by law, the Licensor disclaims all warranties, express or implied, including merchantability, fitness for a particular purpose and non-infringement.
+4.2 To the maximum extent permitted by law, the Licensor is not liable for any indirect, incidental, special or consequential damages arising from the use of, or inability to use, the Software.
+
+5. Changes and Termination
+5.1 The Licensor may revise these terms at any time; revisions take effect upon release of a new version or publication on the designated page, and continued use constitutes acceptance.
+5.2 Any breach by the User automatically terminates the license, and the User shall immediately cease use and uninstall the Software.
+
+6. Miscellaneous
+6.1 Matters not covered herein are governed by the Privacy Policy and applicable law.
+
+Acceptance: clicking "I accept" and completing installation, or otherwise installing, copying or running the Software, signifies that the User has read, understood and agrees to all terms herein; otherwise, do not install or use the Software.

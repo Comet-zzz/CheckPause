@@ -1,6 +1,6 @@
 import time
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import CHAT_COLORS, DARK, LIGHT
 from checkpause.i18n import t
 
@@ -22,7 +23,7 @@ class ChatPage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
-        self._theme = "light"
+        self._theme = LIGHT
         self._busy = False
         self._start_time = 0.0
         self._current_bubble = None
@@ -44,19 +45,23 @@ class ChatPage(QWidget):
         self._input.returnPressed.connect(self._on_send)
 
         self._btn_send = QPushButton()
+        self._btn_send.setObjectName("primaryButton")
         self._btn_send.clicked.connect(self._on_send)
         self._btn_reset = QPushButton()
         self._btn_reset.clicked.connect(self.reset_requested.emit)
 
         self._status = QLabel()
+        self._status.setObjectName("mutedLabel")
         self._status.setVisible(False)
 
         input_row = QHBoxLayout()
+        input_row.setSpacing(6)
         input_row.addWidget(self._input, 1)
         input_row.addWidget(self._btn_send)
 
         button_row = QHBoxLayout()
-        button_row.addWidget(self._status, 1)
+        button_row.addWidget(self._status)
+        button_row.addStretch(1)
         button_row.addWidget(self._btn_reset)
 
         layout = QVBoxLayout(self)
@@ -68,6 +73,7 @@ class ChatPage(QWidget):
         self._timer.setInterval(100)
         self._timer.timeout.connect(self._update_timer)
 
+        self._apply_icons()
         self.retranslate(self._language)
 
     def _colors(self):
@@ -79,7 +85,13 @@ class ChatPage(QWidget):
             bg, fg = colors["user_bg"], colors["user_fg"]
         else:
             bg, fg = colors["ai_bg"], colors["ai_fg"]
-        return f"background-color: {bg}; color: {fg};" " border-radius: 10px; padding: 8px 12px;"
+        return f"background-color: {bg}; color: {fg};" " border-radius: 12px; padding: 9px 13px;"
+
+    def _apply_icons(self):
+        self._btn_send.setIcon(action_icon(self._theme, "send", on_accent=True))
+        self._btn_send.setIconSize(QSize(16, 16))
+        self._btn_reset.setIcon(action_icon(self._theme, "reset"))
+        self._btn_reset.setIconSize(QSize(16, 16))
 
     def _max_bubble_width(self):
         width = self._scroll.viewport().width()
@@ -179,6 +191,7 @@ class ChatPage(QWidget):
 
     def set_theme(self, theme):
         self._theme = theme
+        self._apply_icons()
         for bubble, role in self._bubbles:
             if role in ("user", "assistant"):
                 bubble.setStyleSheet(self._bubble_style(role))

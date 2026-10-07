@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from checkpause.gui.theme import DARK
+from checkpause.gui.theme import DARK, HIGHLIGHT_COLORS, LIGHT
 
 
 class MoveListWidget(QWidget):
@@ -108,7 +108,7 @@ class MoveListWidget(QWidget):
         return self._table.item(row, col)
 
     def _highlight_color(self):
-        return QColor("#2f4a6b") if self._theme == DARK else QColor("#bcd6f5")
+        return QColor(HIGHLIGHT_COLORS[DARK] if self._theme == DARK else HIGHLIGHT_COLORS[LIGHT])
 
     def _apply_highlight(self):
         for row in range(self._table.rowCount()):

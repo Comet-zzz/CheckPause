@@ -149,13 +149,16 @@ class BoardWidget(QWidget):
 
     def _build_eval_controls(self):
         controls = QWidget()
+        controls.setObjectName("evalControls")
         row = QHBoxLayout(controls)
-        row.setContentsMargins(0, 0, 0, 0)
-        row.setSpacing(6)
+        row.setContentsMargins(10, 3, 8, 3)
+        row.setSpacing(8)
 
         self._eval_check = QCheckBox()
         self._eval_check.toggled.connect(self._on_hint_check)
         self._eval_value_label = QLabel()
+        self._eval_value_label.setObjectName("evalValue")
+        self._eval_value_label.setVisible(False)
         self._eval_depth_label = QLabel()
         self._eval_depth_combo = QComboBox()
         for depth in EVAL_DEPTH_OPTIONS:
@@ -402,6 +405,7 @@ class BoardWidget(QWidget):
         self._best_moves = {}
         self._live_eval = None
         self._eval_value_label.clear()
+        self._eval_value_label.setVisible(False)
         self._last_position_fen = None
         self._index = 0
         self.render()
@@ -448,11 +452,13 @@ class BoardWidget(QWidget):
         }
         top = lines[0] if lines else {}
         self._eval_value_label.setText(format_eval(top.get("margin"), top.get("mate")))
+        self._eval_value_label.setVisible(bool(self._eval_value_label.text()))
         self._canvas.animate_eval(top.get("margin"), top.get("mate"))
 
     def clear_live_eval(self):
         self._live_eval = None
         self._eval_value_label.clear()
+        self._eval_value_label.setVisible(False)
         self._canvas.animate_eval(None, None)
 
     def _on_hint_check(self, checked):
@@ -908,14 +914,20 @@ class BoardWidget(QWidget):
     def _palette(self):
         if self._theme == DARK:
             return {
-                "margin": "#1e1e1e",
+                "margin": "#0DFFFFFF",
                 "coord": "#cfcfcf",
                 "arrow": "#15781b",
+                "eval_light": "#eef0f2",
+                "eval_dark": "#0f1114",
+                "eval_border": "#59FFFFFF",
             }
         return {
-            "margin": "#ffffff",
+            "margin": "#8CFFFFFF",
             "coord": "#4a4a4a",
             "arrow": "#15781b",
+            "eval_light": "#ffffff",
+            "eval_dark": "#2b2f34",
+            "eval_border": "#59000000",
         }
 
     def _piece_renderer(self, piece):
