@@ -1,10 +1,10 @@
 {
   "latest": "2.0.0",
-  "url": "http://43.108.99.244/download/CheckPause_Setup_2.0.0.exe",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.0.exe",
   "urls": {
-    "windows-x86_64": "http://43.108.99.244/download/CheckPause_Setup_2.0.0.exe",
-    "macos-arm64": "http://43.108.99.244/download/CheckPause-2.0.0-macOS-M-series.dmg",
-    "macos-x86_64": "http://43.108.99.244/download/CheckPause-2.0.0-macOS-Intel.dmg"
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.0.exe",
+    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.0-macOS-M-series.dmg",
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.0-macOS-Intel.dmg"
   },
   "notes": "整体界面重做：配色、图标与各页面布局重新梳理，外观更统一、操作更顺手；并更新了安全与隐私相关说明。"
 }

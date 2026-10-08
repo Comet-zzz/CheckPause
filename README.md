@@ -67,14 +67,14 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 **Latest: CheckPause v2.0.0 (Windows x64)**
 
-- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.0.exe](http://43.108.99.244/download/CheckPause_Setup_2.0.0.exe) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
+- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.0.exe](https://checkpause.com/download/CheckPause_Setup_2.0.0.exe) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.0/CheckPause_Setup_2.0.0.exe) (121.6 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
 - SHA-256: `E87F4447F488889F1F2AABA6AAD8A0AC5B47A2D770B9573554C9C2C6D8CB6753` (both links serve the identical file)
 - Run the installer, then launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 
 **Latest: CheckPause v2.0.0 (macOS)**
 
-- 🚀 **Fast mirror (recommended in China)**: [M-series](http://43.108.99.244/download/CheckPause-2.0.0-macOS-M-series.dmg) (140.9 MB) · [Intel](http://43.108.99.244/download/CheckPause-2.0.0-macOS-Intel.dmg) (69.7 MB)
+- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.0.0-macOS-M-series.dmg) (140.9 MB) · [Intel](https://checkpause.com/download/CheckPause-2.0.0-macOS-Intel.dmg) (69.7 MB)
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.0) (both `.dmg` files on the release page)
 - SHA-256: arm64 `C14EBDB28F07E421C9037BE9C90B64A741260AEE8713B7E548245517A2F2C872`, Intel `F8D73C11A891D8192073583B81B08FE19F24837692E00216EDCF7AAA5584BA0B`
 - Open the `.dmg`, drag CheckPause into Applications, then **right-click the icon → Open** the first time (the build is unsigned and not notarized).
