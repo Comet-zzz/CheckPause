@@ -60,9 +60,11 @@ try {
     }
 
     Write-Host "==> Compiling installer with Inno Setup" -ForegroundColor Cyan
-    # Drop installers from previous versions so an outdated one cannot be shipped by mistake.
-    Get-ChildItem -LiteralPath "dist" -Filter "CheckPause_Setup_*.exe" -File -ErrorAction SilentlyContinue |
-        Remove-Item -Force
+    # Drop installers and archives from previous versions so an outdated one cannot be shipped by mistake.
+    foreach ($pattern in @("CheckPause_Setup_*.exe", "CheckPause_Setup_*.zip")) {
+        Get-ChildItem -LiteralPath "dist" -Filter $pattern -File -ErrorAction SilentlyContinue |
+            Remove-Item -Force
+    }
 
     $isccArgs = @("/DAppVersion=$version")
     if (Test-Path -LiteralPath (Join-Path $root "installer\languages\ChineseSimplified.isl")) {
@@ -81,9 +83,19 @@ try {
         throw "Inno Setup failed (exit code $LASTEXITCODE)."
     }
 
+    # The zip is what users download. Browsers flag an unsigned .exe with a
+    # SmartScreen warning ("usually not downloaded"), but treat a plain archive
+    # as an ordinary download, so shipping the installer inside one avoids that
+    # warning without a code-signing certificate.
+    Write-Host "==> Packaging the installer as a zip" -ForegroundColor Cyan
+    $installer = Join-Path $root "dist\CheckPause_Setup_$version.exe"
+    $archive = Join-Path $root "dist\CheckPause_Setup_$version.zip"
+    Compress-Archive -LiteralPath $installer -DestinationPath $archive -CompressionLevel Optimal -Force
+
     Write-Host ""
     Write-Host "Build finished:" -ForegroundColor Green
-    Write-Host "  Ship this     : dist\CheckPause_Setup_$version.exe"
+    Write-Host "  Ship this     : dist\CheckPause_Setup_$version.zip"
+    Write-Host "  Installer     : dist\CheckPause_Setup_$version.exe"
     Write-Host "  Portable build: dist\CheckPause\CheckPause.exe"
 }
 finally {

@@ -1,8 +1,8 @@
 {
   "latest": "2.0.0",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.0.exe",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.0.zip",
   "urls": {
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.0.exe",
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.0.zip",
     "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.0-macOS-M-series.dmg",
     "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.0-macOS-Intel.dmg"
   },
