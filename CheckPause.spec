@@ -30,7 +30,15 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=["tkinter", "PySide6.QtWebEngineWidgets"],
+    # torch is only needed by tools/train_recognizer.py; the shipped app runs
+    # the ONNX model through onnxruntime, so keep the training stack out.
+    excludes=[
+        "tkinter",
+        "PySide6.QtWebEngineWidgets",
+        "torch",
+        "torchvision",
+        "torchaudio",
+    ],
     noarchive=False,
 )
 
