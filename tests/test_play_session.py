@@ -119,6 +119,15 @@ class PlaySessionTests(unittest.TestCase):
         self.assertFalse(session.clock_should_run())
         self.assertIsNone(session.tick(1.0))
 
+    def test_timed_clock_starts_only_when_asked_before_a_move(self):
+        session = PlaySession()
+        session.new_game(time_control={"base": 5.0, "increment": 0}, now=0.0)
+        self.assertFalse(session.clock_should_run())
+        session.start_clock_early()
+        self.assertTrue(session.clock_should_run())
+        session.new_game(time_control={"base": 5.0, "increment": 0}, now=0.0)
+        self.assertFalse(session.clock_should_run())
+
     def test_format_clock(self):
         self.assertEqual(PlaySession.format_clock(5.25), "5.2")
         self.assertEqual(PlaySession.format_clock(65), "1:05")

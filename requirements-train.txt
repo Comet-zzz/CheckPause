@@ -1,0 +1,5 @@
+# Offline tooling for tools/train_recognizer.py only. Never shipped: the app
+# runs the exported ONNX through onnxruntime, so torch stays out of the bundle.
+torch
+onnx
+onnxscript

@@ -2,3 +2,5 @@ python-chess
 openai
 python-dotenv
 PySide6
+numpy
+onnxruntime

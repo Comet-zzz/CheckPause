@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from checkpause.config import IMAGE_RECOGNITION_ENABLED
 from checkpause.core.rating import rating_key
 from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
@@ -22,6 +23,8 @@ class AnalysisPage(QWidget):
     analyze_requested = Signal(str)
     stop_requested = Signal()
     open_file_requested = Signal()
+    image_requested = Signal()
+    clear_requested = Signal()
     ply_selected = Signal(int)
     moves_shown = Signal(str)
 
@@ -32,7 +35,6 @@ class AnalysisPage(QWidget):
 
         self._editor = QPlainTextEdit()
         self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
-        self._editor.textChanged.connect(self._update_toggle)
 
         editor_page = QWidget()
         editor_layout = QVBoxLayout(editor_page)
@@ -48,10 +50,11 @@ class AnalysisPage(QWidget):
 
         self._btn_open = QPushButton()
         self._btn_open.clicked.connect(self.open_file_requested.emit)
+        self._btn_image = QPushButton()
+        self._btn_image.setEnabled(IMAGE_RECOGNITION_ENABLED)
+        self._btn_image.clicked.connect(self.image_requested.emit)
         self._btn_clear = QPushButton()
         self._btn_clear.clicked.connect(self.clear)
-        self._btn_toggle = QPushButton()
-        self._btn_toggle.clicked.connect(self._toggle_view)
         self._btn_analyze = QPushButton()
         self._btn_analyze.setObjectName("primaryButton")
         self._btn_analyze.clicked.connect(self._on_analyze)
@@ -62,8 +65,8 @@ class AnalysisPage(QWidget):
         button_row = QHBoxLayout()
         button_row.setSpacing(6)
         button_row.addWidget(self._btn_open)
+        button_row.addWidget(self._btn_image)
         button_row.addWidget(self._btn_clear)
-        button_row.addWidget(self._btn_toggle)
         button_row.addStretch(1)
         button_row.addWidget(self._btn_stop)
         button_row.addWidget(self._btn_analyze)
@@ -72,6 +75,7 @@ class AnalysisPage(QWidget):
         self._progress.setRange(0, 100)
         self._progress.setValue(0)
         self._progress.setTextVisible(False)
+        self._progress.setVisible(False)
 
         self._accuracy_label = QLabel()
         self._accuracy_label.setObjectName("accuracyLabel")
@@ -79,6 +83,7 @@ class AnalysisPage(QWidget):
         self._status_label = QLabel()
         self._status_label.setObjectName("mutedLabel")
         self._status_label.setWordWrap(True)
+        self._status_label.setVisible(False)
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._stack, 1)
@@ -99,14 +104,12 @@ class AnalysisPage(QWidget):
     def show_moves(self, pgn_text):
         if self._move_list.set_moves(pgn_text):
             self._stack.setCurrentIndex(1)
-            self._update_toggle()
             self.moves_shown.emit(pgn_text)
             return True
         return False
 
     def show_editor(self):
         self._stack.setCurrentIndex(0)
-        self._update_toggle()
 
     def set_current_ply(self, ply):
         self._move_list.set_current_ply(ply)
@@ -115,6 +118,7 @@ class AnalysisPage(QWidget):
         self._editor.clear()
         self._move_list.clear()
         self.show_editor()
+        self.clear_requested.emit()
 
     def set_theme(self, theme):
         self._theme = theme
@@ -124,6 +128,7 @@ class AnalysisPage(QWidget):
     def _apply_icons(self):
         for button, name in (
             (self._btn_open, "open"),
+            (self._btn_image, "image"),
             (self._btn_clear, "trash"),
             (self._btn_stop, "stop"),
         ):
@@ -131,7 +136,6 @@ class AnalysisPage(QWidget):
             button.setIconSize(QSize(16, 16))
         self._btn_analyze.setIcon(action_icon(self._theme, "analyze", on_accent=True))
         self._btn_analyze.setIconSize(QSize(16, 16))
-        self._update_toggle()
 
     def set_progress(self, percent):
         self._progress.setValue(percent)
@@ -153,29 +157,15 @@ class AnalysisPage(QWidget):
 
     def set_status(self, text):
         self._status_label.setText(text)
+        self._status_label.setVisible(bool(text))
 
     def set_busy(self, busy):
         self._btn_analyze.setEnabled(not busy)
         self._btn_stop.setEnabled(busy)
         self._btn_open.setEnabled(not busy)
+        self._btn_image.setEnabled(not busy and IMAGE_RECOGNITION_ENABLED)
         self._editor.setReadOnly(busy)
-
-    def _toggle_view(self):
-        if self._stack.currentIndex() == 1:
-            self.show_editor()
-        elif self.pgn_text():
-            self.show_moves(self.pgn_text())
-
-    def _update_toggle(self):
-        if not hasattr(self, "_btn_toggle"):
-            return
-        in_list = self._stack.currentIndex() == 1
-        key = "btn_edit_pgn" if in_list else "btn_show_moves"
-        self._btn_toggle.setText(t(key, self._language))
-        self._btn_toggle.setEnabled(in_list or bool(self.pgn_text()))
-        name = "edit" if in_list else "list"
-        self._btn_toggle.setIcon(action_icon(self._theme, name))
-        self._btn_toggle.setIconSize(QSize(16, 16))
+        self._progress.setVisible(busy)
 
     def _on_analyze(self):
         text = self.pgn_text()
@@ -188,8 +178,8 @@ class AnalysisPage(QWidget):
         self._language = language
         self._editor.setPlaceholderText(t("placeholder_pgn", language))
         self._btn_open.setText(t("btn_open_pgn", language))
+        self._btn_image.setText(t("btn_image", language))
         self._btn_clear.setText(t("btn_clear_pgn", language))
         self._btn_analyze.setText(t("btn_analyze", language))
         self._btn_stop.setText(t("btn_stop", language))
-        self._status_label.setText(t("status_ready", language))
-        self._update_toggle()
+        self.set_status("")

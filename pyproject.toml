@@ -23,6 +23,7 @@ max-complexity = 15
 "checkpause/i18n/*.py" = ["N999", "E501"]  # 语言代码模块名故意大写；译文串本身可超长
 "tests/*.py" = ["E402"]  # 测试要先设 QT_QPA_PLATFORM，再导入 Qt
 "tools/make_icon.py" = ["E402"]  # 同上：先设环境变量，后导入 Qt
+"tools/train_recognizer.py" = ["E402"]  # 同上：先设 QT_QPA_PLATFORM，后导入 Qt/torch
 # C901 baseline：这几个函数超标，待专门任务拆分；先冻结，只拦新债
 "checkpause/core/engine.py" = ["C901"]
 "checkpause/gui/dialogs.py" = ["C901"]

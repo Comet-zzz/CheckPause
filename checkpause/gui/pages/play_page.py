@@ -30,7 +30,7 @@ from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings
 from checkpause.core.play_session import PlaySession
 from checkpause.gui.icons import action_icon
-from checkpause.gui.theme import LIGHT
+from checkpause.gui.theme import LIGHT, danger_color
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import EngineMoveWorker
@@ -89,9 +89,12 @@ class PlayPage(QWidget):
             (self._btn_undo, "undo", False),
             (self._btn_rematch, "reset", False),
             (self._btn_import, "import", False),
+            (self._btn_leave, "exit", False),
         ):
             button.setIcon(action_icon(self._theme, name, on_accent=on_accent))
             button.setIconSize(QSize(16, 16))
+        self._btn_resign.setIcon(action_icon(self._theme, "flag", color=danger_color(self._theme)))
+        self._btn_resign.setIconSize(QSize(16, 16))
         self._update_pause_button()
 
     def _build_panel(self):
@@ -123,7 +126,6 @@ class PlayPage(QWidget):
         summary_row = QHBoxLayout()
         summary_row.setContentsMargins(0, 0, 0, 0)
         summary_row.addWidget(self._summary_label, 1)
-        summary_row.addWidget(self._btn_leave)
         self._summary_row = QWidget()
         self._summary_row.setLayout(summary_row)
 
@@ -180,7 +182,7 @@ class PlayPage(QWidget):
         setup_layout.addLayout(setup)
 
         self._btn_pause = QPushButton()
-        self._btn_pause.clicked.connect(self._toggle_pause)
+        self._btn_pause.clicked.connect(self._on_pause_clicked)
         self._btn_undo = QPushButton()
         self._btn_undo.clicked.connect(self._undo)
         self._btn_resign = QPushButton()
@@ -198,6 +200,7 @@ class PlayPage(QWidget):
         secondary_actions = QHBoxLayout()
         secondary_actions.addWidget(self._btn_rematch)
         secondary_actions.addWidget(self._btn_import)
+        secondary_actions.addWidget(self._btn_leave)
         actions = QVBoxLayout()
         actions.setContentsMargins(0, 0, 0, 0)
         actions.addLayout(primary_actions)
@@ -388,13 +391,36 @@ class PlayPage(QWidget):
         self._update_clock_labels()
         self._update_buttons()
 
+    def _on_pause_clicked(self):
+        session = self._session
+        # A timed game whose clock has not begun yet: the button starts the
+        # clock instead of pausing, so no time is lost before the first move.
+        if session.clock_enabled and not session.moves and not session.clock_started:
+            self._start_clock()
+            return
+        self._toggle_pause()
+
+    def _start_clock(self):
+        self._session.start_clock_early()
+        self._sync_clock_timer()
+        self._update_clock_labels()
+        self._update_buttons()
+
+    def _clock_waiting_to_start(self):
+        session = self._session
+        return session.clock_enabled and not session.moves and not session.clock_started
+
     def _update_pause_button(self):
-        paused = self._session.paused
-        key = "play_resume" if paused else "play_pause"
+        if self._clock_waiting_to_start():
+            key = "play_start"
+            icon = "play"
+        else:
+            key = "play_resume" if self._session.paused else "play_pause"
+            icon = "resume" if self._session.paused else "pause"
         label = t(key, self._language)
         self._btn_pause.setText(label)
         self._btn_pause.setAccessibleName(label)
-        self._btn_pause.setIcon(action_icon(self._theme, "resume" if paused else "pause"))
+        self._btn_pause.setIcon(action_icon(self._theme, icon))
         self._btn_pause.setIconSize(QSize(16, 16))
 
     def _on_time_changed(self, _index):
@@ -581,7 +607,10 @@ class PlayPage(QWidget):
             and not session.paused
         )
         self._btn_resign.setEnabled(self._started and bool(session.moves) and not session.game_over)
-        self._btn_pause.setEnabled(self._started and not session.game_over and not thinking)
+        can_control = bool(session.moves) or session.clock_enabled or session.paused
+        self._btn_pause.setEnabled(
+            self._started and not session.game_over and not thinking and can_control
+        )
         self._btn_rematch.setVisible(session.game_over)
         self._btn_import.setEnabled(self._started and bool(session.moves))
         self._update_pause_button()

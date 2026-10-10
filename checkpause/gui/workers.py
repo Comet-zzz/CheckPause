@@ -4,7 +4,9 @@ import time
 
 import chess
 import chess.engine
+import numpy as np
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtGui import QImage
 
 from checkpause.config import EVAL_MULTIPV, play_engine_settings
 from checkpause.core import cloud
@@ -15,10 +17,24 @@ from checkpause.core.engine import (
     open_stockfish,
     read_lines,
 )
+from checkpause.core.recognize import RecognizeError, recognize
 from checkpause.core.updater import check_for_update
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
+
+
+def load_image_array(path):
+    """Decode an image file into an HxWx3 numpy array for the recogniser."""
+    image = QImage(path)
+    if image.isNull():
+        raise RecognizeError("image_error_read")
+    image = image.convertToFormat(QImage.Format.Format_RGB888)
+    width, height = image.width(), image.height()
+    stride = image.bytesPerLine()
+    buffer = image.constBits()
+    rows = np.frombuffer(buffer, dtype=np.uint8).reshape(height, stride)
+    return rows[:, : width * 3].reshape(height, width, 3).copy()
 
 
 def _engine_elo_floor(engine):
@@ -278,6 +294,34 @@ class ChatWorker(QThread):
             self.failed.emit(str(exc))
             return
         self.done.emit(full_reply)
+
+
+class RecognizeWorker(QThread):
+    """Reads a board screenshot without freezing the UI.
+
+    The failure code is an i18n key, so the page can show a translated message
+    for a missing model, an unreadable file or a board that was not found.
+    """
+
+    done = Signal(dict)
+    failed = Signal(str)
+
+    def __init__(self, path, parent=None):
+        super().__init__(parent)
+        self.path = path
+
+    def run(self):
+        try:
+            image = load_image_array(self.path)
+            result = recognize(image)
+        except RecognizeError as exc:
+            self.failed.emit(exc.code)
+            return
+        except Exception:
+            # A decoder or shape surprise must not escape a worker thread.
+            self.failed.emit("image_error_read")
+            return
+        self.done.emit(result)
 
 
 class AccountWorker(QThread):

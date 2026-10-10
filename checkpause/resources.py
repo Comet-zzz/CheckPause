@@ -2,7 +2,11 @@ import os
 import sys
 
 from checkpause import BASE_DIR
-from checkpause.config import OPENING_BOOK_RELATIVE, STOCKFISH_RELATIVE
+from checkpause.config import (
+    OPENING_BOOK_RELATIVE,
+    RECOGNIZER_MODEL_RELATIVE,
+    STOCKFISH_RELATIVE,
+)
 from checkpause.i18n import t
 
 
@@ -52,6 +56,18 @@ def get_opening_book_path():
     if getattr(sys, "frozen", False):
         candidates.append(os.path.join(os.path.dirname(sys.executable), *OPENING_BOOK_RELATIVE))
     candidates.append(os.path.join(BASE_DIR, *OPENING_BOOK_RELATIVE))
+    for path in candidates:
+        if path and os.path.isfile(path):
+            return path
+    return None
+
+
+def get_recognizer_model_path():
+    """The bundled board classifier, or None when it was never trained."""
+    candidates = [resource_path(*RECOGNIZER_MODEL_RELATIVE)]
+    if getattr(sys, "frozen", False):
+        candidates.append(os.path.join(os.path.dirname(sys.executable), *RECOGNIZER_MODEL_RELATIVE))
+    candidates.append(os.path.join(BASE_DIR, *RECOGNIZER_MODEL_RELATIVE))
     for path in candidates:
         if path and os.path.isfile(path):
             return path

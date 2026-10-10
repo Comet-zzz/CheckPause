@@ -80,13 +80,18 @@ def nav_icon(theme, name, size=16):
 
 
 @cache
-def action_icon(theme, name, size=16, on_accent=False):
+def action_icon(theme, name, size=16, on_accent=False, color=None):
     """Icon for ordinary action buttons, including disabled and hover states.
 
     ``on_accent`` picks the white variant for buttons painted in the accent
-    colour, where the regular dark tint would disappear.
+    colour, where the regular dark tint would disappear. ``color`` overrides the
+    normal/active tint so an icon can match a coloured button such as the danger
+    actions.
     """
-    if on_accent:
+    if color is not None:
+        disabled = NAV_COLORS.get(theme, NAV_COLORS["light"])["disabled"]
+        colors = {"normal": color, "active": color, "disabled": disabled}
+    elif on_accent:
         colors = ON_ACCENT_COLORS.get(theme, ON_ACCENT_COLORS["light"])
     else:
         colors = NAV_COLORS.get(theme, NAV_COLORS["light"])

@@ -25,6 +25,7 @@ from checkpause.assets import (
 from checkpause.config import (
     DEFAULT_EVAL_DEPTH,
     DEFAULT_HINT_ENABLED,
+    IMAGE_RECOGNITION_ENABLED,
     SYSTEM_PROMPT,
     USER_PROMPT_TEMPLATE,
 )
@@ -79,6 +80,7 @@ from checkpause.gui.workers import (
     AnalysisWorker,
     ChatWorker,
     LiveAnalysisWorker,
+    RecognizeWorker,
     UpdateCheckWorker,
 )
 from checkpause.i18n import t
@@ -125,6 +127,7 @@ class MainWindow(QMainWindow):
         self._analysis_worker = None
         self._chat_worker = None
         self._account_worker = None
+        self._image_worker = None
         self._update_worker = None
         self._update_manual = False
         self._skipped_update = ""
@@ -248,6 +251,8 @@ class MainWindow(QMainWindow):
         self.analysis_page.analyze_requested.connect(self._start_analysis)
         self.analysis_page.stop_requested.connect(self._stop_analysis)
         self.analysis_page.open_file_requested.connect(self._open_pgn_file)
+        self.analysis_page.image_requested.connect(self._recognize_image)
+        self.analysis_page.clear_requested.connect(self._clear_analysis_board)
         self.analysis_page.ply_selected.connect(self.board.goto)
         self.analysis_page.moves_shown.connect(self._on_moves_shown)
         self.board.index_changed.connect(self.analysis_page.set_current_ply)
@@ -378,7 +383,6 @@ class MainWindow(QMainWindow):
         self._act_about = QAction(self)
         self._act_about.triggered.connect(lambda: show_about(self, self._language))
         self._menu_help.addAction(self._act_check_update)
-        self._menu_help.addSeparator()
         self._menu_help.addAction(self._act_about)
 
     def _set_chrome_visible(self, visible):
@@ -534,11 +538,17 @@ class MainWindow(QMainWindow):
     def _on_line_changed(self, replaced):
         if replaced:
             self._clear_analysis_results()
-        self._refresh_analysis_line(t("status_line_changed", self._language))
+        self._refresh_analysis_line("")
 
     def _on_position_applied(self, fen):
         self._clear_analysis_results()
-        self._refresh_analysis_line(t("status_position_applied", self._language), show_moves=False)
+        self._refresh_analysis_line("", show_moves=False)
+
+    def _clear_analysis_board(self):
+        self.board.clear()
+        self._current_pgn = ""
+        self._clear_analysis_results()
+        self.analysis_page.set_status("")
 
     def _clear_analysis_results(self):
         self._results = []
@@ -613,6 +623,54 @@ class MainWindow(QMainWindow):
         if self.board.load_pgn(content)[0]:
             self.analysis_page.show_moves(content)
         self.tabs.setCurrentWidget(self.analysis_page)
+
+    def _recognize_image(self):
+        if not IMAGE_RECOGNITION_ENABLED:
+            return
+        if self._image_worker is not None and self._image_worker.isRunning():
+            return
+        if self.board.is_editing():
+            self.analysis_page.set_status(t("edit_finish_first", self._language))
+            return
+        path, _ = QFileDialog.getOpenFileName(
+            self,
+            t("action_open_image", self._language),
+            "",
+            t("image_filter", self._language),
+        )
+        if not path:
+            return
+        self.analysis_page.set_status(t("image_reading", self._language))
+        self._image_worker = RecognizeWorker(path, self)
+        self._image_worker.done.connect(self._on_image_recognized)
+        self._image_worker.failed.connect(self._on_image_failed)
+        self._image_worker.finished.connect(self._on_image_finished)
+        self._image_worker.start()
+
+    def _on_image_recognized(self, result):
+        self.board.set_start_fen(result["fen"])
+        self._clear_analysis_results()
+        self._refresh_analysis_line(show_moves=False)
+        self.analysis_page.show_editor()
+        self.tabs.setCurrentWidget(self.analysis_page)
+        self.analysis_page.set_status(self._image_status(result))
+        self._request_live_eval(self.board.current_fen())
+
+    def _image_status(self, result):
+        issues = list(dict.fromkeys(result.get("issues") or []))
+        if not issues:
+            return t("image_done", self._language)
+        names = ", ".join(t("image_issue_" + code, self._language) for code in issues)
+        return t("image_done_issues", self._language, issues=names)
+
+    def _on_image_failed(self, code):
+        self.analysis_page.set_status(t(code, self._language))
+
+    def _on_image_finished(self):
+        worker = self._image_worker
+        self._image_worker = None
+        if worker is not None:
+            worker.deleteLater()
 
     def _on_play_import(self, pgn):
         self.analysis_page.set_pgn(pgn)
@@ -970,6 +1028,9 @@ class MainWindow(QMainWindow):
         if self._chat_worker and self._chat_worker.isRunning():
             self._chat_worker.terminate()
             self._chat_worker.wait(1000)
+        if self._image_worker and self._image_worker.isRunning():
+            self._image_worker.terminate()
+            self._image_worker.wait(1000)
         self._stop_eval_worker()
         self.play_page.shutdown()
         self.puzzle_page.shutdown()

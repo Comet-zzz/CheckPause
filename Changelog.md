@@ -1,7 +1,43 @@
+# v2.0.1 – Interface Polish & Image Recognition
+
+> **A detail-focused update: the interface logic has been further refined for smoother everyday use, alongside the introduction of image recognition, still being improved.**
+
+---
+
+## 🎯 What's New
+
+### 🧭 Interface logic refined
+- 继续优化了界面逻辑，梳理了部分页面的布局与信息层级，常用操作更符合直觉。
+- 打磨了若干交互细节，切换与反馈更一致、更顺畅。
+
+- Continued refining the interface logic, tidying the layout and information hierarchy on several screens so common actions feel more natural.
+- Polished a number of interaction details for more consistent, smoother switching and feedback.
+
+### 🖼️ Image recognition (in progress)
+- 引入了图片识别功能，相关能力仍在持续完善中。
+
+- Introduced image recognition, which is still being improved.
+
+## 🛠️ Full Changelog
+- feat(gui): refine the interface logic and layout across screens
+- feat(gui): add image recognition
+- chore(gui): polish interaction details
+- chore(version): bump the app version to 2.0.1
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.0...v2.0.1
+
 # v2.0.0 – Interface Overhaul & Smoother Flows
 
-> **一次整体性的界面重做：重新梳理了配色、图标与各页面的布局层级，外观更统一、更耐看，日常操作也更顺手；同时更新了安全与隐私相关的说明。**
->
 > **A full interface overhaul: colour, icons and the layout hierarchy across every screen have been reworked for a more consistent, comfortable look and smoother everyday use, alongside updated security and privacy terms.**
 
 ---
@@ -55,8 +91,6 @@
 
 # v1.9.1 – Play Screen Rework & System Language
 
-> **对弈页的界面逻辑重新梳理：配置与对局分开，信息层级更清晰、操作更顺手。安装包与首次启动按系统语言自动选中中文或英文，所有悬停提示一并删除。** 局中「退出本局」会先确认，改配置不再悄悄丢掉进行中的棋局。
->
 > **The Play screen's layout logic has been reworked, separating setup from play with a clearer hierarchy and smoother controls. The installer and the first launch pick Chinese or English from the system language, and every hover tooltip is gone.** Leaving a game in progress now asks first, instead of a setting change silently discarding it.
 
 ---
@@ -107,8 +141,6 @@
 
 # v1.9.0 – Cloud Account Onboarding & History Reset
 
-> **首启页重做为云端账号引导：登录或注册云端账号，或直接进入离线模式；去掉本机昵称，改名收费 60 CP积分，「删除用户数据」改为统计页的「删除历史数据」。** 首次启动不再需要设置一个和账号无关的本机用户名。现在首启就是一个卡片式的账号页：用户名加密码即可注册或登录，成功后自动切到云端模式；网络不通时点「使用离线模式」即可进入（本机显示名为 player，联网后在设置里登录）。云端账号支持付费改名（60 CP积分）。原「设置 → 删除用户数据」入口移除，改为在统计面板删除对局历史。
->
 > **The first-run page is now a cloud-account guide: sign in or sign up, or drop straight into offline mode. The separate local nickname is gone, renaming costs 60 CP credits, and "Delete user data" becomes "Delete history" in Statistics.** First launch no longer asks for a local username that had nothing to do with your account. It is now a card-based account page: enter a username and password to sign up or sign in, then the app switches to cloud mode. If the network is unavailable, choose "Offline mode" (the local name is player; sign in later from Settings). Cloud accounts can be renamed for 60 CP credits. The old "Delete user data" entry is gone, replaced by deleting game history from the Statistics panel.
 
 ---
@@ -166,10 +198,8 @@
 
 **Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.4...v1.9.0
 
-# v1.8.4 – Multi-Line Live Analysis & Game-End Sounds
+# v1.8.4 - Multi-Line Live Analysis & Game-End Sounds
 
-> **实时分析升级为多主线、逐层加深，并新增数字评分；修复了音效的bug** 面板模式下，引擎常驻并一路加深，最多同时给出三条推荐着法，最优一条最粗、其余依次变细变淡，推荐会随深度变化；评估条旁新增数字评分。使盘面更美观符合逻辑。
->
 > **Live analysis now runs multi-line and deepens over time, with a numeric score, and the sound bugs are fixed.** In the Panel module the engine keeps one process alive and deepens the search, showing up to three ranked best moves (the best drawn thickest, the rest thinner and fainter) that change with depth, plus a numeric score next to the bar, so the board looks nicer and behaves more logically.
 
 ---
@@ -212,10 +242,8 @@
 
 **Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.3...v1.8.4
 
-# v1.8.3 – Evaluation Bar & Cleaner Sounds
+# v1.8.3 - Evaluation Bar & Cleaner Sounds
 
-> **棋盘上方新增 Stockfish 评估条，随局面平滑变化，可显示推荐着法箭头；音效精简为一种。** 面板模式下，棋盘上方的留白处会出现一条评估条，白黑占比实时反映双方优势，切换着法时带动画过渡。可在评估条下方勾选「显示推荐着法」，用半透明玻璃质感的箭头标出引擎最佳着法，并自由选择分析深度（10–22）。同时，音效只保留一种，原「电子」更名为「默认」。
->
 > **A new Stockfish evaluation bar sits above the board, moving smoothly with each position, with an optional best-move arrow; and the move sounds are down to one.** In the Panel module a bar fills the empty space above the board, its white/black split tracking who stands better, and it animates on every step. Under it you can tick "Show best move" to draw the engine's choice as a frosted-glass arrow, and pick the analysis depth (10–22). The sound sets are now just one, with the old "Digital" renamed to "Default".
 
 ---
@@ -277,47 +305,30 @@
 
 **Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.2...v1.8.3
 
-# v1.8.2 – HTTPS Cloud Endpoint
+# v1.8.2 - HTTPS Cloud Endpoint
 
-> **云端模式改走 HTTPS 域名 `checkpause.com`。** 连接加密，不再依赖裸 IP；旧版本里保存的服务器地址会自动切到新域名，无需手动设置。本地模式（自带 Key）不受影响。
->
-> **Cloud mode now talks to the HTTPS domain `checkpause.com`.** The connection is encrypted and no longer relies on a bare IP; an older install that saved the previous address is migrated automatically, so there is nothing to set by hand. Local mode (bring your own key) is unchanged.
-
----
+**Cloud mode now talks to the HTTPS domain `checkpause.com`.** The connection is encrypted and no longer relies on a bare IP; an older install that saved the previous address is migrated automatically. Local mode (bring your own key) is unchanged.
 
 ## 🎯 What's Changed
 
 ### 🔐 HTTPS cloud endpoint
 - 云端模式默认地址由 `http://43.108.99.244` 换成 `https://checkpause.com`，账号、充值、分析请求全程加密。
 - 设置里若保存过旧的裸 IP，会**自动视为未设置**并改用新域名；自定义的服务地址不受影响。
-
 - The cloud-mode default moved from `http://43.108.99.244` to `https://checkpause.com`, so sign-in, top-ups and analysis all travel over TLS.
 - A settings file holding the old bare IP is treated as unset and moves to the domain; a genuinely custom address is left untouched.
 
----
-
 ## 🛠️ Full Changelog
+
 - feat(cloud): default the server URL to https://checkpause.com
 - fix(settings): migrate a saved plain-HTTP IP to the HTTPS domain
 
----
-
 ## ⚠️ Breaking Changes
 
-- 无破坏性变更。
-- 旧地址会自动迁移；如需继续用自定义服务器地址，在设置中填写即可。
+- 无破坏性变更。旧地址会自动迁移；如需继续用自定义服务器地址，在设置中填写即可。
+- No breaking changes. The previous address is migrated automatically; a custom server address still works if entered in settings.
 
-- No breaking changes.
-- The previous address is migrated automatically; a custom server address still works if entered in settings.
+# v1.8.1 - Move Sounds
 
----
-
-**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.1...v1.8.2
-
-# v1.8.1 – Move Sounds
-
-> **每一步走子都有音效了，并且可以像棋子、棋盘一样挑选音效风格。** 普通走子、吃子、将军、易位、升变各有不同的声音，在「对弈」「谜题」「面板」三处都会播放，默认开启；「个性化 → 音效」里可切换风格或关闭。所有音效由项目自行合成，不含任何第三方素材。
->
 > **Every move now has a sound, and you can pick its style just like piece sets and board themes.** Quiet moves, captures, checks, castling and promotions each get their own sound, in Play, Puzzles and the analysis panel alike, on by default. Switch styles or turn it off under Personalization → Sound. Every clip is synthesised by the project itself, with no third-party assets.
 
 ---
@@ -365,13 +376,9 @@
 
 **Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.8.0...v1.8.1
 
-# v1.8.0 – macOS and the Analysis Panel
+# v1.8.0 - macOS and the Analysis Panel
 
-> **新增 macOS 版（Apple Silicon 与 Intel），分析工具升级为可编辑的分析面板。** macOS 版功能与 Windows 版一致，由 GitHub Actions 打包为 `.dmg`；分析面板新增走子动画与棋盘编辑，并支持从任意局面开始分析。
->
 > **Adds a macOS build (Apple Silicon and Intel) and turns the analysis tool into an editable analysis panel.** The macOS build ships as a `.dmg` with feature parity to Windows; the analysis panel gains move animations and a board editor, and can analyze from any position.
->
-> 未签名、未公证，首次打开需右键 → 打开。Windows 版的棋盘、分析、存档与两种 AI 模式均照旧。
 
 ---
 
@@ -450,13 +457,9 @@
 
 SHA-256: `978609890A2650B934DF66F7C7B1947BF6EF51327F6ABD3A5B4E48200C12B804`
 
-# v1.7.2 – Icon Fix
+# v1.7.2 - Icon Fix
 
-> **修复安装后应用图标显示为 Python 默认图标的问题。** 1.7.2 修复了 Windows 应用启动图标以及开始菜单、桌面快捷方式图标。
->
 > **Fixes the issue where the installed Windows application showed the default Python icon.** Version 1.7.2 fixes the application icon and the icons used by Start Menu and desktop shortcuts.
->
-> 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
 >
 > A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
 
@@ -499,12 +502,8 @@ SHA-256: `978609890A2650B934DF66F7C7B1947BF6EF51327F6ABD3A5B4E48200C12B804`
 
 SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
-# v1.7.1 – Instant Update Checks
+# v1.7.1 - Instant Update Checks
 
-> **「检查更新」不再需要等待超时**：此前两个 GitHub 镜像依次请求，其中一个在国内时常无法连接，每次检查都要耗尽它的超时时间。现在改为并发请求，并优先查询自建服务器，点击后基本可立即得到结果。
->
-> 这是一次小更新：棋盘、引擎分析、存档、本地/云端模式全部照旧。
->
 > The "Check for updates" action no longer waits on a timeout. The previous code queried two GitHub mirrors in sequence, one of which is often unreachable from mainland China, so every check consumed that timeout before returning. Both are now queried concurrently, with the project's own server checked first, so the result appears almost immediately.
 >
 > A small update otherwise: the board, engine analysis, saved games and both AI modes are unchanged.
@@ -553,14 +552,8 @@ SHA-256: `AC1B731C14C81BE016B2532436EF155DCE67F560BF01A51518FCB25961BB22DF`
 
 SHA-256: `D8A3BF0B864B1AC509F07B48B9A484EBCC97BBAD8726D92464C2CDA58EC84C19`
 
-# v1.7.0 – Cloud Coaching
+# v1.7.0 - Cloud Coaching
 
-> 新增**云端讲解**：无需自行填写 API Key，注册账号并充值 CP积分即可使用。云端采用服务器上持续调校的提示词。
->
-> **本地模式（自行填写 Key）完全不变** —— 界面、操作与存档均保持原样。仅云端模式需要登录；若继续使用本地模式，本次更新不会带来任何影响。
->
-> 充值入口位于「设置 → 云端账号」：选择金额 → 浏览器打开支付宝完成付款 → 返回后余额已经到账。
->
 > A new **cloud coaching** mode: no API key of your own, just an account and some CP credits. It uses a prompt tuned on the server.
 >
 > **Local mode is unchanged** — the interface, the controls and saved games all stay as they are. Only cloud mode requires a sign-in, so if you stay on local mode this release changes nothing for you.
@@ -617,10 +610,8 @@ SHA-256: `D8A3BF0B864B1AC509F07B48B9A484EBCC97BBAD8726D92464C2CDA58EC84C19`
 
 SHA-256: `5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`
 
-# v1.6.1 – Update Notifications Actually Arrive
+# v1.6.1 - Update Notifications Fixed
 
-> 修复了一处**静默失效**的问题：更新提示始终未能触发。软件读取版本信息时，会优先访问一个国内可用的加速源，而该副本可能滞后**十几个小时**，导致软件误判为"已是最新版本"而不再提示升级。**1.5.4 与 1.6.0 很可能因此未能推送给老用户。** 现在两个来源都会读取，并采用版本号更高的一个。
->
 > Fixes a silent failure: update notifications never fired. The app read its version manifest from a China-friendly CDN first, and that copy could be many hours stale, so the app believed it was already current and stayed quiet. Releases 1.5.4 and 1.6.0 most likely never reached existing users. Both sources are now consulted and the higher version wins.
 
 ---
@@ -660,10 +651,8 @@ SHA-256: `5CA34298B9D1D328848FDCC5CE50AAE7EDACD1452167332D35855CDC020F9E3B`
 
 SHA-256: `1A30C9C2E4C4DB2272B2B5BACFA3715401F5757138DF8AF7D143E1A59187674E`
 
-# v1.6.0 – PySide6 Migration
+# v1.6.0 - PySide6 Migration
 
-> 界面的底层图形框架从 PyQt6 换成了 **PySide6** —— Qt 官方维护的那套绑定，采用 LGPL 许可。这不是一次功能更新：界面、操作、数据完全不变，升级后一切照旧，你不需要做任何额外的事。
->
 > The interface toolkit moves from PyQt6 to PySide6, the binding Qt maintains itself, licensed under the LGPL. This is not a feature release: the UI, the controls and your data are all unchanged. Install it as usual and everything stays where it was.
 
 ---
@@ -706,211 +695,14 @@ SHA-256: `1A30C9C2E4C4DB2272B2B5BACFA3715401F5757138DF8AF7D143E1A59187674E`
 
 SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
-# v1.5.4 – Update Notifications and Clock Fixes
+# v1.5.0 - One-Click Installer
 
-> 本次更新修复了更新提示与对弈计时的问题，并新增「检查更新」入口。
+> **Archived**
 >
-> This release fixes issues with update notifications and the play clock, and adds a manual update check.
+> This is an early development build. Only the source archive is kept; the installer is no longer available for download.
 
 ---
 
-## 🎯 What's Changed
-- 修复更新提示：关闭提示或更新途中关闭程序后，下次启动仍会正常提醒；「帮助」菜单新增「检查更新」，可随时手动检查并给出结果。
-- 修复对弈计时：新对局后时钟立即回到所选模式的初始时间，离开对弈页面时的计时表现保持一致。
-- 「暂停 / 继续」改为与界面风格一致的矢量图标，跟随深浅主题。
-
-- Update notifications behave correctly again: dismissing the prompt or closing the app while updating no longer silences that release, and Help gains a Check for updates action with clear feedback.
-- The play clock is fixed: a new game immediately shows the selected mode's starting time, and the clock behaves consistently while you are away from the Play page.
-- Pause / Resume are now vector icons that match the UI and follow the light and dark themes.
-
----
-
-## 🛠️ Full Changelog
-- fix(update): scope "Later" to the running session instead of persisting it
-- feat(update): add a Check for updates action under Help
-- fix(play): refresh the clock display when a new game starts
-- fix(play): pause the clock consistently while the Play page is hidden
-- feat(play): use theme-aware vector icons for pause and resume
-- chore(version): bump the app version to 1.5.4
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。
-
-- No breaking changes.
-
----
-
-# v1.5.3 – Queen App Icon and Vector Icons
-
-> 换上了王后造型的应用图标：深灰渐变圆角底配白色剪影，窗口、任务栏、exe、安装向导和桌面快捷方式全部生效。侧边栏与棋盘导航的图标也一并矢量重绘——原本用字符拼出来的 `|◀ ◀ ▶ ▶| ⇅` 换成矢量图标后不再受系统字体影响，侧边栏新增「对弈 / 谜题 / 分析工具」图标，并能跟随深浅主题自动换色。
->
-> A queen icon now fronts the app: a rounded charcoal tile with a white silhouette, applied to the window, taskbar, executable, installer wizard, and desktop shortcuts. The module rail and board navigation are redrawn as vectors too — the old `|◀ ◀ ▶ ▶| ⇅` character glyphs no longer depend on system fonts, the rail gains Play / Puzzles / Analysis icons, and every icon re-tints itself for the light and dark themes.
-
----
-
-## 🎯 What's New
-
-### 👑 Queen app icon
-- 新增王后造型应用图标：深灰渐变圆角底 + 白色剪影，严格黑白灰配色，窗口、任务栏、`CheckPause.exe`、安装向导与桌面快捷方式全部生效。
-- 图标以单个 SVG 为源文件（`assets/icons/app_icon.svg`），`tools/make_icon.py` 生成 16–256 共 9 个尺寸的 `assets/app.ico`；改图标只需改 SVG 再跑一次脚本，不引入任何新依赖。
-
-- The app ships a queen icon: a rounded charcoal tile with a white silhouette, kept strictly black, white, and gray, covering the window, taskbar, CheckPause.exe, the installer wizard, and desktop shortcuts.
-- One SVG (`assets/icons/app_icon.svg`) is the single source of truth; `tools/make_icon.py` renders a nine-size `assets/app.ico` (16–256 px) with no extra dependencies, so restyling is an SVG edit plus one script run.
-
-### 🧭 Vector icons across the UI
-- 侧边栏「对弈 / 谜题 / 分析工具」新增线性图标（交叉剑 / 拼图 / 放大镜柱状图），按钮改为图标 + 文字，栏宽由 84 调整为 108 像素。
-- 棋盘下方导航不再使用 `|◀ ◀ ▶ ▶| ⇅` 字符：`⇅` 在部分系统字体里缺失，会显示成方框；字符箭头还会随字体不同出现粗细不匀、基线错位。换成矢量图标后在任何机器上外观一致。
-- 图标只有一份单色 SVG，运行时按主题重新着色（浅色深灰 / 深色浅灰），禁用态另有配色；切换深浅主题即时刷新，高 DPI 屏幕额外渲染 2 倍图。
-- tooltip 文案去掉字符前缀：`|◀ 最初` → `最初一步`，`|◀ First` → `First move`。
-
-- The module rail (Play / Puzzles / Analysis) gains line icons — crossed swords, a jigsaw piece, and a magnifier with bars — and switches to icon + label buttons; the rail width goes from 84 to 108 px.
-- Board navigation drops the `|◀ ◀ ▶ ▶| ⇅` characters. The `⇅` glyph is missing from some system fonts and renders as a tofu box, while character arrows vary in weight and baseline between fonts; vector icons look identical everywhere.
-- Each icon is a single monochrome SVG re-tinted at runtime (dark gray on the light theme, light gray on the dark one) with a dedicated disabled color, instant refresh on theme switch, and a 2× render for high-DPI screens.
-- Tooltips lose their glyph prefixes: `|◀ First` becomes `First move`, `|◀ 最初` becomes `最初一步`.
-
----
-
-## 🛠️ Full Changelog
-- feat(ui): add a queen application icon for the window, taskbar, executable, and installer
-- feat(ui): add vector icons to the module rail and the board navigation buttons
-- feat(ui): tint icons per theme through a cached SVG icon factory
-- feat(tools): add `tools/make_icon.py` to build the multi-size ICO from the SVG source
-- fix(i18n): drop glyph prefixes from the board navigation tooltips
-- chore(build): embed the executable icon and bundle the icon assets
-- chore(build): give the installer wizard the same icon
-- chore(version): bump the app version to 1.5.3
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。档案、题集进度、收藏与 API 设置均不受影响。
-- 侧边栏加宽 24 像素，默认窗口尺寸下棋盘区域会相应变窄；需要更大的棋盘可拉宽窗口或拖动分隔条。
-
-- No breaking changes. Profiles, puzzle progress, favorites, and API settings are untouched.
-- The module rail is 24 px wider, so the board is slightly narrower at the default window size; widen the window or drag the splitter for a bigger board.
-
----
-
-# v1.5.2 – Favorites and Locked Settings
-
-> 谜题页新增「收藏夹」：点一下「收藏」或答错一题就会自动收录，方便集中复练；「上一题 / 下一题」只会在进入题集后出现，与「提示」重复的「显示答案」已移除。对弈中走出第一步后，「我方 / 计时 / 开局 / 残局」会自动变灰锁定，点击「新对局」即可重新调整，避免对局中途被误改。
->
-> The Puzzle page gains a Favorites collection: tap Favorite on any puzzle, or simply miss one, and it is saved for later review. Previous / Next now appear only after you enter a collection, and the redundant Show solution button is gone. In Play, once a game is under way the Play as / Clock / Opening / Endgame pickers gray out until you start a new game, so a game in progress cannot be reconfigured by accident.
-
----
-
-## 🎯 What's New
-
-### ⭐ Favorites collection
-- 题集列表新增「收藏夹」，始终存在、不可删除；收藏的题目连同难度与主题一并保存，离线也能复练。
-- 题目页底部新增「收藏 / 取消收藏」按钮；答错一步的题目会自动收录，不重复添加。
-- 收藏夹为空时，会在列表内「收藏夹」条目下方直接给出提示，而不是占用顶部状态栏。
-
-- A Favorites collection now sits at the top of the collection list: always present and never deletable, saving each puzzle with its rating and themes for offline review.
-- Puzzle pages gain a Favorite / Unfavorite button, and any puzzle answered incorrectly is added automatically without duplicates.
-- When Favorites is empty, a hint appears right under the Favorites entry in the list instead of in the status line above.
-
-### 🔒 Locked game settings
-- 对弈走出第一步后，「我方 / 计时 / 开局 / 残局」自动变灰不可修改；「新对局」或悔棋回到起始局面后恢复可编辑。
-- 难度滑条不受影响，对局中仍可随时调整电脑强度。
-
-- Once a Play game is under way, the Play as / Clock / Opening / Endgame pickers gray out and cannot be changed; New game (or undoing back to the start) unlocks them again.
-- The rating slider is unaffected and can still be adjusted mid-game.
-
-### 🧹 Puzzle panel cleanup
-- 未选择习题集时不再显示「上一题 / 下一题」与跳转框，选中后自动出现。
-- 移除与「提示」功能重复的「显示答案」按钮，界面更精简。
-
-- Previous / Next and the jump box stay hidden until a collection is selected, then appear automatically.
-- The Show solution button was removed as it duplicated Hint, leaving a cleaner panel.
-
----
-
-## 🛠️ Full Changelog
-- feat(play): lock the side, clock, opening, and endgame pickers once a game is under way
-- feat(puzzle): add a non-deletable Favorites collection with a favorite toggle
-- feat(puzzle): auto-add puzzles answered incorrectly to Favorites
-- feat(puzzle): show the empty-Favorites hint as an in-list info line
-- feat(puzzle): hide Previous / Next until a collection is entered
-- refactor(puzzle): drop the Show solution button in favor of hints
-- test(puzzle): cover the favorites store and its virtual collection
-- docs: document Favorites and the Play settings lock in both READMEs
-- chore(version): bump the app version to 1.5.2
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。现有档案、题集进度、收藏以外的数据均不受影响。
-- 新增用户数据文件 `%APPDATA%\CheckPause\puzzles\favorites.jsonl`，仅在首次收藏（或首次答错）时创建。
-
-- No breaking changes. Existing profiles, puzzle progress, and other data keep working.
-- A new user data file, `%APPDATA%\CheckPause\puzzles\favorites.jsonl`, is created only when you first favorite a puzzle (or first miss one).
-
----
-
-# v1.5.1 – Rating Slider
-
-> 对弈难度从五档下拉框换成了一条 100–3000 的等级分滑条，拖到哪就是哪：1320 分及以上由 Stockfish 官方的 Elo 限制器标定，更低分段用 Skill Level 与节点上限近似。难度与计时对调了位置，难度独享一整行；引擎思考量也从「秒数」改成「节点数」，同一档位不再因电脑快慢而变强变弱。
->
-> Play difficulty becomes a 100–3000 rating slider instead of a five-item dropdown: at 1320 and above it is calibrated by Stockfish's own Elo limiter, while lower ratings are approximated with Skill Level and a node cap. Level and Clock traded places, Level now gets a full row of its own, and search effort is measured in nodes instead of seconds so a level no longer drifts with your CPU speed.
-
----
-
-## 🎯 What's Changed
-
-### 🎚️ Rating slider
-- 难度改为独占一行的滑条，范围 100–3000、步长 50，右侧实时显示当前分数，悬停提示对应档位名（入门 / 简单 / 中等 / 困难 / 大师）；计时上移到「我方」右侧，与难度对调位置。
-
-- Level is now a full-width slider spanning 100–3000 in steps of 50, showing the current rating beside it with a tooltip naming the tier (Beginner / Easy / Medium / Hard / Master). Clock moved up beside Play as, trading places with Level.
-
-### 🎯 Calibrated strength
-- 1320 分及以上直接使用 Stockfish 的 `UCI_LimitStrength` + `UCI_Elo`，是引擎自报的真实等级分；1320 以下用 `Skill Level` 加节点上限近似，界面提示里明确标注为近似值。
-
-- Ratings at 1320 and above use Stockfish's `UCI_LimitStrength` + `UCI_Elo`, the engine's own calibrated rating. Below 1320 the level is approximated with `Skill Level` plus a node cap, and the tooltip says so outright.
-
-### 🖥️ Same strength on every machine
-- 引擎思考量由「秒数」改为「节点数」：快机只是想得更快，不会因此更深，同一档位在任何电脑上都是同一个对手。
-
-- Search effort is now bounded by nodes rather than seconds: a faster machine only thinks faster, not deeper, so a given rating is the same opponent everywhere.
-
-### 🛡️ Safe fallback
-- 启动时读取引擎自报的 `UCI_Elo` 上下限并据此钳制映射；若引擎根本不提供该选项，则全程改用 Skill Level 近似，不会出现「显示 800 分却按满强度走子」。
-
-- The engine's own `UCI_Elo` bounds are read on startup and used to clamp the mapping. Engines without that option fall back to the Skill Level approximation instead of quietly playing at full strength under a low rating.
-
----
-
-## 🛠️ Full Changelog
-- feat(play): replace the five-item level dropdown with a 100-3000 rating slider
-- feat(play): drive ratings of 1320+ through UCI_LimitStrength and UCI_Elo
-- feat(play): approximate lower ratings with Skill Level and a node cap
-- feat(play): bound engine search by nodes so a level is machine-independent
-- feat(play): probe the engine's UCI_Elo bounds and fall back without it
-- feat(play): swap the Level and Clock pickers and give Level its own row
-- style(theme): style horizontal sliders for both light and dark themes
-- test(play): cover the rating-to-engine mapping
-- docs: describe the rating slider in the README
-- chore(version): bump the app version to 1.5.1
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。对弈难度不再是五个预设档位，但此前也没有持久化过档位选择，滑条默认 1500 分，与原「中等」档一致。
-
-- No breaking changes. Play difficulty is no longer five named presets, but the choice was never persisted before; the slider defaults to 1500, matching the old Medium level.
-
----
-
-# v1.5.0 – One-Click Installer
-
-> 本次更新改变了分发方式：不再需要解压文件夹，直接运行一个安装包即可完成安装，自动创建桌面与开始菜单快捷方式，安装界面为简体中文，并且全程不需要管理员权限。软件现在还会在后台检查更新，有新版本时主动提示。
->
 > This release changes how you get CheckPause: no more unzipping a folder — run a single installer instead. It sets up desktop and Start Menu shortcuts for you, shows a Simplified Chinese interface, and never asks for administrator rights. CheckPause now also looks for new releases in the background and tells you when one is available.
 
 ---
@@ -921,6 +713,11 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - 发布物从「一个需要解压的文件夹」变成单个 `CheckPause_Setup_<版本>.exe`：双击、下一步、完成，自动创建桌面快捷方式与开始菜单项，并在「应用和功能」中注册卸载入口。
 
 - The release is now a single `CheckPause_Setup_<version>.exe` instead of a folder you have to unzip: double-click, Next, Finish. It creates desktop and Start Menu shortcuts and registers an uninstall entry in Apps & features.
+
+### 🔔 Update notifications
+- 启动后会在后台静默检查是否有新版本，有则提示并提供下载入口；检查过程不阻塞界面，处于离线状态或已是最新版时完全不打扰用户。对某个版本选择「稍后」后，不会再就同一版本重复提示。
+
+- CheckPause now looks for a newer release quietly in the background and offers a download link when one is found. The check never blocks the UI, stays silent when offline or already up to date, and a version dismissed with "Later" is not asked about again.
 
 ### 🇨🇳 Chinese installer interface
 - 安装界面使用 Inno Setup 官方简体中文语言包，中文系统的用户会自动预选中文，同时保留英文界面。
@@ -941,11 +738,6 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - `.\build_exe.ps1` 现在会依次完成 PyInstaller 打包与安装包编译，版本号自动读取 `checkpause/__init__.py`，不再需要手工同步；便携版仍照常生成。
 
 - `.\build_exe.ps1` now runs PyInstaller and the installer compiler in sequence, reading the version from `checkpause/__init__.py` so nothing has to be kept in sync by hand; the portable build is still produced as before.
-
-### 🔔 Update notifications
-- 启动后会在后台静默检查是否有新版本，有则提示并提供下载入口；检查过程不阻塞界面，处于离线状态或已是最新版时完全不打扰用户。对某个版本选择「稍后」后，不会再就同一版本重复提示。
-
-- CheckPause now looks for a newer release quietly in the background and offers a download link when one is found. The check never blocks the UI, stays silent when offline or already up to date, and a version dismissed with "Later" is not asked about again.
 
 ---
 
@@ -971,39 +763,15 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 ---
 
-# v1.4.1 – Layout Polish
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.4.1...v1.5.0
 
-> 本次更新优化了界面布局：对弈、谜题与分析工具下的棋盘与侧栏尺寸保持统一，切换模块时界面不再跳动。
+# v1.4.0 - Puzzle Progress and Quick Jump
+
+> **Archived**
 >
-> This release polishes the layout: the board and side panel now stay the same size across Play, Puzzles, and Analysis, so switching modules no longer shifts the interface.
+> This is an early development build. Only the source archive is kept; the installer is no longer available for download.
 
 ---
-
-## 🎯 What's Changed
-- 优化了界面布局：统一各模块的棋盘与侧栏尺寸，并微调了模块入口与按钮的对齐。
-
-- Polished the layout: unified the board and side-panel sizes across modules and tidied module and button alignment.
-
----
-
-## 🛠️ Full Changelog
-- fix(gui): keep the board and side panel the same size across modules
-- fix(gui): align the module rail buttons consistently
-- chore(version): bump the app version to 1.4.1
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。
-
-- No breaking changes.
-
----
-
-# v1.4.0 – Puzzle Progress and Quick Jump
-
-> 谜题页焕新：已解开的谜题会被记住，重开自动继续，并可直接跳到任意一题。
 
 > The Puzzle page gets a refresh: solved puzzles are remembered, you resume automatically, and you can jump to any puzzle.
 
@@ -1028,54 +796,11 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 ---
 
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。
-
-- No breaking changes.
-
----
-
-# v1.3.3 – Pause, Endgames, and a Cleaner Promotion
-
-> 本次更新让对弈更可控：计时对局可以暂停，开局下方新增可自选的常见残局，时钟在你走出第一步前不会开始，升变改用 Lichess 风格的棋盘内联弹窗。
->
-> This release makes Play more controllable: timed games can be paused, a set of common endgames joins the pickers, the clock waits for your first move, and promotion now uses an inline, Lichess-style picker.
-
----
-
-## 🎯 What's New
-
-### ⏸️ Pause a game
-- 计时对局的两个时钟之间新增「暂停 / 继续」：暂停时停表并锁定走子，继续后恢复计时；未启用计时时不会显示。
-
-- A Pause / Resume button now sits between the two clocks in timed games: it stops the clock and locks the board, resumes cleanly, and stays hidden when no clock is running.
-
-### ♟️ Endgame practice
-- 「开局」下方新增「残局」，内置后对单王、单车对单王、双车对单王、双象对单王、兵升变、王兵对王、后对车、后对兵升变八个常见残局，选中即从该局面开始对弈，并与开局互斥。
-
-- Added an Endgame picker below Opening with eight common positions (queen, rook, two rooks, two bishops, pawn promotion, king and pawn, queen vs rook, queen vs pawn); picking one starts from that position and clears any opening line.
-
-### ⏱️ Clock waits for the first move
-- 尚未走子时双方时钟不会开始计时，走出第一手后才开始走表。
-
-- The clock no longer starts before your first move; it begins once a move is played.
-
-### ♟️ Inline promotion
-- 升变改为锚定升变格的棋盘内联弹窗，按当前棋子集与棋盘配色显示后、车、象、马，悬停高亮，点击选择，Esc 或点击外部取消。
-
-- Promotion is now an inline popup anchored to the promoting square, showing queen, rook, bishop, and knight in the current piece set and board colors, with hover highlight, click to pick, and Esc or click-away to cancel.
-
----
-
 ## 🛠️ Full Changelog
-- feat(play): add a pause/resume control for timed games
-- feat(play): add a selectable set of common endgames
-- fix(play): keep the clock stopped until the first move
-- feat(board): render an inline Lichess-style promotion picker
-- fix(board): honour the PGN start FEN for positions and imports
-- test: cover the bundled endgame positions
-- chore(version): bump the app version to 1.3.3
+- feat(puzzle): remember solved puzzles and resume automatically
+- feat(puzzle): add a jump box between previous/next
+- refactor(puzzle): show puzzle details under the selected collection
+- chore(version): bump the app version to 1.4.0
 
 ---
 
@@ -1087,83 +812,16 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 ---
 
-# v1.3.2 – Clocks, Openings, and a Version Label
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v1.3.3...v1.4.0
 
-> 本次更新让「对弈」更接近真实棋局：新增可选的计时模式与开局选择，同时「关于」对话框会显示当前版本号。
+# v1.3.0 - Puzzles and Importable Collections
+
+> **Archived**
 >
-> This release makes Play feel like a real game: optional time controls and opening selection, plus the current version shown in About.
+> This is an early development build. Only the source archive is kept; the installer is no longer available for download.
 
 ---
 
-## 🎯 What's New
-
-### ⏱️ Time controls
-- 「对弈」新增「计时」选项，内置无限制、1+0、3+0、3+2、5+0、5+3、10+0、10+5、15+10、30+0 等常见模式。
-- 棋盘上方显示双方剩余时间，走子后按模式加秒，超时即判负；离开对弈页面时自动暂停。
-
-- Play now offers a Clock option with common modes: Unlimited, 1+0, 3+0, 3+2, 5+0, 5+3, 10+0, 10+5, 15+10, and 30+0.
-- Both players' remaining time is shown above the board, increments are added after each move, running out of time loses the game, and the clock pauses while you are away from Play.
-
-### 📖 Opening selection
-- 「对弈」新增「开局」选项，可直接选一个开局并从该局面的终局开始对弈，开局着法会出现在着法列表中。
-
-- Play now offers an Opening option: pick an opening and start from its final position, with the opening moves listed in the move list.
-
-### ℹ️ Version in About
-- 「帮助 → 关于」现在会显示当前版本号，中英文界面均已适配。
-
-- Help → About now shows the current version number in both Chinese and English.
-
----
-
-## 🛠️ Full Changelog
-- feat(play): add selectable time controls with a running clock
-- feat(play): allow starting a game from a chosen opening
-- feat(about): show the current app version
-- chore(version): bump the app version to 1.3.2
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。
-
-- No breaking changes.
-
----
-
-# v1.3.1 – Tidier First Run
-
-> 本次更新只是小幅整理：整体流程更符合逻辑，界面也更整洁。
->
-> A small housekeeping release: the flow is more logical and the interface tidier.
-
----
-
-## 🎯 What's Changed
-- 对首次进入的流程与默认外观做了整理，整体更符合逻辑、更整洁。
-
-- Tidied up the first-run flow and default appearance for a more logical, cleaner experience.
-
----
-
-## 🛠️ Full Changelog
-- refactor(gui): make the first-run flow more logical and the interface tidier
-- chore(version): bump the app version to 1.3.1
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。
-
-- No breaking changes.
----
-
-# v1.3.0 – Puzzles and Importable Collections
-
-> 本次更新在「对弈」与「分析工具」之间新增「谜题」模块，用于做战术题。程序不预设题库内容，用户可以自行导入开源免费的题集，并且内置了一份取自 Lichess puzzle database（CC0 公共领域）的精选样例，开箱即可练手。解题支持走对继续、走错即时提示、对手自动应着、提示箭头与显示答案；导入的题集以本地 JSONL 保存并按偏移量惰性读取，再大的题库也不会一次性占满内存。
->
 > This release adds a Puzzles module between Play and Analysis for working through tactics. The app ships no preset library of its own: users can import free, open-source puzzle collections themselves, and a curated sample from the Lichess puzzle database (CC0 public domain) is bundled so there is something to solve out of the box. Solving gives correct/wrong feedback, plays the opponent's replies automatically, and offers hints and a full reveal; imported collections are stored locally as JSONL and read lazily by byte offset, so even very large files never load into memory at once.
 
 ---
@@ -1248,100 +906,15 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - The bundled collection is a read-only resource; deleting it writes a marker to `puzzles\index.json`, and removing that file restores it.
 - The package grows by roughly 0.5 MB (the bundled sample); `CheckPause.spec` already ships `assets`, so no packaging change is needed.
 - Rebuilding the bundled sample from source needs `pip install zstandard`; it is build-time only and never required at runtime.
----
 
-# v1.2.2 – Quiet Engine Launch
+# v1.2.0 - Play Against the Computer
 
-> 本次更新修复了窗口模式（`console=False`，无控制台）构建在对弈时的一个恼人问题：电脑每走一步都会闪出一个控制台窗口。原因是该构建自身没有控制台，而每次走子都会新建一个控制台子进程来运行 Stockfish，Windows 便为它分配一个新控制台窗口。现在引擎进程以隐藏方式启动，对弈全程干净无弹窗。
+> **Archived**
 >
-> This release fixes an annoying issue in the windowed, console-less build (`console=False`): a console window flashed on every computer move. Because that build has no console of its own, each move spawned a console-subsystem Stockfish process, and Windows allocated a fresh console window for it. The engine now launches hidden, so play stays clean from start to finish.
+> This is an early development build. Only the source archive is kept; the installer is no longer available for download.
 
 ---
 
-## 🎯 What's Fixed
-
-### 🪟 No more console window on every engine move
-- 窗口模式（无控制台）构建在对弈中，电脑走子不再弹出并瞬间关闭的控制台窗口。
-- 新增统一的引擎启动封装 `open_stockfish()`，在 Windows 下以 `CREATE_NO_WINDOW` 启动 Stockfish。
-- 对弈模块与「分析」模块的引擎启动都走同一封装，行为一致。
-
-- The windowed, console-less build no longer flashes a short-lived console window when the computer moves.
-- Added a single engine launch helper, `open_stockfish()`, which starts Stockfish with `CREATE_NO_WINDOW` on Windows.
-- Both the Play module and the Analysis module now launch the engine through the same helper for consistent behavior.
-
----
-
-## 🛠️ Full Changelog
-- fix(engine): launch Stockfish with `CREATE_NO_WINDOW` so windowed builds show no console
-- refactor(engine): add `open_stockfish()` and route all engine starts through it
-- fix(play): stop the console flash on every computer move
-- chore(version): bump the app version to 1.2.2
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
-- 仅改变 Windows 下引擎子进程的启动方式；从源码运行或带控制台运行时本就看不到该窗口，命令行界面同样不受影响。
-
-- No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
-- Only how the engine child process is launched on Windows changes; running from source or with a console never showed the window, and the CLI is unaffected.
----
-
-# v1.2.1 – Smooth Board Interaction
-
-> 本次更新专注对弈手感：棋子可以拖拽，合法落点跟随悬停高亮，走子平滑滑动，被吃子淡出，拖到非法格会滑回原位并保持选中。整体交互向 Lichess / chess.com 靠拢，不再有瞬移和硬回弹。
->
-> This release focuses on how the board feels: pieces can be dragged, legal targets respond to hover, moves slide smoothly, captures fade out, and an illegal drop slides the piece home while staying selected. The interaction now matches the intuition of Lichess and chess.com.
-
----
-
-## 🎯 What's New
-
-### 🖱️ Drag and hover
-- 棋子支持拖拽：按住即可拖起，棋子跟随光标并微微放大，原格清空，合法落点圆点保持可见。
-- 拖动时悬停到合法落点会加深高亮；悬停到可动棋子或合法落点时光标变为手型。
-- 点击走子保留：点棋子显示圆点、点圆点走子；再点同一棋子或右键可取消选中。
-
-- Drag-and-drop: hold a piece to pick it up; it follows the cursor and lifts slightly while legal-target dots stay visible.
-- Hovering a legal target deepens its highlight, and the cursor becomes a hand over movable pieces and targets.
-- Click-to-move is unchanged: click a piece for dots, click a dot to move, click the same piece again or right-click to deselect.
-
-### 🎞️ Move animation
-- 走子改为 130ms ease-out 平滑滑动，你走和电脑走都有动画。
-- 王车易位时王与车同时滑动；被吃子在滑动过程中淡出，而不是瞬间消失。
-- 拖到非法格松手时，棋子以同样的缓动滑回原位并保持选中。
-
-- Moves slide with a 130ms ease-out animation, for both your moves and the engine's.
-- Castling animates king and rook together, and captured pieces fade out instead of vanishing.
-- Dropping on an illegal square slides the piece home with the same easing, keeping it selected.
-
----
-
-## 🛠️ Full Changelog
-- feat(board): support drag-and-drop moves with the piece following the cursor
-- feat(board): keep click-to-move with legal-target dots and click-again to deselect
-- feat(board): add hover highlights and pointer/hand cursors
-- feat(board): animate moves with ease-out sliding, castling rooks, and capture fades
-- feat(board): animate pieces snapping back after an illegal drop
-- refactor(board): replay the move animation for both player and engine moves
-- chore(version): bump the app version to 1.2.1
-
----
-
-## ⚠️ Breaking Changes
-
-- 无破坏性变更。棋子/棋盘偏好、主题、API 配置与统计记录继续有效。
-- 仅分析页保持只读浏览，动画与拖拽只在「对弈」模块启用。
-
-- No breaking changes. Piece/board preferences, themes, API settings, and statistics keep working.
-- The analysis board stays read-only; dragging and animations only run in the Play module.
----
-
-# v1.2.0 – Play Against the Computer
-
-> 本次更新兑现了侧栏注册表的预留：新增「对弈」模块，可以直接和 Stockfish 下棋。点击棋子再点高亮落点即可行棋，支持执白/执黑、五档难度、悔棋、认输、升变选择与棋步回看，还能把整盘棋一键送入分析模块。引擎思考在后台线程运行，界面全程不卡顿。
->
 > This release delivers on the module registry: a new Play module lets you take on Stockfish directly. Click a piece and a highlighted square to move, play as White or Black, choose from five difficulty levels, undo, resign, pick a promotion piece, and review every move; one click sends the game to the analysis module. The engine thinks on a background thread, so the interface never freezes.
 
 ---
@@ -1406,12 +979,15 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 - No breaking changes. Existing `profile.json`, piece/board preferences, API settings, and statistics keep working.
 - Play uses the Stockfish binary bundled with the app; no extra installation is needed.
+
+# v1.1.0 - Module Rail and Close Confirmation
+
+> **Archived**
+>
+> This is an early development build. Only the source archive is kept; the installer is no longer available for download.
+
 ---
 
-# v1.1.0 – Module Rail and Close Confirmation
-
-> 本次更新为应用装上左侧模块侧栏：主窗口改为「侧栏 + 页面堆栈」的外壳结构，模块由注册表驱动，当前仅注册「分析工具」，后续谜题、对弈等模块可直接注册接入。同时新增关闭确认弹窗，避免误触退出打断分析或对话。
->
 > This release adds a left module rail: the main window becomes a rail + stacked-pages shell, driven by a module registry that currently holds Analysis only, so Puzzles, Play, and others can plug in later. It also adds a close-confirmation dialog so analysis or chat is never interrupted by an accidental exit.
 
 ---
@@ -1454,12 +1030,9 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 - No breaking changes. Existing `profile.json`, piece/board preferences, and API settings keep working.
 - The entry point and module paths (`run_gui.py`, `checkpause.*`) are unchanged.
----
 
-# v1.0.0 – Graphical Interface, Move List, Personalization, and Performance
+# v1.0.0 - Graphical Interface, Move List, Personalization, and Performance
 
-> CheckPause 的首个正式系列版本。它从一个命令行工具成长为可分发的中英文桌面应用：PyQt6 图形界面、明暗主题、短信式 AI 对话、可点击的着法列表、Lichess 风格的自绘棋盘与个性化外观、翻转棋盘与表现评级、开局谱库、可配置的 OpenAI 兼容接口，以及一键打包的 Windows exe。
->
 > The first stable series of CheckPause. It grows from a command-line tool into a distributable, bilingual desktop app: a PyQt6 interface, light/dark themes, SMS-style AI chat, a clickable move list, a Lichess-style custom board with personalization, board flipping and performance ratings, an opening book, a configurable OpenAI-compatible API, and one-command Windows packaging.
 
 ---
@@ -1636,12 +1209,9 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - History is still stored as numeric accuracy; the stats summary keeps accuracy numbers and the table shows a centered Performance column.
 - Ship the whole `dist\CheckPause` folder; each user must provide their own API key.
 - Piece sets keep their own licenses (GPLv2+, Apache-2.0, MIT, CC BY, CC0); keep the attributions when redistributing.
----
 
-# v0.3.1 – Bilingual CLI and Persistent Language Preferences
+# v0.3.1 - Bilingual CLI and Persistent Language Preferences
 
-> 本次更新为 CLI 加入中英文语言选择。用户可以在首次启动时选择界面语言，也可以在运行过程中随时切换。
->
 > This release adds bilingual CLI support. Users can choose their interface language on first launch and switch languages at any time.
 
 ---
@@ -1692,12 +1262,9 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 
 - No breaking changes.
 - Existing `profile.json` files remain compatible and default to Chinese when no language is configured.
----
 
-# v0.3.0 – Reliable AI, Easier Setup, Cleaner Architecture
+# v0.3.0 - Reliable AI, Easier Setup, Cleaner Architecture
 
-> 本次更新聚焦于 **稳定性**、**配置体验** 和 **代码结构**。CP 现在使用最新可用的 DeepSeek Flash 模型，并能更好地处理网络、API 和 Stockfish 配置问题。
->
 > This release focuses on **reliability**, **easier setup**, and a **cleaner architecture**. CP now uses the latest available DeepSeek Flash model and handles API, network, and Stockfish configuration issues more gracefully.
 
 ---
@@ -1766,3 +1333,116 @@ SHA-256: `5774D732C4C3A5D3ACB262C894922D33DE894AEEAFF95D704C4A93841FF71F19`
 - PyCharm should use the project virtual environment:
   `D:\PycharmProjects\CheckPause-Alpha\.venv\Scripts\python.exe`
 - A valid `DEEPSEEK_API_KEY` is still required in `.env`.
+
+# v0.2.1 - Smarter CLI, Leaner Prompt, Real-time Timer
+
+> This release focuses on **interaction experience** and **token efficiency**. CP now shows a live timer while thinking, and significantly compresses the game data sent to DeepSeek – saving you time and money.
+
+---
+
+## 🎯 What's New
+### ⏱️ Real‑time thinking timer 
+- 在等待 DeepSeek 回复时，控制台会显示动态计时：`💭 Thinking... (2.3s)`
+- 一旦开始收到回复，计时器自动停止并显示首包耗时，让你知道 AI 正在工作，不再干等。
+
+- A live timer appears while waiting for DeepSeek: `💭 Thinking... (2.3s)`
+- The timer stops automatically once the first response chunk arrives, showing you the initial latency – no more staring at a blank screen.
+
+### 🧹 Leaner prompt
+- 新增 `compact_analysis()` 函数，将冗长的棋谱分析数据压缩为紧凑文本：
+  - 旧格式：`{turn_color: 'Turn 1 White', move: 'e4', engine_score: 20, best_move: 'e5'}`
+  - 新格式：`e4(score:20, best:e5); Nf3(score:15)` 
+- **Token 消耗减少约 60%**，同时保留完整信息，AI 依然能准确回答问题。
+
+- Added `compact_analysis()` to compress long analysis data into a compact string:
+  - Old: `{turn_color: 'Turn 1 White', move: 'e4', engine_score: 20, best_move: 'e5'}`
+  - New: `e4(score:20, best:e5); Nf3(score:15)`
+- **Reduces token usage by ~60%** while keeping all essential info – the AI remains just as accurate.
+
+### 📊 Smarter stats display
+- 启动时显示 **最后对局日期** 和 **平均准确度**，一目了然。
+- 更新档案后，自动计算平均准确度的变化趋势并显示箭头（`↑+1.2%` / `↓0.8%` / `持平`）。
+
+- Shows **last game date** and **average accuracy** on startup.
+- After updating profile, automatically displays trend arrows (`↑+1.2%` / `↓0.8%` / `持平`) for average accuracy.
+
+---
+
+## 🛠️ Full Changelog
+- feat(cli): add real‑time timer during DeepSeek inference
+- feat(cli): compact analysis data to reduce token usage
+- feat(cli): display last game date and average accuracy trend
+- refactor(cli): remove redundant latest accuracy display
+- perf(cli): improve timer thread cleanup with try‑finally
+- docs: update README to reflect new CLI behavior
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无。本次更新完全向后兼容，旧档案文件 (`profile.json`) 可直接使用。
+
+- None. This release is fully backward‑compatible – existing `profile.json` files work as is.
+
+# v0.2.0 - CPL-based Accuracy & Deeper Analysis
+
+> This release marks the first major leap in analysis quality for CheckPause (CP). Instead of just checking "right or wrong", it now measures "how far from perfect".
+
+---
+
+## 🔥 What's New
+
+### 📊 CPL-Based Accuracy Scoring
+- 准确度不再依赖“是否与引擎首选走法完全一致”的二元判断。
+- 改用 **CPL（Centipawn Loss / 厘兵损失）** 衡量每一步的质量，将差距映射为 0～1 的连续得分。
+- 准确度现在更接近 Chess.com / Lichess 的风格，能真实反映棋力水平。
+
+- Accuracy is no longer a binary "match or not" judgment.
+- Now uses **CPL (Centipawn Loss)** to evaluate every move, mapping the gap to a continuous 0–1 score.
+- Accuracy is now closer to Chess.com / Lichess style, reflecting real skill levels.
+
+### ⚙️ Deeper Engine Analysis
+- 引擎限制从固定的 `0.5秒` 升级为 **`depth=18, time=2.0s`** 组合限制。
+- 分析深度大幅提升，能捕捉更多深层战术和精确走法。
+
+- Engine limit upgraded from fixed `0.5s` to a combined **`depth=18, time=2.0s`** limit.
+- Analysis depth is significantly improved, capturing more tactical nuances and precise moves.
+
+### 🧹 Profile Cleanup
+- 移除 `Current main issue` 功能——该功能生成的建议过于笼统，实用性有限。
+- 用户档案现在更干净，只保留准确度、总局数和历史记录。
+
+- Removed the `Current main issue` feature – the suggestions were too generic and had limited practical value.
+- Player profile is now cleaner, keeping only accuracy, total games, and history.
+
+### 🧭 CLI Improvements
+- 在粘贴棋谱阶段，输入 `clear` 或 `/reset` 即可清除所有用户数据并退出，无需等分析完成。
+
+- You can now type `clear` or `/reset` during PGN input to wipe all data and exit – no need to wait for analysis to finish.
+
+---
+
+## 🛠️ Full Changelog 
+
+- refactor(engine): replace binary accuracy with CPL-based scoring
+- perf(engine): upgrade analysis limit to depth=18 / time=2.0s
+- feat(cli): display username in input prompt
+- feat(cli): support `clear` and `/reset` during PGN input
+- refactor(profile): remove `latest_issues` and `issues` extraction
+- refactor(i18n): migrate all prompts and data fields to English
+- docs(readme): update to reflect new accuracy model
+
+---
+
+## ⚠️ Breaking Changes 
+
+- 由于新算法每步需分析两次，分析时间大约是旧版的 **2 倍**。但换取的是更准确、更有意义的评分。
+- 用户档案结构已更改，建议清除旧档案（输入 `clear` 即可）以重新开始。
+
+- Due to two analyses per move, analysis time is roughly **2x** the previous version. This is traded for more accurate and meaningful scoring.
+- Profile structure has changed. It is recommended to clear your old profile (type `clear`) and start fresh.
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v0.1.0...v0.2.0
+
+# v0.1.0

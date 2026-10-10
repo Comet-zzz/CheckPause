@@ -26,6 +26,16 @@ STOCKFISH_RELATIVE = STOCKFISH_DIRECTORY + (stockfish_executable_name(),)
 
 OPENING_BOOK_RELATIVE = ("assets", "opening_book.bin")
 
+# The small convolutional classifier that reads a chess screenshot. It is
+# trained offline (tools/train_recognizer.py) and bundled with the app; without
+# it the image-recognition button reports that the model is missing.
+RECOGNIZER_MODEL_RELATIVE = ("assets", "recognition", "board_cnn.onnx")
+
+# Image recognition is still being finished. It stays available when the app is
+# started from source (run_gui.py) so it can be tested, but packaged release
+# builds ship with the button disabled.
+IMAGE_RECOGNITION_ENABLED = not getattr(sys, "frozen", False)
+
 BOOK_MAX_PLIES = 30
 BOOK_MIN_WEIGHT = 1
 

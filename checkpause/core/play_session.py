@@ -21,6 +21,7 @@ class PlaySession:
         self.time_control = {"base": None, "increment": 0}
         self.clock_remaining = None
         self.clock_last = None
+        self.clock_started = False
 
     # -- game setup -----------------------------------------------------
     def new_game(
@@ -52,6 +53,7 @@ class PlaySession:
         self.paused = False
         if time_control is not None:
             self.time_control = dict(time_control)
+        self.clock_started = False
         self.reset_clock(now)
 
     def set_time_control(self, time_control):
@@ -115,8 +117,12 @@ class PlaySession:
             self.clock_remaining is not None
             and not self.game_over
             and not self.paused
-            and bool(self.moves)
+            and (bool(self.moves) or self.clock_started)
         )
+
+    def start_clock_early(self):
+        """Begin a timed game's clock before the first move is played."""
+        self.clock_started = True
 
     def reset_clock(self, now=None):
         base = self.time_control.get("base")

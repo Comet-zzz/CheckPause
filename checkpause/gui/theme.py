@@ -698,3 +698,8 @@ def apply_theme(app, theme):
     app.setStyle("Fusion")
     app.setPalette(_palette(theme))
     app.setStyleSheet(LIGHT_STYLESHEET if theme == LIGHT else DARK_STYLESHEET)
+
+
+def danger_color(theme):
+    """The danger (destructive action) tint for the given theme."""
+    return _TOKENS.get(theme, _TOKENS[LIGHT])["danger"]
