@@ -27,6 +27,16 @@ BOARD_PATCH = MODEL_CELL * BOARD_LEN
 # misaligned grid or a plain screenshot background.
 _MIN_SCORE = 0.3
 
+# A piece is read from its silhouette, not its colours. The fill of a white
+# piece on a light square nearly matches the square, so the plain colour
+# distance only yields the dark outline; filling that outline makes a solid
+# shape for every piece on every square. The classifier then only has to learn
+# six shapes, which is what lets it tolerate piece styles it never saw.
+SHAPE_SIZE = 28  # side of the silhouette patch the model takes
+_MASK_THRESHOLD = 45.0  # per-pixel colour distance that counts as "not square"
+_MIN_PIECE_AREA = 0.06  # filled fraction above which a square holds a piece
+_PIECE_LUMINANCE = 110.0  # fill brightness that separates white from black
+
 
 class RecognizeError(RuntimeError):
     """A board could not be read; ``code`` names the i18n message to show."""
@@ -260,8 +270,132 @@ def validate_fen(fen):
     return issues
 
 
+def _neighbour_offsets():
+    return ((1, 0), (-1, 0), (0, 1), (0, -1))
+
+
+def _fill_holes(mask):
+    """Flood the outer background so regions enclosed by an outline fill in.
+
+    A piece drawn as a dark outline around a light fill has almost no colour
+    contrast on a light square, so the raw mask is only the ring. Flooding from
+    the border and keeping everything the flood never reached turns that ring
+    into a solid silhouette.
+    """
+    height, width = mask.shape
+    reached = np.zeros((height, width), bool)
+    stack = []
+    for row in range(height):
+        for col in (0, width - 1):
+            if not mask[row, col] and not reached[row, col]:
+                reached[row, col] = True
+                stack.append((row, col))
+    for col in range(width):
+        for row in (0, height - 1):
+            if not mask[row, col] and not reached[row, col]:
+                reached[row, col] = True
+                stack.append((row, col))
+    while stack:
+        row, col = stack.pop()
+        for dy, dx in _neighbour_offsets():
+            y, x = row + dy, col + dx
+            if 0 <= y < height and 0 <= x < width and not reached[y, x] and not mask[y, x]:
+                reached[y, x] = True
+                stack.append((y, x))
+    return mask | ~reached
+
+
+def _largest_component(mask):
+    """Keep the biggest connected blob; drop texture specks and stray noise."""
+    height, width = mask.shape
+    seen = np.zeros((height, width), bool)
+    best = np.zeros((height, width), bool)
+    best_area = 0
+    for row in range(height):
+        for col in range(width):
+            if not mask[row, col] or seen[row, col]:
+                continue
+            seen[row, col] = True
+            stack = [(row, col)]
+            blob = []
+            while stack:
+                y, x = stack.pop()
+                blob.append((y, x))
+                for dy, dx in _neighbour_offsets():
+                    ny, nx = y + dy, x + dx
+                    if 0 <= ny < height and 0 <= nx < width and mask[ny, nx] and not seen[ny, nx]:
+                        seen[ny, nx] = True
+                        stack.append((ny, nx))
+            if len(blob) > best_area:
+                best_area = len(blob)
+                best = np.zeros((height, width), bool)
+                for y, x in blob:
+                    best[y, x] = True
+    return best
+
+
+def _erode(mask, iterations=1):
+    eroded = mask
+    for _ in range(iterations):
+        grown = eroded
+        for dy, dx in _neighbour_offsets():
+            grown = grown & np.roll(np.roll(eroded, dy, 0), dx, 1)
+        eroded = grown
+        eroded[0, :] = False
+        eroded[-1, :] = False
+        eroded[:, 0] = False
+        eroded[:, -1] = False
+    return eroded
+
+
+def piece_mask(cell):
+    """The solid silhouette of the piece in one square patch, plus its colour."""
+    border = np.concatenate([cell[0], cell[-1], cell[:, 0], cell[:, -1]])
+    background = np.median(border, axis=0)
+    distance = np.linalg.norm(cell - background, axis=-1)
+    raw = distance > _MASK_THRESHOLD
+    if not raw.any():
+        return raw, background
+    return _fill_holes(_largest_component(raw)), background
+
+
+def normalize_shape(mask, size=SHAPE_SIZE):
+    """Scale a binary silhouette to a centred, aspect-preserving square patch."""
+    rows = np.where(mask.any(axis=1))[0]
+    cols = np.where(mask.any(axis=0))[0]
+    if len(rows) == 0 or len(cols) == 0:
+        return np.zeros((size, size), np.float32)
+    crop = mask[rows[0] : rows[-1] + 1, cols[0] : cols[-1] + 1].astype(np.float32)
+    height, width = crop.shape
+    scale = size / max(height, width)
+    out_h = max(1, int(round(height * scale)))
+    out_w = max(1, int(round(width * scale)))
+    small = resize_rgb(crop[..., None], out_h, out_w)[..., 0]
+    canvas = np.zeros((size, size), np.float32)
+    top = (size - out_h) // 2
+    left = (size - out_w) // 2
+    canvas[top : top + out_h, left : left + out_w] = small
+    return np.clip(canvas, 0.0, 1.0)
+
+
+def piece_color(cell, mask):
+    """White or black from the piece's own fill, ignoring its dark outline."""
+    inner = _erode(mask, 1)
+    pixels = cell[inner] if inner.any() else cell[mask]
+    if pixels.shape[0] == 0:
+        return None
+    if float(pixels.mean()) >= _PIECE_LUMINANCE:
+        return chess.WHITE
+    return chess.BLACK
+
+
 class OnnxClassifier:
-    """Runs the bundled classifier; the only place onnxruntime is imported."""
+    """Reads each square's silhouette and names its piece.
+
+    The only place onnxruntime is imported. The bundled model classifies the
+    six piece *shapes*; colour and emptiness are decided here, so the network
+    never has to memorise a piece style or a square colour.
+    """
 
     def __init__(self, path):
         import onnxruntime
@@ -270,12 +404,34 @@ class OnnxClassifier:
         self._input = self._session.get_inputs()[0].name
 
     def predict(self, cells):
-        batch = np.asarray(cells, dtype=np.float32).transpose(0, 3, 1, 2) / 255.0
+        cells = np.asarray(cells, dtype=np.float32)
+        labels = np.zeros(len(cells), np.int64)
+        confidence = np.ones(len(cells), np.float32)
+        shapes = []
+        slots = []
+        for index, cell in enumerate(cells):
+            mask, _ = piece_mask(cell)
+            if mask.mean() < _MIN_PIECE_AREA:
+                continue
+            color = piece_color(cell, mask)
+            if color is None:
+                continue
+            shapes.append(normalize_shape(mask))
+            slots.append((index, color))
+        if not shapes:
+            return labels, confidence
+        batch = np.stack(shapes)[:, None, :, :].astype(np.float32)
         logits = self._session.run(None, {self._input: batch})[0]
         logits = logits - logits.max(axis=1, keepdims=True)
         probabilities = np.exp(logits)
         probabilities /= probabilities.sum(axis=1, keepdims=True)
-        return probabilities.argmax(axis=1), probabilities.max(axis=1)
+        best = probabilities.argmax(axis=1)
+        for (index, color), shape, prob in zip(
+            slots, best, probabilities.max(axis=1), strict=False
+        ):
+            labels[index] = int(shape) + (1 if color == chess.WHITE else 7)
+            confidence[index] = float(prob)
+        return labels, confidence
 
 
 def load_classifier():
@@ -291,8 +447,13 @@ def load_classifier():
         raise RecognizeError("image_error_runtime") from exc
 
 
-def recognize(image, classifier=None, flipped=False):
-    """Read a board image into a FEN plus per-cell confidence and issues."""
+def recognize(image, classifier=None, flipped=False, auto_flip=False):
+    """Read a board image into a FEN plus per-cell confidence and issues.
+
+    With ``auto_flip`` the reading is repeated rotated a half turn and the
+    orientation with the fewest rule violations wins, so a board shown from
+    Black's side does not come back upside down.
+    """
     box = detect_board(image)
     cells = extract_cells(image, box)
     model = classifier if classifier is not None else load_classifier()
@@ -301,9 +462,16 @@ def recognize(image, classifier=None, flipped=False):
     if flipped:
         labels = labels[::-1, ::-1]
     fen = fen_from_labels(labels)
+    issues = validate_fen(fen)
+    if auto_flip and issues:
+        other = labels[::-1, ::-1]
+        other_fen = fen_from_labels(other)
+        other_issues = validate_fen(other_fen)
+        if len(other_issues) < len(issues):
+            labels, fen, issues = other, other_fen, other_issues
     return {
         "fen": fen,
         "box": box,
         "confidence": float(np.min(confidence)),
-        "issues": validate_fen(fen),
+        "issues": issues,
     }

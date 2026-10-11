@@ -313,7 +313,7 @@ class RecognizeWorker(QThread):
     def run(self):
         try:
             image = load_image_array(self.path)
-            result = recognize(image)
+            result = recognize(image, auto_flip=True)
         except RecognizeError as exc:
             self.failed.emit(exc.code)
             return

@@ -1,5 +1,6 @@
 import unittest
 
+import chess
 import numpy as np
 
 from checkpause.core import recognize as rec
@@ -87,6 +88,40 @@ class TestFen(unittest.TestCase):
 
     def test_validate_accepts_normal_position(self):
         self.assertEqual(rec.validate_fen("4k3/8/8/8/8/8/8/4K3 w - - 0 1"), [])
+
+
+class TestFrontEnd(unittest.TestCase):
+    def test_empty_square_has_no_mask(self):
+        cell = np.full((32, 32, 3), 200, np.float32)
+        mask, _ = rec.piece_mask(cell)
+        self.assertFalse(mask.any())
+
+    def test_outline_is_filled_into_a_solid_shape(self):
+        cell = np.full((32, 32, 3), 220, np.float32)
+        cell[8:24, 8:24] = 40
+        cell[12:20, 12:20] = 220
+        mask, _ = rec.piece_mask(cell)
+        self.assertTrue(mask[16, 16])
+        self.assertGreater(float(mask.mean()), 0.15)
+
+    def test_normalize_shape_is_centred_and_sized(self):
+        mask = np.zeros((32, 32), bool)
+        mask[8:24, 12:20] = True
+        shape = rec.normalize_shape(mask)
+        self.assertEqual(shape.shape, (rec.SHAPE_SIZE, rec.SHAPE_SIZE))
+        rows = np.where(shape.any(axis=1))[0]
+        self.assertAlmostEqual((rows[0] + rows[-1]) / 2, rec.SHAPE_SIZE / 2, delta=1.5)
+
+    def test_piece_color_reads_the_fill(self):
+        black = np.full((32, 32, 3), 220, np.float32)
+        black[10:22, 10:22] = 30
+        mask, _ = rec.piece_mask(black)
+        self.assertEqual(rec.piece_color(black, mask), chess.BLACK)
+
+        white = np.full((32, 32, 3), 40, np.float32)
+        white[10:22, 10:22] = 235
+        mask, _ = rec.piece_mask(white)
+        self.assertEqual(rec.piece_color(white, mask), chess.WHITE)
 
 
 class TestRecognize(unittest.TestCase):
