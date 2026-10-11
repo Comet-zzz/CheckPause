@@ -42,6 +42,15 @@ a = Analysis(
     noarchive=False,
 )
 
+# The recogniser weights are a confidential, long-term asset and the shipped
+# app never runs the model (image recognition is off in frozen builds), so keep
+# them out of the bundle even when a local training copy exists.
+a.datas = [
+    entry
+    for entry in a.datas
+    if not entry[0].replace("\\", "/").startswith("assets/recognition/")
+]
+
 pyz = PYZ(a.pure)
 
 exe_options = {

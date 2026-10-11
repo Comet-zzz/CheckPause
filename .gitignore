@@ -62,3 +62,9 @@ DEV_NOTES.md
 CODING.md
 NAMING.md
 .kilo/jetbrains.json
+
+# Image-recognition training: kept out of the public repository on purpose
+# (long-term feature + differentiator; see AGENTS.md "识图训练：保密资产").
+# Private working copy lives in D:\Projects\CheckPause-Recognizer.
+tools/train_recognizer.py
+assets/recognition/
