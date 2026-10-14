@@ -35,10 +35,47 @@ CHAT_COLORS = {
     },
 }
 
-# Row highlight for the move list: a soft neutral tint, not a second accent.
-HIGHLIGHT_COLORS = {
-    LIGHT: "#e4e6e9",
-    DARK: "#3a3f45",
+# Row tints for the move list: the current move gets a stronger neutral wash
+# than the row under the cursor. RGBA tuples so the tint sits lightly on the
+# panel surface without a second accent.
+MOVE_ROW_COLORS = {
+    LIGHT: {"current": (16, 20, 26, 30), "hover": (16, 20, 26, 14)},
+    DARK: {"current": (255, 255, 255, 38), "hover": (255, 255, 255, 18)},
+}
+
+# Colours for the game-review move labels shown after each move. The label text
+# is English in every language, so these are plain hex values, not tokens.
+MOVE_LABEL_COLORS = {
+    "Brilliant": "#26c2a3",
+    "Great": "#5c8bb0",
+    "Best": "#81b64c",
+    "Excellent": "#81b64c",
+    "Good": "#95b776",
+    "Book": "#a88865",
+    "Forced": "#9aa7b0",
+    "Only move": "#9aa7b0",
+    "Inaccuracy": "#f7c631",
+    "Mistake": "#ffa459",
+    "Miss": "#ee6b55",
+    "Blunder": "#ca3431",
+}
+
+# The vector mark drawn after each move (see assets/icons). Every label uses a
+# drawn SVG, tinted with the colour above, so the list never relies on colour
+# alone.
+MOVE_LABEL_ICONS = {
+    "Brilliant": "review_brilliant",
+    "Great": "review_great",
+    "Best": "review_best",
+    "Excellent": "review_excellent",
+    "Good": "review_good",
+    "Book": "book",
+    "Forced": "review_forced",
+    "Only move": "review_only_move",
+    "Inaccuracy": "review_inaccuracy",
+    "Mistake": "review_mistake",
+    "Miss": "review_miss",
+    "Blunder": "review_blunder",
 }
 
 _TOKENS = {
@@ -525,6 +562,51 @@ QScrollArea > QWidget > QWidget {
     color: $text_muted;
     font-size: 12px;
 }
+QTabWidget#sidePanelTabs::pane {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+QTabWidget#sidePanelTabs QTabBar::tab {
+    background: transparent;
+    color: $text_muted;
+    padding: 7px 18px;
+    margin: 0 2px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+}
+QTabWidget#sidePanelTabs QTabBar::tab:hover {
+    background-color: $hover;
+    color: $text;
+}
+QTabWidget#sidePanelTabs QTabBar::tab:selected {
+    background-color: $accent_soft;
+    color: $text;
+    font-weight: 600;
+}
+QTableWidget#moveTable {
+    background: transparent;
+    border: none;
+}
+QTableWidget#moveTable::item {
+    border: none;
+    padding: 0px;
+}
+#actionBar {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+#summaryCard {
+    background-color: $accent_soft;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+#summaryCard QLabel#accuracyLabel {
+    color: $text;
+    font-size: 16px;
+    font-weight: 700;
+}
 #evalControls {
     background-color: $accent_soft;
     border: 1px solid $border;
@@ -703,3 +785,8 @@ def apply_theme(app, theme):
 def danger_color(theme):
     """The danger (destructive action) tint for the given theme."""
     return _TOKENS.get(theme, _TOKENS[LIGHT])["danger"]
+
+
+def muted_color(theme):
+    """The muted text tint, for de-emphasised list content."""
+    return _TOKENS.get(theme, _TOKENS[LIGHT])["text_muted"]

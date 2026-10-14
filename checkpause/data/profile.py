@@ -12,6 +12,8 @@ from checkpause.assets import (
     SOUND_OFF,
 )
 from checkpause.config import (
+    ANALYSIS_DEPTH_OPTIONS,
+    DEFAULT_ANALYSIS_DEPTH,
     DEFAULT_EVAL_DEPTH,
     DEFAULT_HINT_ENABLED,
     EVAL_DEPTH_OPTIONS,
@@ -36,6 +38,8 @@ def _normalize(profile):
     profile.setdefault("hint_enabled", DEFAULT_HINT_ENABLED)
     if profile.get("eval_depth") not in EVAL_DEPTH_OPTIONS:
         profile["eval_depth"] = DEFAULT_EVAL_DEPTH
+    if profile.get("analysis_depth") not in ANALYSIS_DEPTH_OPTIONS:
+        profile["analysis_depth"] = DEFAULT_ANALYSIS_DEPTH
     return profile
 
 
@@ -78,6 +82,7 @@ def create_profile(username, language="zh-CN"):
         "sound_set": DEFAULT_SOUND_SET,
         "hint_enabled": DEFAULT_HINT_ENABLED,
         "eval_depth": DEFAULT_EVAL_DEPTH,
+        "analysis_depth": DEFAULT_ANALYSIS_DEPTH,
         "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "total_games": 0,
         "history": [],
@@ -134,6 +139,12 @@ def set_hint_enabled(profile, enabled):
 
 def set_eval_depth(profile, depth):
     profile["eval_depth"] = depth if depth in EVAL_DEPTH_OPTIONS else DEFAULT_EVAL_DEPTH
+    save_profile(profile)
+    return profile
+
+
+def set_analysis_depth(profile, depth):
+    profile["analysis_depth"] = depth if depth in ANALYSIS_DEPTH_OPTIONS else DEFAULT_ANALYSIS_DEPTH
     save_profile(profile)
     return profile
 

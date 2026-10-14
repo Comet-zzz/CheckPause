@@ -1,10 +1,10 @@
 {
-  "latest": "2.0.1",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.1.zip",
+  "latest": "2.0.2",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.2.zip",
   "urls": {
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.1.zip",
-    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.1-macOS-M-series.dmg",
-    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.1-macOS-Intel.dmg"
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.2.zip",
+    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.2-macOS-M-series.dmg",
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.2-macOS-Intel.dmg"
   },
-  "notes": "进一步优化界面逻辑，操作更顺手；引入图片识别功能，仍在完善中。"
+  "notes": "进一步优化界面逻辑，操作更顺手；识图功能持续优化中。"
 }

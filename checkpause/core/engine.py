@@ -7,7 +7,7 @@ import chess.engine
 import chess.pgn
 import chess.polyglot
 
-from checkpause.config import BOOK_MAX_PLIES, BOOK_MIN_WEIGHT, ENGINE_LIMIT
+from checkpause.config import BOOK_MAX_PLIES, BOOK_MIN_WEIGHT, ENGINE_LIMIT, REVIEW_MULTIPV
 from checkpause.i18n import t
 from checkpause.resources import get_opening_book_path, get_stockfish_path
 
@@ -54,6 +54,23 @@ def read_lines(infos):
             continue
         margin, mate = read_score(info)
         lines.append({"uci": pv[0].uci(), "margin": margin, "mate": mate})
+    return lines
+
+
+def _candidate_lines(infos):
+    """Turn the engine's MultiPV infos into candidate moves for the review.
+
+    Each entry is the move that starts a line plus the evaluation of the
+    position it leads to (white point of view), best line first, so the review
+    can compare the played move against the runner-up.
+    """
+    lines = []
+    for info in infos:
+        pv = info.get("pv") if info else None
+        if not pv:
+            continue
+        margin, mate = read_score(info)
+        lines.append({"uci": pv[0].uci(), "cp": margin, "mate": mate})
     return lines
 
 
@@ -148,6 +165,7 @@ class StockfishAnalyzer:
         results = []
         total_moves_analyzed = 0
         total_score = 0.0
+        cached_infos = None
 
         try:
             for idx, move in enumerate(moves, start=1):
@@ -162,26 +180,49 @@ class StockfishAnalyzer:
                 is_book = (
                     book_active and idx <= BOOK_MAX_PLIES and self._is_book_move(book, board, move)
                 )
+                legal_count = board.legal_moves.count()
 
                 if is_book:
                     board.push(move)
                     move_score = 1.0
                     rel_score = None
                     best = None
+                    eval_before = None
+                    eval_after = None
+                    alts = []
+                    cached_infos = None
                 else:
                     try:
                         engine = self._start(language)
                     except Exception as exc:
                         return None, str(exc), None
 
-                    info_before = engine.analyse(board, self.limit)
+                    # The position searched as "after" the previous ply is the
+                    # very same position as "before" this one, so reuse that
+                    # analysis instead of searching it a second time. Only a
+                    # book move (which skips the engine) invalidates the cache.
+                    if cached_infos is None:
+                        cached_infos = engine.analyse(board, self.limit, multipv=REVIEW_MULTIPV)
+                    infos = cached_infos
+                    if isinstance(infos, dict):
+                        infos = [infos]
+                    info_before = infos[0] if infos else {}
                     score_before = info_before.get("score")
                     best = info_before.get("pv")[0] if info_before.get("pv") else None
+                    before_margin, before_mate = read_score(info_before)
+                    eval_before = {"cp": before_margin, "mate": before_mate}
+                    alts = _candidate_lines(infos)
 
                     board.push(move)
 
-                    info_after = engine.analyse(board, self.limit)
+                    after_infos = engine.analyse(board, self.limit, multipv=REVIEW_MULTIPV)
+                    cached_infos = after_infos
+                    if isinstance(after_infos, dict):
+                        after_infos = [after_infos]
+                    info_after = after_infos[0] if after_infos else {}
                     score_after = info_after.get("score")
+                    after_margin, after_mate = read_score(info_after)
+                    eval_after = {"cp": after_margin, "mate": after_mate}
 
                     move_score = 0.0
                     if (score_before and score_before.is_mate()) or (
@@ -232,6 +273,11 @@ class StockfishAnalyzer:
                     "fen_after": board.fen(),
                     "move_score": move_score,
                     "book": is_book,
+                    "move_uci": move.uci(),
+                    "legal_count": legal_count,
+                    "eval_before": eval_before,
+                    "eval_after": eval_after,
+                    "alts": alts,
                 }
                 results.append(record)
 

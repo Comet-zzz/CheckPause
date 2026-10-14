@@ -8,7 +8,7 @@ import numpy as np
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtGui import QImage
 
-from checkpause.config import EVAL_MULTIPV, play_engine_settings
+from checkpause.config import EVAL_MULTIPV, analysis_limit, play_engine_settings
 from checkpause.core import cloud
 from checkpause.core.ai import ChatRequestError, chat_with_model
 from checkpause.core.cloud import CloudRequestError
@@ -54,13 +54,14 @@ class AnalysisWorker(QThread):
     done = Signal(list, float)
     failed = Signal(str)
 
-    def __init__(self, pgn_text, language="zh-CN", parent=None):
+    def __init__(self, pgn_text, language="zh-CN", parent=None, depth=None):
         super().__init__(parent)
         self.pgn_text = pgn_text
         self.language = language
+        self.depth = depth
 
     def run(self):
-        analyzer = StockfishAnalyzer()
+        analyzer = StockfishAnalyzer(limit=analysis_limit(self.depth))
         try:
             results, err, accuracy = analyzer.analyze(
                 self.pgn_text,

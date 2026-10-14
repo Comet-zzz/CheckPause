@@ -1,3 +1,39 @@
+# v2.0.2 – Interface Polish & Image Recognition
+
+> **A detail-focused update: the interface logic has been further refined for smoother everyday use, alongside the ongoing image recognition improvements.**
+
+---
+
+## 🎯 What's New
+
+### 🧭 Interface logic refined
+- 继续优化了界面逻辑，梳理了面板模块的布局与信息层级，常用操作更符合直觉。
+- 打磨了若干交互细节，切换与反馈更一致、更顺畅。
+
+- Continued refining the interface logic, tidying the Panel module's layout and information hierarchy so common actions feel more natural.
+- Polished a number of interaction details for more consistent, smoother switching and feedback.
+
+### 🖼️ Image recognition (in progress)
+- 识图功能持续优化中，后续版本将继续完善。
+- Image recognition improvements are ongoing and will continue in future releases.
+
+## 🛠️ Full Changelog
+- feat(gui): refine the interface logic and layout in the Panel module
+- chore(gui): polish interaction details
+- chore(version): bump the app version to 2.0.2
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.1...v2.0.2
+
 # v2.0.1 – Interface Polish & Image Recognition
 
 > **A detail-focused update: the interface logic has been further refined for smoother everyday use, alongside the introduction of image recognition, still being improved.**

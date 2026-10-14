@@ -1,6 +1,8 @@
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
+    QComboBox,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QPlainTextEdit,
@@ -13,6 +15,7 @@ from PySide6.QtWidgets import (
 
 from checkpause.config import IMAGE_RECOGNITION_ENABLED
 from checkpause.core.rating import rating_key
+from checkpause.core.review import format_summary, labels_for, summary_for
 from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.move_list import MoveListWidget
@@ -32,6 +35,8 @@ class AnalysisPage(QWidget):
         super().__init__(parent)
         self._language = "zh-CN"
         self._theme = LIGHT
+        self._annotated = []
+        self._review_side = "all"
 
         self._editor = QPlainTextEdit()
         self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
@@ -80,17 +85,51 @@ class AnalysisPage(QWidget):
         self._accuracy_label = QLabel()
         self._accuracy_label.setObjectName("accuracyLabel")
         self._accuracy_label.setVisible(False)
+        self._classification_label = QLabel()
+        self._classification_label.setObjectName("mutedLabel")
+        self._classification_label.setWordWrap(True)
+        self._classification_label.setVisible(False)
+        self._side_label = QLabel()
+        self._side_label.setObjectName("mutedLabel")
+        self._side_combo = QComboBox()
+        self._side_combo.addItem("", "all")
+        self._side_combo.addItem("", "white")
+        self._side_combo.addItem("", "black")
+        self._side_combo.currentIndexChanged.connect(self._on_review_side_changed)
+        review_row = QHBoxLayout()
+        review_row.setSpacing(6)
+        review_row.addWidget(self._side_label)
+        review_row.addWidget(self._side_combo)
+        review_row.addStretch(1)
         self._status_label = QLabel()
         self._status_label.setObjectName("mutedLabel")
         self._status_label.setWordWrap(True)
         self._status_label.setVisible(False)
 
+        action_bar = QFrame()
+        action_bar.setObjectName("actionBar")
+        action_layout = QVBoxLayout(action_bar)
+        action_layout.setContentsMargins(12, 10, 12, 10)
+        action_layout.setSpacing(8)
+        action_layout.addLayout(review_row)
+        action_layout.addLayout(button_row)
+
+        self._summary_card = QFrame()
+        self._summary_card.setObjectName("summaryCard")
+        summary_layout = QVBoxLayout(self._summary_card)
+        summary_layout.setContentsMargins(14, 12, 14, 12)
+        summary_layout.setSpacing(4)
+        summary_layout.addWidget(self._accuracy_label)
+        summary_layout.addWidget(self._classification_label)
+        summary_layout.addWidget(self._status_label)
+        self._summary_card.setVisible(False)
+
         layout = QVBoxLayout(self)
+        layout.setSpacing(10)
         layout.addWidget(self._stack, 1)
-        layout.addLayout(button_row)
         layout.addWidget(self._progress)
-        layout.addWidget(self._accuracy_label)
-        layout.addWidget(self._status_label)
+        layout.addWidget(action_bar)
+        layout.addWidget(self._summary_card)
 
         self._apply_icons()
         self.retranslate(self._language)
@@ -118,6 +157,7 @@ class AnalysisPage(QWidget):
         self._editor.clear()
         self._move_list.clear()
         self.show_editor()
+        self.set_review([])
         self.clear_requested.emit()
 
     def set_theme(self, theme):
@@ -143,6 +183,7 @@ class AnalysisPage(QWidget):
     def set_accuracy(self, accuracy):
         if accuracy is None:
             self._accuracy_label.setVisible(False)
+            self._sync_summary()
             return
         key = rating_key(accuracy)
         self._accuracy_label.setText(
@@ -154,10 +195,41 @@ class AnalysisPage(QWidget):
             )
         )
         self._accuracy_label.setVisible(True)
+        self._sync_summary()
+
+    def set_review(self, annotated):
+        """Show the review labels and stats, honouring the current side filter."""
+        self._annotated = list(annotated or [])
+        self._refresh_review()
+
+    def _refresh_review(self):
+        self.set_move_labels(labels_for(self._annotated, self._review_side))
+        if not self._annotated:
+            self.set_classification(None)
+            return
+        self.set_classification(summary_for(self._annotated, self._review_side))
+
+    def _on_review_side_changed(self, index):
+        self._review_side = self._side_combo.itemData(index) or "all"
+        self._refresh_review()
+
+    def set_move_labels(self, labels):
+        self._move_list.set_labels(labels)
+
+    def set_classification(self, summary):
+        text = format_summary(summary) if summary else ""
+        self._classification_label.setText(text)
+        self._classification_label.setVisible(bool(text))
+        self._sync_summary()
 
     def set_status(self, text):
         self._status_label.setText(text)
         self._status_label.setVisible(bool(text))
+        self._sync_summary()
+
+    def _sync_summary(self):
+        widgets = (self._accuracy_label, self._classification_label, self._status_label)
+        self._summary_card.setVisible(any(not widget.isHidden() for widget in widgets))
 
     def set_busy(self, busy):
         self._btn_analyze.setEnabled(not busy)
@@ -182,4 +254,9 @@ class AnalysisPage(QWidget):
         self._btn_clear.setText(t("btn_clear_pgn", language))
         self._btn_analyze.setText(t("btn_analyze", language))
         self._btn_stop.setText(t("btn_stop", language))
+        self._side_label.setText(t("review_side_label", language))
+        self._side_combo.blockSignals(True)
+        for index, key in enumerate(("review_side_all", "review_side_white", "review_side_black")):
+            self._side_combo.setItemText(index, t(key, language))
+        self._side_combo.blockSignals(False)
         self.set_status("")

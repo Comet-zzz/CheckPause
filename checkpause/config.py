@@ -39,7 +39,22 @@ IMAGE_RECOGNITION_ENABLED = not getattr(sys, "frozen", False)
 BOOK_MAX_PLIES = 30
 BOOK_MIN_WEIGHT = 1
 
-ENGINE_LIMIT = chess.engine.Limit(depth=18, time=2.0)
+# Full-game analysis depth: deeper is slower. The move-review labels and the
+# five-tier accuracy do not need the deepest search, so the default is modest
+# and can be raised in Personalization when maximum quality is wanted.
+ANALYSIS_DEPTH_OPTIONS = (12, 14, 16, 18)
+DEFAULT_ANALYSIS_DEPTH = 14
+ANALYSIS_TIME_LIMIT = 2.0
+
+
+def analysis_limit(depth=None):
+    """The engine limit for a full-game analysis run at ``depth``."""
+    if depth is None:
+        depth = DEFAULT_ANALYSIS_DEPTH
+    return chess.engine.Limit(depth=int(depth), time=ANALYSIS_TIME_LIMIT)
+
+
+ENGINE_LIMIT = analysis_limit()
 
 # The evaluation bar shown above the analysis board is always on. The depth
 # controls how hard the engine searches for it, and the hint switch only
@@ -51,6 +66,11 @@ DEFAULT_HINT_ENABLED = True
 # How many engine lines the live search keeps, and therefore how many ranked
 # arrows can be drawn. The first (best) line is drawn thickest.
 EVAL_MULTIPV = 3
+
+# The move-review report only needs the runner-up move (to tell "the only good
+# move" from "one of several"), so two lines are enough. Keeping this small
+# matters: every extra line makes the per-move search slower.
+REVIEW_MULTIPV = 2
 
 PLAY_RATING_MIN = 100
 PLAY_RATING_MAX = 3000

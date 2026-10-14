@@ -9,7 +9,7 @@ from checkpause.assets import (
     DEFAULT_SOUND_SET,
     SOUND_OFF,
 )
-from checkpause.config import DEFAULT_EVAL_DEPTH, DEFAULT_HINT_ENABLED
+from checkpause.config import DEFAULT_ANALYSIS_DEPTH, DEFAULT_EVAL_DEPTH, DEFAULT_HINT_ENABLED
 from checkpause.data import profile
 
 
@@ -66,6 +66,16 @@ class ProfileTests(unittest.TestCase):
         profile.set_eval_depth(created, 999)
         self.assertEqual(profile.load_profile()["eval_depth"], DEFAULT_EVAL_DEPTH)
 
+    def test_analysis_depth_defaults_persists_and_falls_back(self):
+        created = profile.create_profile("Tester")
+        self.assertEqual(created["analysis_depth"], DEFAULT_ANALYSIS_DEPTH)
+
+        profile.set_analysis_depth(created, 18)
+        self.assertEqual(profile.load_profile()["analysis_depth"], 18)
+
+        profile.set_analysis_depth(created, 999)
+        self.assertEqual(profile.load_profile()["analysis_depth"], DEFAULT_ANALYSIS_DEPTH)
+
     def test_legacy_profile_gets_the_default_eval_preferences(self):
         legacy = os.path.join(self._tmp.name, "legacy.json")
         with open(legacy, "w", encoding="utf-8") as handle:
@@ -73,6 +83,7 @@ class ProfileTests(unittest.TestCase):
         loaded = profile.load_profile()
         self.assertEqual(loaded["hint_enabled"], DEFAULT_HINT_ENABLED)
         self.assertEqual(loaded["eval_depth"], DEFAULT_EVAL_DEPTH)
+        self.assertEqual(loaded["analysis_depth"], DEFAULT_ANALYSIS_DEPTH)
 
     def test_unknown_sound_set_falls_back_to_the_default(self):
         created = profile.create_profile("Tester")

@@ -1,4 +1,4 @@
-from PySide6.QtCore import QLocale, Qt, QTimer
+from PySide6.QtCore import QLocale, QSize, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QSplitter,
     QStackedWidget,
+    QTabBar,
     QTabWidget,
     QWidget,
 )
@@ -23,6 +24,8 @@ from checkpause.assets import (
     SOUND_OFF,
 )
 from checkpause.config import (
+    ANALYSIS_DEPTH_OPTIONS,
+    DEFAULT_ANALYSIS_DEPTH,
     DEFAULT_EVAL_DEPTH,
     DEFAULT_HINT_ENABLED,
     IMAGE_RECOGNITION_ENABLED,
@@ -31,10 +34,12 @@ from checkpause.config import (
 )
 from checkpause.core import collect
 from checkpause.core.engine import compact_analysis
+from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
     create_profile,
     load_profile,
+    set_analysis_depth,
     set_board_theme,
     set_eval_depth,
     set_hint_enabled,
@@ -99,6 +104,29 @@ def _system_language():
     return "en-US"
 
 
+class _SideTabBar(QTabBar):
+    """Tab bar that stretches its tabs across the whole panel width.
+
+    A styled QTabBar ignores ``setExpanding`` (the stylesheet fixes the tab
+    width), so the bar reports the panel's width and splits it evenly. This
+    turns the three panel tabs into one full-width segmented control.
+    """
+
+    def sizeHint(self):
+        size = super().sizeHint()
+        parent = self.parentWidget()
+        if parent is not None and parent.width() > size.width():
+            return QSize(parent.width(), size.height())
+        return size
+
+    def tabSizeHint(self, index):
+        size = super().tabSizeHint(index)
+        count = self.count()
+        if count <= 0 or self.width() <= 0:
+            return size
+        return QSize(max(size.width(), self.width() // count), size.height())
+
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
@@ -113,6 +141,7 @@ class MainWindow(QMainWindow):
         self._sound_set = (self.profile or {}).get("sound_set", DEFAULT_SOUND_SET)
         self._hint_enabled = (self.profile or {}).get("hint_enabled", DEFAULT_HINT_ENABLED)
         self._eval_depth = (self.profile or {}).get("eval_depth", DEFAULT_EVAL_DEPTH)
+        self._analysis_depth = (self.profile or {}).get("analysis_depth", DEFAULT_ANALYSIS_DEPTH)
         self._eval_worker = None
         self._eval_token = 0
         self._eval_failed = False
@@ -261,6 +290,9 @@ class MainWindow(QMainWindow):
         self.stats_page.history_cleared.connect(self._clear_history)
 
         self.tabs = QTabWidget()
+        self.tabs.setObjectName("sidePanelTabs")
+        self.tabs.setTabBar(_SideTabBar())
+        self.tabs.tabBar().setCursor(Qt.CursorShape.PointingHandCursor)
         self.tabs.addTab(self.analysis_page, "")
         self.tabs.addTab(self.chat_page, "")
         self.tabs.addTab(self.stats_page, "")
@@ -377,6 +409,21 @@ class MainWindow(QMainWindow):
             self._menu_sound.addAction(action)
             self._sound_actions[name] = action
 
+        self._menu_analysis_depth = self._menu_personalization.addMenu("")
+        self._analysis_depth_group = QActionGroup(self)
+        self._analysis_depth_group.setExclusive(True)
+        self._analysis_depth_actions = {}
+        for depth in ANALYSIS_DEPTH_OPTIONS:
+            action = QAction(str(depth), self)
+            action.setCheckable(True)
+            action.setChecked(depth == self._analysis_depth)
+            action.triggered.connect(
+                lambda _checked, value=depth: self._change_analysis_depth(value)
+            )
+            self._analysis_depth_group.addAction(action)
+            self._menu_analysis_depth.addAction(action)
+            self._analysis_depth_actions[depth] = action
+
         self._menu_help = menubar.addMenu("")
         self._act_check_update = QAction(self)
         self._act_check_update.triggered.connect(lambda: self._check_for_update(manual=True))
@@ -421,11 +468,13 @@ class MainWindow(QMainWindow):
         self._sound_set = self.profile.get("sound_set", DEFAULT_SOUND_SET)
         self._hint_enabled = self.profile.get("hint_enabled", DEFAULT_HINT_ENABLED)
         self._eval_depth = self.profile.get("eval_depth", DEFAULT_EVAL_DEPTH)
+        self._analysis_depth = self.profile.get("analysis_depth", DEFAULT_ANALYSIS_DEPTH)
         self._act_light.setChecked(self._theme == LIGHT)
         self._act_dark.setChecked(self._theme == DARK)
         self._piece_actions[self._piece_set].setChecked(True)
         self._board_actions[self._board_theme].setChecked(True)
         self._sound_actions[self._sound_set].setChecked(True)
+        self._analysis_depth_actions[self._analysis_depth].setChecked(True)
         # The cloud account is the identity; offline just leaves it unset.
         set_ai_mode(mode)
         self._ai_mode = mode
@@ -459,6 +508,7 @@ class MainWindow(QMainWindow):
         self._menu_pieces.setTitle(t("menu_pieces", self._language))
         self._menu_board.setTitle(t("menu_board", self._language))
         self._menu_sound.setTitle(t("menu_sound", self._language))
+        self._menu_analysis_depth.setTitle(t("menu_analysis_depth", self._language))
         for name, action in self._sound_actions.items():
             action.setText(t("sound_" + name, self._language))
         for name, action in self._board_actions.items():
@@ -504,12 +554,15 @@ class MainWindow(QMainWindow):
         self.board.set_edit_enabled(False)
         self.analysis_page.show_moves(pgn)
         self.analysis_page.set_accuracy(None)
+        self.analysis_page.set_review([])
         self.analysis_page.set_progress(0)
         self.analysis_page.set_status(t("status_parsing", self._language))
         self.analysis_page.set_busy(True)
         self.tabs.setCurrentWidget(self.analysis_page)
 
-        self._analysis_worker = AnalysisWorker(pgn, self._language, self)
+        self._analysis_worker = AnalysisWorker(
+            pgn, self._language, self, depth=self._analysis_depth
+        )
         self._analysis_worker.progress.connect(self.analysis_page.set_progress)
         self._analysis_worker.move_done.connect(self._on_move_done)
         self._analysis_worker.done.connect(self._on_analysis_done)
@@ -554,6 +607,7 @@ class MainWindow(QMainWindow):
         self._results = []
         self.board.set_results([])
         self.analysis_page.set_accuracy(None)
+        self.analysis_page.set_review([])
         self.analysis_page.set_progress(0)
 
     def _refresh_analysis_line(self, status=None, show_moves=True):
@@ -565,10 +619,12 @@ class MainWindow(QMainWindow):
             self.analysis_page.set_status(status)
 
     def _on_analysis_done(self, results, accuracy):
-        self._results = results
-        self.board.set_results(results)
+        annotated, _ = classify(results, self._current_pgn)
+        self._results = annotated
+        self.board.set_results(annotated)
         self.analysis_page.set_progress(100)
         self.analysis_page.set_accuracy(accuracy)
+        self.analysis_page.set_review(annotated)
         self.analysis_page.set_status(t("analysis_done", self._language))
         self.tabs.setCurrentWidget(self.analysis_page)
 
@@ -576,7 +632,7 @@ class MainWindow(QMainWindow):
             self.profile = update_profile(self.profile, accuracy, self._current_pgn)
             self._refresh_stats()
 
-        self._current_analysis = compact_analysis(results)
+        self._current_analysis = compact_analysis(annotated)
         self._messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -909,6 +965,14 @@ class MainWindow(QMainWindow):
         self._apply_sound()
         if self.profile:
             self.profile = set_sound_set(self.profile, self._sound_set)
+
+    def _change_analysis_depth(self, depth):
+        if depth in ANALYSIS_DEPTH_OPTIONS:
+            self._analysis_depth = depth
+        else:
+            self._analysis_depth = DEFAULT_ANALYSIS_DEPTH
+        if self.profile:
+            self.profile = set_analysis_depth(self.profile, self._analysis_depth)
 
     def _on_hint_toggled(self, enabled):
         self._hint_enabled = bool(enabled)
