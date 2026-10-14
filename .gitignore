@@ -68,3 +68,7 @@ NAMING.md
 # Private working copy lives in D:\Projects\CheckPause-Recognizer.
 tools/train_recognizer.py
 assets/recognition/
+
+# Scratch space: one-off scripts (some touch the production database) must
+# never be committed to the public repository.
+tmp/

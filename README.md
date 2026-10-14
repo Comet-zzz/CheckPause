@@ -68,15 +68,15 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 **Latest: CheckPause v2.0.2 (Windows x64)**
 
 - 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.2.zip](https://checkpause.com/download/CheckPause_Setup_2.0.2.zip) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
-- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip) (137.9 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
-- SHA-256: `AE0518BB1DCAA9471EE98C27C961005B8CB155ABD158B6BF1B388EE85D8179EB` (the zip; both links serve the identical file)
-- **Extract the zip** to get `CheckPause_Setup_2.0.2.exe` (SHA-256 `49FE70E98F99D61940445700BB5EDB41557025A4EB119CE5ABBC7CBE71D8EE36`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
+- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip) (136.3 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
+- SHA-256: `C186FE545F12785A24A6BB7DF43FA0054C0FDD1C97EFD8F70164388D19825167` (the zip; both links serve the identical file)
+- **Extract the zip** to get `CheckPause_Setup_2.0.2.exe` (SHA-256 `233870C4FA5A87469C5B411BFB862346228AC83DC41740DFF70C1A9873E16303`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 
 **Latest: CheckPause v2.0.2 (macOS)**
 
-- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.0.2-macOS-M-series.dmg) (169.9 MB) · [Intel](https://checkpause.com/download/CheckPause-2.0.2-macOS-Intel.dmg) (98.5 MB)
+- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.0.2-macOS-M-series.dmg) (168.3 MB) · [Intel](https://checkpause.com/download/CheckPause-2.0.2-macOS-Intel.dmg) (97.1 MB)
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.2) (both `.dmg` files on the release page)
-- SHA-256: arm64 `F23FCFA13125C6D961723A06B6944AE539DE3E4FDC4C72BCA9CA523C09A6DAE2`, Intel `2F465439FBAC0158441A043C75739654869B17E16C77FDA3DC8CA552189531F3`
+- SHA-256: arm64 `AF2B690EB0C320BD7422EB68A757862AA435D6B0BB89670BDE75C2CD5FDBF1F1`, Intel `D6AC6EB0FC2BC39B82DC73C2B6782A9556E5E8EB611001D978398C438BA0AADC`
 - Open the `.dmg`, drag CheckPause into Applications, then **right-click the icon → Open** the first time (the build is unsigned and not notarized).
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
 
