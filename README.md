@@ -2,7 +2,7 @@
 
 A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
 
-<a href="#⬇️-download"><img alt="Downloads" src="https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=Download&color=brightgreen"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.1/CheckPause_Setup_2.0.1.zip"><img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHptMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHptMTIuNiAwSDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.1/CheckPause-2.0.1-macOS-M-series.dmg"><img alt="macOS M-series" src="https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.1/CheckPause-2.0.1-macOS-Intel.dmg"><img alt="macOS Intel" src="https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white"></a>
+<a href="#⬇️-download"><img alt="Downloads" src="https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=Download&color=brightgreen"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip"><img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHptMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHptMTIuNiAwSDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause-2.0.2-macOS-M-series.dmg"><img alt="macOS M-series" src="https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause-2.0.2-macOS-Intel.dmg"><img alt="macOS Intel" src="https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white"></a>
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
@@ -30,7 +30,7 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ### Windows users
 
-1. Get `CheckPause_Setup_2.0.1.zip` from the Download section at the end of this file, then extract it to get `CheckPause_Setup_2.0.1.exe`.
+1. Get `CheckPause_Setup_2.0.2.zip` from the Download section at the end of this file, then extract it to get `CheckPause_Setup_2.0.2.exe`.
 2. Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
 3. Launch CheckPause from the desktop or Start Menu; the first launch lets you sign in to a cloud account, create one, or continue offline.
 4. Open Settings → API settings... and enter an API key (DeepSeek by default; any OpenAI-compatible endpoint works).
@@ -65,17 +65,17 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ## ⬇️ Download
 
-**Latest: CheckPause v2.0.1 (Windows x64)**
+**Latest: CheckPause v2.0.2 (Windows x64)**
 
-- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.1.zip](https://checkpause.com/download/CheckPause_Setup_2.0.1.zip) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
-- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.1/CheckPause_Setup_2.0.1.zip) (137.9 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
+- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.2.zip](https://checkpause.com/download/CheckPause_Setup_2.0.2.zip) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
+- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip) (137.9 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
 - SHA-256: `AE0518BB1DCAA9471EE98C27C961005B8CB155ABD158B6BF1B388EE85D8179EB` (the zip; both links serve the identical file)
-- **Extract the zip** to get `CheckPause_Setup_2.0.1.exe` (SHA-256 `49FE70E98F99D61940445700BB5EDB41557025A4EB119CE5ABBC7CBE71D8EE36`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
+- **Extract the zip** to get `CheckPause_Setup_2.0.2.exe` (SHA-256 `49FE70E98F99D61940445700BB5EDB41557025A4EB119CE5ABBC7CBE71D8EE36`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 
-**Latest: CheckPause v2.0.1 (macOS)**
+**Latest: CheckPause v2.0.2 (macOS)**
 
-- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.0.1-macOS-M-series.dmg) (169.9 MB) · [Intel](https://checkpause.com/download/CheckPause-2.0.1-macOS-Intel.dmg) (98.5 MB)
-- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.1) (both `.dmg` files on the release page)
+- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.0.2-macOS-M-series.dmg) (169.9 MB) · [Intel](https://checkpause.com/download/CheckPause-2.0.2-macOS-Intel.dmg) (98.5 MB)
+- 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.2) (both `.dmg` files on the release page)
 - SHA-256: arm64 `F23FCFA13125C6D961723A06B6944AE539DE3E4FDC4C72BCA9CA523C09A6DAE2`, Intel `2F465439FBAC0158441A043C75739654869B17E16C77FDA3DC8CA552189531F3`
 - Open the `.dmg`, drag CheckPause into Applications, then **right-click the icon → Open** the first time (the build is unsigned and not notarized).
 - All releases: https://github.com/Comet-zzz/CheckPause/releases
