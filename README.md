@@ -69,8 +69,8 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 - 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.0.2.zip](https://checkpause.com/download/CheckPause_Setup_2.0.2.zip) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip) (136.3 MB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
-- SHA-256: `C186FE545F12785A24A6BB7DF43FA0054C0FDD1C97EFD8F70164388D19825167` (the zip; both links serve the identical file)
-- **Extract the zip** to get `CheckPause_Setup_2.0.2.exe` (SHA-256 `233870C4FA5A87469C5B411BFB862346228AC83DC41740DFF70C1A9873E16303`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
+- SHA-256: `A47534238A2E6A98D581B3C93B0659B6BF50E6F024F3A48B31C5A1D280E6E0DD` (the zip; both links serve the identical file)
+- **Extract the zip** to get `CheckPause_Setup_2.0.2.exe` (SHA-256 `C89C713F9F6D6C977672E7D0717E69E628FA86A8DF3D4FD0E01985A9D5DEAB34`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 
 **Latest: CheckPause v2.0.2 (macOS)**
 

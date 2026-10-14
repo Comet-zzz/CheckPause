@@ -69,8 +69,8 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 - 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_2.0.2.zip](https://checkpause.com/download/CheckPause_Setup_2.0.2.zip) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.2/CheckPause_Setup_2.0.2.zip)（136.3 MB，已内置 Stockfish、开局库、棋子资源、走棋音效与 Lichess 精选题集）
-- SHA-256：`C186FE545F12785A24A6BB7DF43FA0054C0FDD1C97EFD8F70164388D19825167`（压缩包；两个链接是同一个文件，哈希一致）
-- **解压压缩包**，得到 `CheckPause_Setup_2.0.2.exe`（其 SHA-256 为 `233870C4FA5A87469C5B411BFB862346228AC83DC41740DFF70C1A9873E16303`），双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
+- SHA-256：`A47534238A2E6A98D581B3C93B0659B6BF50E6F024F3A48B31C5A1D280E6E0DD`（压缩包；两个链接是同一个文件，哈希一致）
+- **解压压缩包**，得到 `CheckPause_Setup_2.0.2.exe`（其 SHA-256 为 `C89C713F9F6D6C977672E7D0717E69E628FA86A8DF3D4FD0E01985A9D5DEAB34`），双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 
 **macOS 最新版：CheckPause v2.0.2**
 
