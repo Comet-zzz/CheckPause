@@ -66,6 +66,7 @@ def build_sample(
     client_version="",
     install_id="",
     source="local",
+    side="",
 ):
     """The de-identified material a local review contributes.
 
@@ -90,6 +91,10 @@ def build_sample(
         "client_version": client_version or "",
         "install_id": install_id or "",
         "source": source or "local",
+        # The side the user played. Worth recording separately: the stored PGN
+        # loses its tag pairs here, so without this the training row would not
+        # say whose moves "my move" refers to.
+        "side": side if side in ("white", "black") else "",
     }
 
 
@@ -119,7 +124,7 @@ def send_sample_async(server_url, sample):
     worker.start()
 
 
-def maybe_send_local_sample(server_url, pgn, analysis, messages, reply, language, version):
+def maybe_send_local_sample(server_url, pgn, analysis, messages, reply, language, version, side=""):
     """Build and send a sample for a local review.
 
     Returns the sample that was built, or None when there was nothing to send.
@@ -136,6 +141,7 @@ def maybe_send_local_sample(server_url, pgn, analysis, messages, reply, language
         client_version=version,
         install_id=get_install_id(),
         source="local",
+        side=side,
     )
     if not sample["pgn"]:
         return None

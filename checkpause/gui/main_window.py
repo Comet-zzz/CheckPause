@@ -33,7 +33,7 @@ from checkpause.config import (
     USER_PROMPT_TEMPLATE,
 )
 from checkpause.core import collect
-from checkpause.core.engine import compact_analysis
+from checkpause.core.engine import compact_analysis, player_side
 from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
@@ -149,6 +149,7 @@ class MainWindow(QMainWindow):
         self._results = []
         self._current_pgn = ""
         self._current_analysis = ""
+        self._user_side = ""
         api_config = get_api_config()
         self._ai_mode = api_config["mode"]
         self._server_url = api_config["server_url"]
@@ -548,6 +549,7 @@ class MainWindow(QMainWindow):
             return
 
         self._current_pgn = pgn
+        self._user_side = player_side(pgn, (self.profile or {}).get("username", ""))
         self._results = []
         self.board.set_results([])
         self.board.set_interactive(False)
@@ -600,6 +602,7 @@ class MainWindow(QMainWindow):
     def _clear_analysis_board(self):
         self.board.clear()
         self._current_pgn = ""
+        self._user_side = ""
         self._clear_analysis_results()
         self.analysis_page.set_status("")
 
@@ -633,12 +636,13 @@ class MainWindow(QMainWindow):
             self._refresh_stats()
 
         self._current_analysis = compact_analysis(annotated)
+        side_label = {"white": "White", "black": "Black"}.get(self._user_side, "unknown")
         self._messages = [
             {"role": "system", "content": SYSTEM_PROMPT},
             {
                 "role": "user",
                 "content": USER_PROMPT_TEMPLATE.format(
-                    棋谱=self._current_pgn, 数据=self._current_analysis
+                    棋谱=self._current_pgn, 数据=self._current_analysis, 执色=side_label
                 ),
             },
         ]
@@ -768,6 +772,7 @@ class MainWindow(QMainWindow):
                 "pgn": self._current_pgn,
                 "analysis": self._current_analysis,
                 "history": self._messages[2:],
+                "side": self._user_side,
             }
 
         self._chat_worker = ChatWorker(
@@ -793,6 +798,7 @@ class MainWindow(QMainWindow):
                 full_reply,
                 self._language,
                 APP_VERSION,
+                side=self._user_side,
             )
         self._messages.append({"role": "assistant", "content": full_reply})
 

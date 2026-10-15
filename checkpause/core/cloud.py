@@ -49,7 +49,7 @@ class CloudRequestError(RuntimeError):
         self.detail = detail or {}
 
 
-def build_payload(pgn, analysis, history=None, language=""):
+def build_payload(pgn, analysis, history=None, language="", side=""):
     """The only material a client is allowed to send."""
     return {
         "pgn": (pgn or "").strip(),
@@ -60,6 +60,9 @@ def build_payload(pgn, analysis, history=None, language=""):
             if isinstance(item, dict) and item.get("role") in ("user", "assistant")
         ],
         "language": (language or "").strip(),
+        # Which side the user played, when the game's tag pairs made that
+        # clear; the server tells the model so "my 5th move" is not guessed.
+        "side": side if side in ("white", "black") else "",
     }
 
 
@@ -206,13 +209,13 @@ def order_status(server_url, token, order_id, language="zh-CN"):
     return _get(server_url, ORDERS_ENDPOINT + "/" + str(order_id), token, language)
 
 
-def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN"):
+def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN", side=""):
     """Yield reply fragments from the server.
 
     Raises CloudRequestError when the request cannot be completed, since the
     caller wants to show a message rather than a stack trace.
     """
-    payload = build_payload(pgn, analysis, history, language)
+    payload = build_payload(pgn, analysis, history, language, side)
 
     try:
         with httpx.stream(

@@ -49,11 +49,19 @@ def patched_get(response):
 class BuildPayloadTests(unittest.TestCase):
     def test_sends_raw_material_only(self):
         payload = cloud.build_payload("1. e4", "e4: +0.3", [])
-        self.assertEqual(sorted(payload), ["analysis", "history", "language", "pgn"])
+        self.assertEqual(sorted(payload), ["analysis", "history", "language", "pgn", "side"])
 
     def test_carries_the_interface_language(self):
         payload = cloud.build_payload("1. e4", "", [], "zh-CN")
         self.assertEqual(payload["language"], "zh-CN")
+
+    def test_carries_the_side_the_user_played(self):
+        payload = cloud.build_payload("1. e4", "", [], side="black")
+        self.assertEqual(payload["side"], "black")
+
+    def test_an_unknown_side_travels_as_empty(self):
+        payload = cloud.build_payload("1. e4", "", [], side="maybe")
+        self.assertEqual(payload["side"], "")
 
     def test_keeps_only_real_conversation_entries(self):
         history = [

@@ -53,6 +53,14 @@ class BuildSampleTests(unittest.TestCase):
         self.assertEqual(sample["client_version"], "1.9.1")
         self.assertEqual(sample["reply"], "answer")
 
+    def test_carries_the_side_the_user_played(self):
+        sample = collect.build_sample("1. e4", "", [], "answer", side="white")
+        self.assertEqual(sample["side"], "white")
+
+    def test_an_unknown_side_travels_as_empty(self):
+        sample = collect.build_sample("1. e4", "", [], "answer", side="guess")
+        self.assertEqual(sample["side"], "")
+
 
 class StripPgnHeadersTests(unittest.TestCase):
     def test_drops_the_tag_pairs_that_name_people(self):

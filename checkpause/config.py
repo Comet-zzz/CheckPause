@@ -165,6 +165,8 @@ SYSTEM_PROMPT = (
 
 USER_PROMPT_TEMPLATE = """This is the PGN game and Stockfish analysis data:
 
+The user played as: {执色}
+
 PGN Game:
 {棋谱}
 

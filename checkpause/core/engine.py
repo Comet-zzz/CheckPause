@@ -101,6 +101,32 @@ def format_eval(margin, mate=None):
     return f"{margin / 100.0:+.2f}"
 
 
+def player_side(pgn_text, username):
+    """Which side of the game the local user played: "white", "black" or "".
+
+    The PGN tag pairs are the only place that says who played which side, and
+    a game exported from Chess.com or Lichess usually carries the same account
+    name the user typed here. Matching ignores case and every character that
+    is not a letter or digit, so "Comet-ZZZ" matches "CometZZZ". An unknown
+    side comes back empty rather than guessed: the prompts tell the model to
+    ask instead of assuming.
+    """
+    needle = _name_key(username)
+    if not needle:
+        return ""
+    game = chess.pgn.read_game(io.StringIO(pgn_text or ""))
+    if game is None:
+        return ""
+    for side, tag in (("white", "White"), ("black", "Black")):
+        if _name_key(game.headers.get(tag)) == needle:
+            return side
+    return ""
+
+
+def _name_key(name):
+    return "".join(character for character in (name or "").casefold() if character.isalnum())
+
+
 class StockfishAnalyzer:
     def __init__(self, path=None, limit=ENGINE_LIMIT, book_path=None):
         self.path = path

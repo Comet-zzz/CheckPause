@@ -7,6 +7,7 @@ from checkpause.core.engine import (
     compact_analysis,
     eval_ratio,
     format_eval,
+    player_side,
     read_lines,
     read_score,
 )
@@ -110,6 +111,38 @@ class FormatEvalTests(unittest.TestCase):
 
     def test_missing_score_shows_zero(self):
         self.assertEqual(format_eval(None), "0.00")
+
+
+class PlayerSideTests(unittest.TestCase):
+    @staticmethod
+    def _pgn(white, black):
+        return f'[White "{white}"]\n[Black "{black}"]\n\n1. e4 e5 2. Nf3 Nc6\n'
+
+    def test_matches_the_white_player(self):
+        pgn = self._pgn("Comet-ZZZ", "Checkacabra")
+        self.assertEqual(player_side(pgn, "CometZZZ"), "white")
+
+    def test_matches_the_black_player_ignoring_case_and_spacing(self):
+        pgn = self._pgn("Comet-ZZZ", "Checkacabra")
+        self.assertEqual(player_side(pgn, " checkacabra "), "black")
+
+    def test_non_ascii_names_match_too(self):
+        pgn = self._pgn("Magnus", "李昌镐")
+        self.assertEqual(player_side(pgn, "李昌镐"), "black")
+
+    def test_an_unrelated_name_is_no_side(self):
+        pgn = self._pgn("Magnus", "Hikaru")
+        self.assertEqual(player_side(pgn, "CometZZZ"), "")
+
+    def test_missing_headers_leave_the_side_unknown(self):
+        self.assertEqual(player_side("1. e4 e5 2. Nf3", "CometZZZ"), "")
+
+    def test_a_missing_username_leaves_the_side_unknown(self):
+        self.assertEqual(player_side(self._pgn("A", "B"), ""), "")
+
+    def test_a_broken_pgn_does_not_raise(self):
+        self.assertEqual(player_side("[[[ not a game", "CometZZZ"), "")
+        self.assertEqual(player_side(None, "CometZZZ"), "")
 
 
 if __name__ == "__main__":

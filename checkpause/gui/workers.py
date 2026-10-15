@@ -260,10 +260,10 @@ class ChatWorker(QThread):
     def __init__(self, messages, language="zh-CN", parent=None, cloud_request=None):
         """``cloud_request`` selects the paid path.
 
-        It is a dict with server_url, token, pgn, analysis and history. The
-        request then carries raw material only - the server builds the prompt -
-        which is what keeps the tuned prompt off user machines. Passing None
-        keeps the bring-your-own-key path.
+        It is a dict with server_url, token, pgn, analysis, history and side.
+        The request then carries raw material only - the server builds the
+        prompt - which is what keeps the tuned prompt off user machines.
+        Passing None keeps the bring-your-own-key path.
         """
         super().__init__(parent)
         self.messages = list(messages)
@@ -280,6 +280,7 @@ class ChatWorker(QThread):
             self.cloud_request.get("analysis", ""),
             self.cloud_request.get("history", []),
             self.language,
+            side=self.cloud_request.get("side", ""),
         )
 
     def run(self):
