@@ -61,6 +61,7 @@ DEPLOYMENT.md
 DEV_NOTES.md
 CODING.md
 NAMING.md
+RELEASE_PENDING.md
 .kilo/jetbrains.json
 
 # Image-recognition training: kept out of the public repository on purpose
