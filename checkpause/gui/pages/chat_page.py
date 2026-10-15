@@ -27,6 +27,7 @@ class ChatPage(QWidget):
         self._busy = False
         self._start_time = 0.0
         self._current_bubble = None
+        self._current_markdown = ""
         self._bubbles = []
 
         self._container = QWidget()
@@ -116,7 +117,20 @@ class ChatPage(QWidget):
         bar.setValue(bar.maximum())
 
     def _append_bubble(self, role, text):
-        bubble = QLabel(text)
+        bubble = QLabel()
+        if role == "assistant":
+            # The model writes Markdown (headings, bold, lists, rules); plain
+            # text would show the raw markers. QLabel parses it because the
+            # format says so - PySide6 does not bind QLabel.setMarkdown - and
+            # text() keeps returning the Markdown source. The caller keeps
+            # that source so streaming can re-render the reply as it grows.
+            bubble.setTextFormat(Qt.TextFormat.MarkdownText)
+            bubble.setText(text)
+        else:
+            # Explicit plain text: a user message that happens to contain
+            # angle brackets must never be re-read as rich text.
+            bubble.setTextFormat(Qt.TextFormat.PlainText)
+            bubble.setText(text)
         bubble.setWordWrap(True)
         bubble.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         bubble.setMaximumWidth(self._max_bubble_width())
@@ -142,11 +156,16 @@ class ChatPage(QWidget):
 
     def begin_assistant(self):
         self._current_bubble = self._append_bubble("assistant", "")
+        self._current_markdown = ""
 
     def append_chunk(self, text):
         if self._current_bubble is None:
-            self._current_bubble = self._append_bubble("assistant", "")
-        self._current_bubble.setText(self._current_bubble.text() + text)
+            self.begin_assistant()
+        # Re-render the whole reply on every fragment: an unfinished ``**``
+        # shows literally until its closing marker arrives, and the final
+        # render is what the model actually wrote.
+        self._current_markdown += text
+        self._current_bubble.setText(self._current_markdown)
         self._scroll_to_bottom()
 
     def append_notice(self, text):
@@ -163,6 +182,7 @@ class ChatPage(QWidget):
                 widget.deleteLater()
         self._bubbles = []
         self._current_bubble = None
+        self._current_markdown = ""
 
     def set_busy(self, busy):
         self._busy = busy
