@@ -53,6 +53,9 @@ output/
 .kilo/worktrees/
 .kilo/agent-manager.json
 
+# Agent-only skills (contain production ops/IP; keep out of the public repo)
+.kilo/skill/
+
 # Local working notes, kept out of the public repository on purpose
 AGENTS.md
 PROJECT_MAP.md
