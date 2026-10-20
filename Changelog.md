@@ -1,3 +1,46 @@
+# v2.0.3 – Play Setup Redesign & Analysis Fixes
+
+> **A focused update: the Play setup panel has been rebuilt with clearer segmented controls and a searchable opening picker, alongside a small undo improvement and text fixes in the analysis panel.**
+
+---
+
+## 🎯 What's New
+
+### ♟️ Play setup redesigned
+- 重做对弈设置面板：我方改为「执白 / 执黑」分段选择，起始局面改为「标准 / 开局 / 残局」三种模式，只显示当前模式需要的设置，不再出现两个下拉互相清空。
+- 开局选择改为独立选择器：按开放、半开放、封闭、侧翼分组，支持中英文搜索，右侧预览末局面与完整走法，替换掉原来 53 条的超长下拉列表。
+- 残局下拉只在残局模式出现；切换模式时会记住上次选择。
+
+- Rebuilt the Play setup panel: side is now a White / Black segmented control, and the starting position is a Standard / Opening / Endgame switch that only reveals the controls for the current mode instead of two dropdowns clearing each other.
+- Openings now use a dedicated picker grouped by opening family, searchable in Chinese or English, with a board preview and the full move line, replacing the 53-item dropdown.
+- The endgame dropdown only appears in Endgame mode, and switching modes remembers the previous choice.
+
+### 🧰 Analysis panel fixes
+- 分析面板棋盘新增撤销键：删除棋谱最后一步；对弈和谜题面板不显示。
+- 修复分析操作栏「图片识别」「开始分析」按钮文字被截断。
+
+- The analysis board gains an undo button that removes the last move of the line; it stays hidden on the Play and Puzzle boards.
+- Fixed the clipped labels on the analysis action bar's Image recognition and Analyze buttons.
+
+## 🛠️ Full Changelog
+- feat(play): rebuild the setup panel with segmented side and start-position controls
+- feat(play): add a searchable opening picker with family grouping and a board preview
+- feat(analysis): add an undo button to the analysis board
+- fix(analysis): keep action button labels from clipping
+- chore(version): bump the app version to 2.0.3
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.2...v2.0.3
+
 # v2.0.2 – Interface Polish & Image Recognition
 
 > **A detail-focused update: the interface logic has been further refined for smoother everyday use, alongside the ongoing image recognition improvements.**
