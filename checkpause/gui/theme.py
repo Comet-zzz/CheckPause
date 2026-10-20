@@ -347,6 +347,18 @@ QComboBox QAbstractItemView {
     selection-color: $menu_sel_text;
     outline: none;
 }
+QComboBox QAbstractItemView::item {
+    min-height: 22px;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+QComboBox QAbstractItemView::item:hover {
+    background-color: $hover;
+}
+QComboBox QAbstractItemView::item:selected {
+    background-color: $menu_sel_bg;
+    color: $menu_sel_text;
+}
 QCheckBox {
     background: transparent;
     spacing: 6px;
@@ -410,6 +422,27 @@ QListWidget::item:hover {
 QListWidget::item:selected {
     background-color: $accent_soft;
     color: $text;
+}
+QTreeWidget {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 10px;
+    padding: 4px;
+    outline: none;
+}
+QTreeWidget::item {
+    padding: 6px 4px;
+    border-radius: 6px;
+}
+QTreeWidget::item:hover {
+    background-color: $hover;
+}
+QTreeWidget::item:selected {
+    background-color: $accent_soft;
+    color: $text;
+}
+QTreeWidget::branch {
+    background: transparent;
 }
 QTabWidget::pane {
     background: transparent;
@@ -548,6 +581,76 @@ QScrollArea > QWidget > QWidget {
     border: 1px solid $border;
     border-radius: 12px;
 }
+#setupTitle {
+    font-size: 15px;
+    font-weight: 600;
+}
+#fieldLabel {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+}
+#segmentedControl {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 8px;
+}
+#segmentedControl QPushButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 5px 10px;
+    color: $text_muted;
+    min-height: 18px;
+}
+#segmentedControl QPushButton:hover {
+    background-color: $hover;
+    color: $text;
+}
+#segmentedControl QPushButton:checked {
+    background-color: $surface;
+    border-color: $border;
+    color: $text;
+    font-weight: 600;
+}
+#segmentedControl QPushButton:focus {
+    border-color: $accent;
+}
+#positionCard {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+#positionName {
+    font-size: 14px;
+    font-weight: 600;
+}
+#positionMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#previewCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+#pickerName {
+    font-size: 18px;
+    font-weight: 600;
+}
+#pickerMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#movesCard {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+#movesText {
+    color: $text_muted;
+    font-size: 12px;
+}
 #statCard {
     background-color: $surface;
     border: 1px solid $border;
@@ -596,6 +699,9 @@ QTableWidget#moveTable::item {
     background-color: $surface_alt;
     border: 1px solid $border;
     border-radius: 10px;
+}
+#actionBar QPushButton {
+    padding: 6px 12px;
 }
 #summaryCard {
     background-color: $accent_soft;

@@ -4,7 +4,12 @@ import unittest
 
 import chess
 
-from checkpause.core.openings import load_openings
+from checkpause.core.openings import (
+    OPENING_CATEGORY_ORDER,
+    load_openings,
+    opening_display_name,
+    opening_san,
+)
 
 
 class OpeningsTests(unittest.TestCase):
@@ -18,6 +23,30 @@ class OpeningsTests(unittest.TestCase):
             for move in opening["moves"]:
                 self.assertIn(move, board.legal_moves)
                 board.push(move)
+
+    def test_bundled_openings_carry_grouping_and_chinese_names(self):
+        openings = load_openings()
+        if not openings:
+            self.skipTest("bundled openings file is not present")
+        for opening in openings:
+            self.assertIn(opening["category"], OPENING_CATEGORY_ORDER)
+            self.assertTrue(opening["family"])
+            self.assertTrue(opening["family_zh"])
+            self.assertTrue(opening["name_zh"])
+            if ":" in opening["name"]:
+                self.assertTrue(opening["variation"])
+                self.assertTrue(opening["variation_zh"])
+
+    def test_opening_san_and_localized_name(self):
+        with tempfile.TemporaryDirectory() as base:
+            path = os.path.join(base, "openings.pgn")
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write('[Opening "Test Line"]\n1. e4 e5 2. Nf3\n\n')
+            opening = load_openings(path)[0]
+        self.assertEqual(opening["category"], "other")
+        self.assertEqual(opening_san(opening), "1. e4 e5 2. Nf3")
+        self.assertEqual(opening_display_name(opening, "zh-CN"), "Test Line")
+        self.assertEqual(opening_display_name(opening, "en-US"), "Test Line")
 
     def test_custom_openings_file(self):
         text = (

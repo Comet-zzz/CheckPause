@@ -165,6 +165,62 @@ class BoardWidgetTests(unittest.TestCase):
         self.assertEqual(board._moves, [chess.Move.from_uci("e2e4"), chess.Move.from_uci("c7c5")])
         self.assertEqual(board._index, 2)
 
+    def test_undo_takes_back_the_last_move(self):
+        board = self.make_board()
+        board.set_interactive(True, None)
+        total = len(board._moves)
+        board.goto(total)
+        replaced = []
+        indices = []
+        board.line_changed.connect(replaced.append)
+        board.index_changed.connect(indices.append)
+
+        board.undo()
+
+        self.assertEqual(len(board._moves), total - 1)
+        self.assertEqual(board._index, total - 1)
+        self.assertEqual(replaced, [True])
+        self.assertEqual(indices, [total - 1])
+        expected = chess.Board()
+        for move in board._moves:
+            expected.push(move)
+        self.assertEqual(board.current_fen(), expected.fen())
+
+    def test_undo_from_mid_line_takes_back_the_last_move_only(self):
+        board = self.make_board()
+        board.set_interactive(True, None)
+        board.goto(2)
+        total = len(board._moves)
+
+        board.undo()
+
+        self.assertEqual(len(board._moves), total - 1)
+        self.assertEqual(board._index, 2)
+
+    def test_undo_is_enabled_whenever_the_line_has_moves(self):
+        board = self.make_board()
+        board.set_interactive(True, None)
+        board.goto(0)
+        total = len(board._moves)
+        indices = []
+        board.index_changed.connect(indices.append)
+
+        self.assertTrue(board._btn_undo.isEnabled())
+        board.undo()
+
+        self.assertEqual(len(board._moves), total - 1)
+        self.assertEqual(board._index, 0)
+        self.assertEqual(indices, [0])
+
+        board.clear()
+        self.assertFalse(board._btn_undo.isEnabled())
+
+    def test_undo_button_is_hidden_until_a_page_shows_it(self):
+        board = BoardWidget()
+        self.assertTrue(board._btn_undo.isHidden())
+        board.set_undo_visible(True)
+        self.assertFalse(board._btn_undo.isHidden())
+
     def test_position_changed_reports_new_positions(self):
         board = self.make_board()
         seen = []

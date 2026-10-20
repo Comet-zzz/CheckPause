@@ -102,14 +102,23 @@ class BoardWidget(QWidget):
         self._btn_prev = QPushButton()
         self._btn_next = QPushButton()
         self._btn_last = QPushButton()
+        self._btn_undo = QPushButton()
         self._btn_flip = QPushButton()
-        for button in (self._btn_first, self._btn_prev, self._btn_next, self._btn_last):
+        for button in (
+            self._btn_first,
+            self._btn_prev,
+            self._btn_next,
+            self._btn_last,
+            self._btn_undo,
+        ):
             button.setEnabled(False)
             button.setMinimumWidth(44)
         self._btn_first.clicked.connect(self.first)
         self._btn_prev.clicked.connect(self.prev)
         self._btn_next.clicked.connect(self.next)
         self._btn_last.clicked.connect(self.last)
+        self._btn_undo.clicked.connect(self.undo)
+        self._btn_undo.setVisible(False)
         self._btn_flip.clicked.connect(self.flip)
         self._btn_edit = QPushButton()
         self._btn_edit.setCheckable(True)
@@ -125,6 +134,7 @@ class BoardWidget(QWidget):
         nav_layout.addWidget(self._btn_prev)
         nav_layout.addWidget(self._btn_next)
         nav_layout.addWidget(self._btn_last)
+        nav_layout.addWidget(self._btn_undo)
 
         nav_row = QHBoxLayout()
         nav_row.addWidget(self._nav, 1)
@@ -380,6 +390,9 @@ class BoardWidget(QWidget):
         policy = QSizePolicy.Policy.Fixed if visible else QSizePolicy.Policy.Expanding
         for spacer in self._nav_spacers:
             spacer.changeSize(0, 0, policy, QSizePolicy.Policy.Minimum)
+
+    def set_undo_visible(self, visible):
+        self._btn_undo.setVisible(visible)
 
     def set_hint(self, uci):
         if uci:
@@ -907,6 +920,19 @@ class BoardWidget(QWidget):
     def last(self):
         self.goto(len(self._moves))
 
+    def undo(self):
+        """Take back the last move of the line."""
+        if not self._interactive or self._editable or not self._moves:
+            return
+        at_end = self._index == len(self._moves)
+        removed = self._moves.pop()
+        self._index = min(self._index, len(self._moves))
+        self.render()
+        self.line_changed.emit(True)
+        if at_end:
+            self._start_animation(removed, forward=False)
+        self.index_changed.emit(self._index)
+
     def flip(self):
         self._flipped = not self._flipped
         self.render()
@@ -972,6 +998,7 @@ class BoardWidget(QWidget):
             (self._btn_prev, "nav_prev"),
             (self._btn_next, "nav_next"),
             (self._btn_last, "nav_last"),
+            (self._btn_undo, "undo"),
             (self._btn_flip, "nav_flip"),
             (self._btn_edit, "edit"),
         ):
@@ -1030,6 +1057,7 @@ class BoardWidget(QWidget):
         self._btn_prev.setEnabled(has_moves and self._index > 0)
         self._btn_next.setEnabled(has_moves and self._index < len(self._moves))
         self._btn_last.setEnabled(has_moves and self._index < len(self._moves))
+        self._btn_undo.setEnabled(self._interactive and has_moves)
 
         self._emit_position_changed()
 
@@ -1048,6 +1076,7 @@ class BoardWidget(QWidget):
         self._btn_prev.setAccessibleName(t("btn_prev", language))
         self._btn_next.setAccessibleName(t("btn_next", language))
         self._btn_last.setAccessibleName(t("btn_last", language))
+        self._btn_undo.setAccessibleName(t("btn_undo_move", language))
         self._btn_flip.setAccessibleName(t("btn_flip", language))
         self._btn_edit.setAccessibleName(t("btn_edit_board", language))
         self._eval_check.setText(t("hint_toggle", language))

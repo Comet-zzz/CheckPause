@@ -145,6 +145,8 @@ class AnalysisPage(QWidget):
             self._stack.setCurrentIndex(1)
             self.moves_shown.emit(pgn_text)
             return True
+        self._move_list.clear()
+        self.show_editor()
         return False
 
     def show_editor(self):
@@ -164,6 +166,7 @@ class AnalysisPage(QWidget):
         self._theme = theme
         self._move_list.set_theme(theme)
         self._apply_icons()
+        self._fit_action_buttons()
 
     def _apply_icons(self):
         for button, name in (
@@ -259,4 +262,19 @@ class AnalysisPage(QWidget):
         for index, key in enumerate(("review_side_all", "review_side_white", "review_side_black")):
             self._side_combo.setItemText(index, t(key, language))
         self._side_combo.blockSignals(False)
+        self._fit_action_buttons()
         self.set_status("")
+
+    def _fit_action_buttons(self):
+        for button in (
+            self._btn_open,
+            self._btn_image,
+            self._btn_clear,
+            self._btn_stop,
+            self._btn_analyze,
+        ):
+            button.ensurePolished()
+            button.setMinimumWidth(button.sizeHint().width() + 4)
+        container = self._btn_image.parentWidget()
+        if container is not None and container.layout() is not None:
+            container.layout().activate()

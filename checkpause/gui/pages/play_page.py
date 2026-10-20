@@ -4,18 +4,21 @@ import chess
 import chess.pgn
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QComboBox,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSlider,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
+from checkpause.assets import DEFAULT_BOARD_THEME, DEFAULT_PIECE_SET
 from checkpause.config import (
     DEFAULT_PLAY_TIME,
     PLAY_RATING_DEFAULT,
@@ -27,9 +30,10 @@ from checkpause.config import (
     play_rating_tier,
 )
 from checkpause.core.endgames import load_endgames
-from checkpause.core.openings import load_openings
+from checkpause.core.openings import load_openings, opening_display_name, opening_san
 from checkpause.core.play_session import PlaySession
 from checkpause.gui.icons import action_icon
+from checkpause.gui.opening_picker import choose_opening_dialog
 from checkpause.gui.theme import LIGHT, danger_color
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
@@ -37,6 +41,15 @@ from checkpause.gui.workers import EngineMoveWorker
 from checkpause.i18n import t
 
 CLOCK_TICK_MS = 100
+
+START_MODES = ("standard", "opening", "endgame")
+SIDE_ORDER = (chess.WHITE, chess.BLACK)
+
+
+def _shorten(text, limit=48):
+    if len(text) <= limit:
+        return text
+    return text[: limit - 1].rstrip() + "…"
 
 
 class PlayPage(QWidget):
@@ -48,10 +61,13 @@ class PlayPage(QWidget):
         self._theme = LIGHT
         self._level_rating = PLAY_RATING_DEFAULT
         self._time_id = DEFAULT_PLAY_TIME
-        self._opening_index = 0
-        self._endgame_index = 0
+        self._start_mode = "standard"
+        self._opening_index = -1
+        self._endgame_index = -1
         self._openings = load_openings()
         self._endgames = load_endgames()
+        self._piece_set = DEFAULT_PIECE_SET
+        self._board_theme = DEFAULT_BOARD_THEME
         self._session = PlaySession()
         self._engine_worker = None
         self._engine_error = None
@@ -95,6 +111,8 @@ class PlayPage(QWidget):
             button.setIconSize(QSize(16, 16))
         self._btn_resign.setIcon(action_icon(self._theme, "flag", color=danger_color(self._theme)))
         self._btn_resign.setIconSize(QSize(16, 16))
+        self._btn_choose_opening.setIcon(action_icon(self._theme, "list"))
+        self._btn_choose_opening.setIconSize(QSize(14, 14))
         self._update_pause_button()
 
     def _build_panel(self):
@@ -129,57 +147,7 @@ class PlayPage(QWidget):
         self._summary_row = QWidget()
         self._summary_row.setLayout(summary_row)
 
-        self._side_label = QLabel()
-        self._side_combo = QComboBox()
-        self._side_combo.currentIndexChanged.connect(self._on_side_changed)
-
-        self._level_label = QLabel()
-        self._level_slider = QSlider(Qt.Orientation.Horizontal)
-        self._level_slider.setRange(PLAY_RATING_MIN, PLAY_RATING_MAX)
-        self._level_slider.setSingleStep(PLAY_RATING_STEP)
-        self._level_slider.setPageStep(PLAY_RATING_STEP * 2)
-        self._level_slider.setValue(self._level_rating)
-        self._level_slider.valueChanged.connect(self._on_level_changed)
-        self._level_value = QLabel()
-        self._level_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self._level_value.setMinimumWidth(44)
-
-        self._time_label = QLabel()
-        self._time_combo = QComboBox()
-        self._time_combo.currentIndexChanged.connect(self._on_time_changed)
-
-        self._opening_label = QLabel()
-        self._opening_combo = QComboBox()
-        self._opening_combo.currentIndexChanged.connect(self._on_opening_changed)
-
-        self._endgame_label = QLabel()
-        self._endgame_combo = QComboBox()
-        self._endgame_combo.currentIndexChanged.connect(self._on_endgame_changed)
-
-        setup = QGridLayout()
-        setup.setHorizontalSpacing(10)
-        setup.setVerticalSpacing(10)
-        setup.addWidget(self._side_label, 0, 0)
-        setup.addWidget(self._side_combo, 0, 1)
-        setup.addWidget(self._time_label, 0, 2)
-        setup.addWidget(self._time_combo, 0, 3)
-        setup.addWidget(self._level_label, 1, 0)
-        setup.addWidget(self._level_slider, 1, 1, 1, 2)
-        setup.addWidget(self._level_value, 1, 3)
-        setup.addWidget(self._opening_label, 2, 0)
-        setup.addWidget(self._opening_combo, 2, 1, 1, 3)
-        setup.addWidget(self._endgame_label, 3, 0)
-        setup.addWidget(self._endgame_combo, 3, 1, 1, 3)
-        self._btn_start = QPushButton()
-        self._btn_start.setObjectName("primaryButton")
-        self._btn_start.clicked.connect(self._start_game)
-        setup.addWidget(self._btn_start, 4, 0, 1, 4)
-
-        self._setup_section = QWidget()
-        self._setup_section.setObjectName("panelCard")
-        setup_layout = QVBoxLayout(self._setup_section)
-        setup_layout.setContentsMargins(14, 14, 14, 14)
-        setup_layout.addLayout(setup)
+        self._setup_section = self._build_setup_section()
 
         self._btn_pause = QPushButton()
         self._btn_pause.clicked.connect(self._on_pause_clicked)
@@ -217,12 +185,147 @@ class PlayPage(QWidget):
         self.panel = panel
         return panel
 
+    def _build_setup_section(self):
+        card = QWidget()
+        card.setObjectName("panelCard")
+        layout = QVBoxLayout(card)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(12)
+
+        self._setup_title = QLabel()
+        self._setup_title.setObjectName("setupTitle")
+        layout.addWidget(self._setup_title)
+
+        self._side_label = QLabel()
+        self._side_label.setObjectName("fieldLabel")
+        self._time_label = QLabel()
+        self._time_label.setObjectName("fieldLabel")
+        self._side_buttons = {}
+        self._side_group = QButtonGroup(self)
+        self._side_group.setExclusive(True)
+        side_segments = self._build_side_segments()
+
+        self._time_combo = QComboBox()
+        self._time_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._time_combo.currentIndexChanged.connect(self._on_time_changed)
+
+        fields = QGridLayout()
+        fields.setHorizontalSpacing(12)
+        fields.setVerticalSpacing(6)
+        fields.addWidget(self._side_label, 0, 0)
+        fields.addWidget(self._time_label, 0, 1)
+        fields.addWidget(side_segments, 1, 0)
+        fields.addWidget(self._time_combo, 1, 1)
+        fields.setColumnStretch(0, 1)
+        fields.setColumnStretch(1, 1)
+        layout.addLayout(fields)
+
+        self._level_label = QLabel()
+        self._level_label.setObjectName("fieldLabel")
+        self._level_value = QLabel()
+        self._level_value.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._level_value.setMinimumWidth(44)
+        level_row = QHBoxLayout()
+        level_row.addWidget(self._level_label)
+        level_row.addStretch(1)
+        level_row.addWidget(self._level_value)
+        layout.addLayout(level_row)
+
+        self._level_slider = QSlider(Qt.Orientation.Horizontal)
+        self._level_slider.setRange(PLAY_RATING_MIN, PLAY_RATING_MAX)
+        self._level_slider.setSingleStep(PLAY_RATING_STEP)
+        self._level_slider.setPageStep(PLAY_RATING_STEP * 2)
+        self._level_slider.setValue(self._level_rating)
+        self._level_slider.valueChanged.connect(self._on_level_changed)
+        layout.addWidget(self._level_slider)
+
+        self._start_label = QLabel()
+        self._start_label.setObjectName("fieldLabel")
+        layout.addWidget(self._start_label)
+        self._mode_buttons = {}
+        self._mode_group = QButtonGroup(self)
+        self._mode_group.setExclusive(True)
+        layout.addWidget(self._build_mode_segments())
+
+        self._opening_card = self._build_opening_card()
+        layout.addWidget(self._opening_card)
+
+        self._endgame_combo = QComboBox()
+        self._endgame_combo.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._endgame_combo.currentIndexChanged.connect(self._on_endgame_changed)
+        layout.addWidget(self._endgame_combo)
+
+        self._btn_start = QPushButton()
+        self._btn_start.setObjectName("primaryButton")
+        self._btn_start.clicked.connect(self._start_game)
+        layout.addWidget(self._btn_start)
+        return card
+
+    def _build_side_segments(self):
+        container = QWidget()
+        container.setObjectName("segmentedControl")
+        row = QHBoxLayout(container)
+        row.setContentsMargins(3, 3, 3, 3)
+        row.setSpacing(3)
+        for button_id, color in enumerate(SIDE_ORDER):
+            button = QPushButton()
+            button.setCheckable(True)
+            button.setObjectName("segmentButton")
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self._side_group.addButton(button, button_id)
+            self._side_buttons[color] = button
+            row.addWidget(button)
+        self._side_group.idClicked.connect(self._on_side_id_clicked)
+        return container
+
+    def _build_mode_segments(self):
+        container = QWidget()
+        container.setObjectName("segmentedControl")
+        row = QHBoxLayout(container)
+        row.setContentsMargins(3, 3, 3, 3)
+        row.setSpacing(3)
+        for button_id, mode in enumerate(START_MODES):
+            button = QPushButton()
+            button.setCheckable(True)
+            button.setObjectName("segmentButton")
+            button.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+            self._mode_group.addButton(button, button_id)
+            self._mode_buttons[mode] = button
+            row.addWidget(button)
+        self._mode_group.idClicked.connect(self._on_mode_id_clicked)
+        return container
+
+    def _build_opening_card(self):
+        card = QWidget()
+        card.setObjectName("positionCard")
+        row = QHBoxLayout(card)
+        row.setContentsMargins(12, 10, 12, 10)
+        row.setSpacing(10)
+
+        text = QVBoxLayout()
+        text.setSpacing(2)
+        self._opening_name = QLabel()
+        self._opening_name.setObjectName("positionName")
+        self._opening_name.setWordWrap(True)
+        self._opening_meta = QLabel()
+        self._opening_meta.setObjectName("positionMeta")
+        self._opening_meta.setWordWrap(True)
+        text.addWidget(self._opening_name)
+        text.addWidget(self._opening_meta)
+
+        self._btn_choose_opening = QPushButton()
+        self._btn_choose_opening.clicked.connect(self._choose_opening)
+
+        row.addLayout(text, 1)
+        row.addWidget(self._btn_choose_opening, 0, Qt.AlignmentFlag.AlignVCenter)
+        return card
+
     def _prepare_game(self):
         self._stop_engine_worker()
         self._engine_error = None
         self._started = False
-        endgame = self._selected_endgame()
-        opening = None if endgame is not None else self._selected_opening()
+        endgame = self._selected_endgame() if self._start_mode == "endgame" else None
+        opening = self._selected_opening() if self._start_mode == "opening" else None
         self._session.new_game(
             human_color=self._session.human_color,
             start_fen=endgame["fen"] if endgame is not None else None,
@@ -281,10 +384,12 @@ class PlayPage(QWidget):
             t("play_time_" + self._time_control()["id"], self._language),
             tier,
         ]
-        if self._endgame_index > 0 and self._endgame_combo.count() > self._endgame_index:
-            parts.append(self._endgame_combo.currentText())
-        elif self._opening_index > 0 and self._opening_combo.count() > self._opening_index:
-            parts.append(self._opening_combo.currentText())
+        endgame = self._selected_endgame() if self._start_mode == "endgame" else None
+        opening = self._selected_opening() if self._start_mode == "opening" else None
+        if endgame is not None:
+            parts.append(t("play_endgame_" + endgame["id"], self._language))
+        elif opening is not None:
+            parts.append(opening_display_name(opening, self._language))
         self._summary_label.setText(" · ".join(parts))
 
     def _update_status(self):
@@ -331,14 +436,32 @@ class PlayPage(QWidget):
         return PLAY_TIME_CONTROLS[0]
 
     def _selected_opening(self):
-        if 1 <= self._opening_index <= len(self._openings):
-            return self._openings[self._opening_index - 1]
+        if 0 <= self._opening_index < len(self._openings):
+            return self._openings[self._opening_index]
         return None
 
     def _selected_endgame(self):
-        if 1 <= self._endgame_index <= len(self._endgames):
-            return self._endgames[self._endgame_index - 1]
+        if 0 <= self._endgame_index < len(self._endgames):
+            return self._endgames[self._endgame_index]
         return None
+
+    def _sync_start_mode(self):
+        for mode, button in self._mode_buttons.items():
+            button.setChecked(mode == self._start_mode)
+        self._opening_card.setVisible(self._start_mode == "opening")
+        self._endgame_combo.setVisible(self._start_mode == "endgame")
+        self._update_opening_card()
+
+    def _update_opening_card(self):
+        opening = self._selected_opening()
+        if opening is None:
+            name = t("play_opening_none", self._language)
+            meta = t("play_opening_hint", self._language)
+        else:
+            name = opening_display_name(opening, self._language)
+            meta = _shorten(opening_san(opening))
+        self._opening_name.setText(name)
+        self._opening_meta.setText(meta)
 
     def _sync_clock_timer(self):
         if not self.isVisible() or not self._started or not self._session.clock_should_run():
@@ -429,34 +552,69 @@ class PlayPage(QWidget):
             self._time_id = time_id
             self._prepare_game()
 
-    def _on_opening_changed(self, index):
-        if index < 0:
+    def _on_side_id_clicked(self, button_id):
+        if not 0 <= button_id < len(SIDE_ORDER):
             return
-        self._opening_index = index
-        if index > 0 and self._endgame_index != 0:
-            self._endgame_combo.blockSignals(True)
-            self._endgame_combo.setCurrentIndex(0)
-            self._endgame_combo.blockSignals(False)
-            self._endgame_index = 0
+        color = SIDE_ORDER[button_id]
+        if color == self._session.human_color:
+            return
+        self._session.human_color = color
         self._prepare_game()
+
+    def _on_mode_id_clicked(self, button_id):
+        if not 0 <= button_id < len(START_MODES):
+            return
+        mode = START_MODES[button_id]
+        if mode == self._start_mode:
+            return
+        if mode == "opening" and self._selected_opening() is None:
+            if not self._choose_opening():
+                self._sync_start_mode()
+            return
+        self._start_mode = mode
+        if mode == "endgame" and self._selected_endgame() is None:
+            self._endgame_combo.blockSignals(True)
+            if self._endgame_combo.count():
+                self._endgame_combo.setCurrentIndex(0)
+                self._endgame_index = 0
+            self._endgame_combo.blockSignals(False)
+        self._sync_start_mode()
+        self._prepare_game()
+
+    def _choose_opening(self):
+        current = self._selected_opening()
+        opening = choose_opening_dialog(
+            self,
+            self._openings,
+            self._language,
+            piece_set=self._piece_set,
+            board_theme=self._board_theme,
+            selected_name=current["name"] if current is not None else None,
+        )
+        if opening is None:
+            return False
+        index = next(
+            (
+                candidate_index
+                for candidate_index, candidate in enumerate(self._openings)
+                if candidate["name"] == opening["name"]
+            ),
+            None,
+        )
+        if index is None:
+            return False
+        self._opening_index = index
+        self._start_mode = "opening"
+        self._sync_start_mode()
+        self._prepare_game()
+        return True
 
     def _on_endgame_changed(self, index):
         if index < 0:
             return
         self._endgame_index = index
-        if index > 0 and self._opening_index != 0:
-            self._opening_combo.blockSignals(True)
-            self._opening_combo.setCurrentIndex(0)
-            self._opening_combo.blockSignals(False)
-            self._opening_index = 0
-        self._prepare_game()
-
-    def _on_side_changed(self, _index):
-        color = self._side_combo.currentData()
-        if color is None or color == self._session.human_color:
-            return
-        self._session.human_color = color
-        self._prepare_game()
+        if self._start_mode == "endgame":
+            self._prepare_game()
 
     def _on_level_changed(self, value):
         rating = clamp_play_rating(int(round(value / PLAY_RATING_STEP)) * PLAY_RATING_STEP)
@@ -623,9 +781,11 @@ class PlayPage(QWidget):
         self._apply_icons()
 
     def set_piece_set(self, name):
+        self._piece_set = name
         self.board.set_piece_set(name)
 
     def set_board_theme(self, name):
+        self._board_theme = name
         self.board.set_board_theme(name)
 
     def set_sound_enabled(self, enabled):
@@ -638,12 +798,11 @@ class PlayPage(QWidget):
         self._session.human_color = chess.WHITE
         self._level_rating = PLAY_RATING_DEFAULT
         self._time_id = DEFAULT_PLAY_TIME
-        self._opening_index = 0
-        self._endgame_index = 0
-        self._side_combo.blockSignals(True)
-        side_index = self._side_combo.findData(chess.WHITE)
-        self._side_combo.setCurrentIndex(max(0, side_index))
-        self._side_combo.blockSignals(False)
+        self._start_mode = "standard"
+        self._opening_index = -1
+        self._endgame_index = -1
+        self._side_buttons[chess.WHITE].setChecked(True)
+        self._side_buttons[chess.BLACK].setChecked(False)
         self._level_slider.blockSignals(True)
         self._level_slider.setValue(PLAY_RATING_DEFAULT)
         self._level_slider.blockSignals(False)
@@ -652,14 +811,11 @@ class PlayPage(QWidget):
         time_index = self._time_combo.findData(DEFAULT_PLAY_TIME)
         self._time_combo.setCurrentIndex(max(0, time_index))
         self._time_combo.blockSignals(False)
-        self._opening_combo.blockSignals(True)
-        if self._opening_combo.count():
-            self._opening_combo.setCurrentIndex(0)
-        self._opening_combo.blockSignals(False)
         self._endgame_combo.blockSignals(True)
         if self._endgame_combo.count():
             self._endgame_combo.setCurrentIndex(0)
         self._endgame_combo.blockSignals(False)
+        self._sync_start_mode()
         self._prepare_game()
 
     def _stop_engine_worker(self):
@@ -683,13 +839,11 @@ class PlayPage(QWidget):
         self._language = language
         self.board.retranslate(language)
 
-        self._side_combo.blockSignals(True)
-        self._side_combo.clear()
-        self._side_combo.addItem(t("play_side_white", language), chess.WHITE)
-        self._side_combo.addItem(t("play_side_black", language), chess.BLACK)
-        side_index = self._side_combo.findData(self._session.human_color)
-        self._side_combo.setCurrentIndex(max(0, side_index))
-        self._side_combo.blockSignals(False)
+        self._side_buttons[chess.WHITE].setText(t("play_side_white", language))
+        self._side_buttons[chess.BLACK].setText(t("play_side_black", language))
+        side_index = 0 if self._session.human_color == chess.WHITE else 1
+        for index, color in enumerate(SIDE_ORDER):
+            self._side_buttons[color].setChecked(index == side_index)
 
         self._level_slider.blockSignals(True)
         self._level_slider.setValue(self._level_rating)
@@ -703,31 +857,33 @@ class PlayPage(QWidget):
         self._time_combo.setCurrentIndex(max(0, time_index))
         self._time_combo.blockSignals(False)
 
-        self._opening_combo.blockSignals(True)
-        self._opening_combo.clear()
-        self._opening_combo.addItem(t("play_opening_standard", language), None)
-        for opening in self._openings:
-            self._opening_combo.addItem(opening["name"], opening["name"])
-        opening_index = max(0, min(self._opening_index, self._opening_combo.count() - 1))
-        self._opening_index = opening_index
-        self._opening_combo.setCurrentIndex(opening_index)
-        self._opening_combo.blockSignals(False)
-
         self._endgame_combo.blockSignals(True)
         self._endgame_combo.clear()
-        self._endgame_combo.addItem(t("play_endgame_standard", language), None)
         for endgame in self._endgames:
             self._endgame_combo.addItem(t("play_endgame_" + endgame["id"], language), endgame["id"])
-        endgame_index = max(0, min(self._endgame_index, self._endgame_combo.count() - 1))
-        self._endgame_index = endgame_index
-        self._endgame_combo.setCurrentIndex(endgame_index)
+        endgame_index = self._endgame_index
+        if endgame_index < 0 and self._endgame_combo.count():
+            endgame_index = 0
+        self._endgame_combo.setCurrentIndex(
+            max(0, min(endgame_index, self._endgame_combo.count() - 1))
+        )
+        if self._start_mode == "endgame":
+            self._endgame_index = endgame_index
         self._endgame_combo.blockSignals(False)
+
+        for mode, key in (
+            ("standard", "play_start_standard"),
+            ("opening", "play_start_opening"),
+            ("endgame", "play_start_endgame"),
+        ):
+            self._mode_buttons[mode].setText(t(key, language))
 
         self._side_label.setText(t("play_side_label", language))
         self._level_label.setText(t("play_level_label", language))
         self._time_label.setText(t("play_time_label", language))
-        self._opening_label.setText(t("play_opening_label", language))
-        self._endgame_label.setText(t("play_endgame_label", language))
+        self._start_label.setText(t("play_start_position_label", language))
+        self._setup_title.setText(t("play_setup_title", language))
+        self._btn_choose_opening.setText(t("play_choose_opening", language))
         self._btn_start.setText(t("play_start", language))
         self._btn_leave.setText(t("play_leave_game", language))
         self._btn_rematch.setText(t("play_new_game", language))
@@ -735,6 +891,7 @@ class PlayPage(QWidget):
         self._btn_resign.setText(t("play_resign", language))
         self._btn_import.setText(t("play_import", language))
 
+        self._sync_start_mode()
         self._update_pause_button()
         self._update_level_display()
         self._update_clock_labels()

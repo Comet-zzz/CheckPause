@@ -267,6 +267,7 @@ class MainWindow(QMainWindow):
         self.board = BoardWidget()
         self.board.set_edit_available(True)
         self.board.set_interactive(True, None)
+        self.board.set_undo_visible(True)
         self.board.set_eval_available(True)
         self.board.move_requested.connect(self._on_analysis_move_requested)
         self.board.line_changed.connect(self._on_line_changed)

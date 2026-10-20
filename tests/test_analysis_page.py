@@ -41,6 +41,28 @@ class ImageRecognitionGateTests(unittest.TestCase):
             page.set_busy(False)
         self.assertTrue(page._btn_image.isEnabled())
 
+    def test_action_buttons_leave_room_for_the_icon_and_text(self):
+        page = AnalysisPage()
+        for button in (
+            page._btn_open,
+            page._btn_image,
+            page._btn_clear,
+            page._btn_stop,
+            page._btn_analyze,
+        ):
+            self.assertGreaterEqual(button.minimumWidth(), button.sizeHint().width() + 4)
+
+    def test_show_moves_clears_the_list_when_the_line_becomes_empty(self):
+        page = AnalysisPage()
+        self.assertTrue(page.show_moves("1. e4 *"))
+        self.assertEqual(page._stack.currentIndex(), 1)
+        self.assertEqual(page._move_list._ply_count, 1)
+
+        self.assertFalse(page.show_moves(""))
+
+        self.assertEqual(page._stack.currentIndex(), 0)
+        self.assertEqual(page._move_list._ply_count, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
