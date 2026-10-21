@@ -1,10 +1,10 @@
 {
-  "latest": "2.0.3",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.3.zip",
+  "latest": "2.0.4",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.4.zip",
   "urls": {
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.3.zip",
-    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.3-macOS-M-series.dmg",
-    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.3-macOS-Intel.dmg"
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.4.zip",
+    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.4-macOS-M-series.dmg",
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.4-macOS-Intel.dmg"
   },
-  "notes": "重做对弈设置面板，新增可搜索、带棋盘预览的开局选择器；分析面板新增撤销键并修复按钮文字截断。"
+  "notes": "修复个性化棋子 / 棋盘样式不生效、英文界面棋盘被挤压、最大化时评估工具条遮挡棋盘；优化分析页与侧栏布局。"
 }
