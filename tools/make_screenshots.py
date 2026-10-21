@@ -57,7 +57,7 @@ from checkpause.gui.main_window import MainWindow
 from checkpause.i18n import t
 
 # Every grab is saved exactly as the window renders it at the application's own
-# default size (1164x726 logical, set in MainWindow): no resize, no rescale, so
+# default size (1034x726 logical, set in MainWindow): no resize, no rescale, so
 # the pictures match what a user sees.
 LANGUAGES = ("en-US", "zh-CN")
 FOLDERS = {"en-US": "en", "zh-CN": "zh"}

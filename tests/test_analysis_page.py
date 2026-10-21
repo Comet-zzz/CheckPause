@@ -41,16 +41,53 @@ class ImageRecognitionGateTests(unittest.TestCase):
             page.set_busy(False)
         self.assertTrue(page._btn_image.isEnabled())
 
-    def test_action_buttons_leave_room_for_the_icon_and_text(self):
+    def test_primary_action_leaves_room_for_its_label(self):
         page = AnalysisPage()
-        for button in (
-            page._btn_open,
-            page._btn_image,
-            page._btn_clear,
-            page._btn_stop,
-            page._btn_analyze,
-        ):
-            self.assertGreaterEqual(button.minimumWidth(), button.sizeHint().width() + 4)
+        self.assertGreaterEqual(
+            page._btn_analyze.minimumWidth(),
+            page._btn_analyze.sizeHint().width() + 4,
+        )
+
+    def test_input_tools_show_an_icon_and_label(self):
+        page = AnalysisPage()
+        for button in (page._btn_open, page._btn_image, page._btn_clear):
+            self.assertTrue(button.text())
+            self.assertFalse(button.icon().isNull())
+
+    def test_primary_action_turns_into_stop_while_busy(self):
+        page = AnalysisPage()
+        page.set_pgn("1. e4 *")
+        seen = []
+        page.analyze_requested.connect(lambda text: seen.append("analyze"))
+        page.stop_requested.connect(lambda: seen.append("stop"))
+
+        page.set_busy(True)
+        page._btn_analyze.click()
+        self.assertEqual(seen, ["stop"])
+
+        page.set_busy(False)
+        page._btn_analyze.click()
+        self.assertEqual(seen, ["stop", "analyze"])
+
+    def test_primary_action_offers_reanalysis_after_results(self):
+        from checkpause.i18n import t
+
+        page = AnalysisPage()
+        page.set_review([{"side": "white", "label": "Best"}])
+        self.assertEqual(page._btn_analyze.text(), t("btn_reanalyze", "zh-CN"))
+        self.assertFalse(page._review_filter.isHidden())
+
+        page.set_review([])
+        self.assertEqual(page._btn_analyze.text(), t("btn_analyze", "zh-CN"))
+        self.assertTrue(page._review_filter.isHidden())
+
+    def test_english_action_labels_fit_the_side_panel_width(self):
+        from checkpause.gui.main_window import SIDE_PANEL_MIN_WIDTH
+
+        page = AnalysisPage()
+        page.retranslate("en-US")
+        self.assertLessEqual(page.minimumSizeHint().width(), SIDE_PANEL_MIN_WIDTH)
+        self.assertLessEqual(page._review_filter.sizeHint().width(), SIDE_PANEL_MIN_WIDTH)
 
     def test_show_moves_clears_the_list_when_the_line_becomes_empty(self):
         page = AnalysisPage()

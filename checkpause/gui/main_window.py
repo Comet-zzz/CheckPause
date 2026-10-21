@@ -96,6 +96,11 @@ MODULES = (
     {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
 
+# Width both side panels share, matching the splitter's designed 532/390 split.
+# Without this floor the panel minimum follows the label metrics, and raising it
+# steals width from the board.
+SIDE_PANEL_MIN_WIDTH = 390
+
 
 def _system_language():
     """First-run language: Simplified Chinese on Chinese systems, else English."""
@@ -194,7 +199,7 @@ class MainWindow(QMainWindow):
 
         self._apply_theme()
         self._apply_board_preferences()
-        self.resize(1164, 726)
+        self.resize(1034, 726)
 
         # Delayed so the window is on screen before any prompt can appear.
         self._update_timer = QTimer(self)
@@ -304,7 +309,7 @@ class MainWindow(QMainWindow):
         splitter.addWidget(self.tabs)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([760, 520])
+        splitter.setSizes([532, 390])
         return splitter
 
     def _build_rail(self):
@@ -317,7 +322,10 @@ class MainWindow(QMainWindow):
 
     def _sync_side_panels(self):
         panels = (self.tabs, self.play_page.panel, self.puzzle_page.panel)
-        target = max(panel.minimumSizeHint().width() for panel in panels)
+        target = max(
+            SIDE_PANEL_MIN_WIDTH,
+            *(panel.minimumSizeHint().width() for panel in panels),
+        )
         for panel in panels:
             panel.setMinimumWidth(target)
 
@@ -430,7 +438,7 @@ class MainWindow(QMainWindow):
         self._act_check_update = QAction(self)
         self._act_check_update.triggered.connect(lambda: self._check_for_update(manual=True))
         self._act_about = QAction(self)
-        self._act_about.triggered.connect(lambda: show_about(self, self._language))
+        self._act_about.triggered.connect(lambda: show_about(self, self._language, self._theme))
         self._menu_help.addAction(self._act_check_update)
         self._menu_help.addAction(self._act_about)
 
@@ -959,13 +967,15 @@ class MainWindow(QMainWindow):
         self._piece_set = name
         if self.profile:
             self.profile = set_piece_set(self.profile, name)
-        self.board.set_piece_set(name)
+        for page in (self.board, self.play_page, self.puzzle_page):
+            page.set_piece_set(name)
 
     def _change_board_theme(self, name):
         self._board_theme = name
         if self.profile:
             self.profile = set_board_theme(self.profile, name)
-        self.board.set_board_theme(name)
+        for page in (self.board, self.play_page, self.puzzle_page):
+            page.set_board_theme(name)
 
     def _change_sound_set(self, name):
         self._sound_set = name if name in SOUND_CHOICES else DEFAULT_SOUND_SET

@@ -89,7 +89,7 @@ class PlayPage(QWidget):
         splitter.addWidget(self._build_panel())
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
-        splitter.setSizes([760, 520])
+        splitter.setSizes([532, 390])
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)

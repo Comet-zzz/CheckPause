@@ -7,6 +7,7 @@ APP_VERSION = "2.0.3"
 AUTHOR = "CometZZZ"
 COPYRIGHT_YEAR = "2026"
 GITHUB_URL = "https://github.com/Comet-zzz/CheckPause"
+WEBSITE_URL = "https://checkpause.com"
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 

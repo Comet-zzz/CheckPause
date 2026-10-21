@@ -1,7 +1,7 @@
 from PySide6.QtCore import QSize, Signal
 from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
-    QComboBox,
+    QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
@@ -17,9 +17,11 @@ from checkpause.config import IMAGE_RECOGNITION_ENABLED
 from checkpause.core.rating import rating_key
 from checkpause.core.review import format_summary, labels_for, summary_for
 from checkpause.gui.icons import action_icon
-from checkpause.gui.theme import LIGHT
+from checkpause.gui.theme import LIGHT, danger_color
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.i18n import t
+
+REVIEW_SIDES = ("all", "white", "black")
 
 
 class AnalysisPage(QWidget):
@@ -37,6 +39,7 @@ class AnalysisPage(QWidget):
         self._theme = LIGHT
         self._annotated = []
         self._review_side = "all"
+        self._busy = False
 
         self._editor = QPlainTextEdit()
         self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
@@ -53,86 +56,110 @@ class AnalysisPage(QWidget):
         self._stack.addWidget(editor_page)
         self._stack.addWidget(self._move_list)
 
-        self._btn_open = QPushButton()
+        self._btn_open = self._tool_button("open")
         self._btn_open.clicked.connect(self.open_file_requested.emit)
-        self._btn_image = QPushButton()
+        self._btn_image = self._tool_button("image")
         self._btn_image.setEnabled(IMAGE_RECOGNITION_ENABLED)
         self._btn_image.clicked.connect(self.image_requested.emit)
-        self._btn_clear = QPushButton()
+        self._btn_clear = self._tool_button("trash")
         self._btn_clear.clicked.connect(self.clear)
+
+        tools = QWidget()
+        tools.setObjectName("analysisTools")
+        tools_row = QHBoxLayout(tools)
+        tools_row.setContentsMargins(0, 0, 0, 0)
+        tools_row.setSpacing(4)
+        for button in (self._btn_open, self._btn_image, self._btn_clear):
+            tools_row.addWidget(button)
+        tools_row.addStretch(1)
+
         self._btn_analyze = QPushButton()
         self._btn_analyze.setObjectName("primaryButton")
-        self._btn_analyze.clicked.connect(self._on_analyze)
-        self._btn_stop = QPushButton()
-        self._btn_stop.setEnabled(False)
-        self._btn_stop.clicked.connect(self.stop_requested.emit)
-
-        button_row = QHBoxLayout()
-        button_row.setSpacing(6)
-        button_row.addWidget(self._btn_open)
-        button_row.addWidget(self._btn_image)
-        button_row.addWidget(self._btn_clear)
-        button_row.addStretch(1)
-        button_row.addWidget(self._btn_stop)
-        button_row.addWidget(self._btn_analyze)
+        self._btn_analyze.clicked.connect(self._on_primary_action)
 
         self._progress = QProgressBar()
         self._progress.setRange(0, 100)
         self._progress.setValue(0)
         self._progress.setTextVisible(False)
+        self._progress.setFixedWidth(110)
         self._progress.setVisible(False)
 
-        self._accuracy_label = QLabel()
-        self._accuracy_label.setObjectName("accuracyLabel")
-        self._accuracy_label.setVisible(False)
-        self._classification_label = QLabel()
-        self._classification_label.setObjectName("mutedLabel")
-        self._classification_label.setWordWrap(True)
-        self._classification_label.setVisible(False)
-        self._side_label = QLabel()
-        self._side_label.setObjectName("mutedLabel")
-        self._side_combo = QComboBox()
-        self._side_combo.addItem("", "all")
-        self._side_combo.addItem("", "white")
-        self._side_combo.addItem("", "black")
-        self._side_combo.currentIndexChanged.connect(self._on_review_side_changed)
-        review_row = QHBoxLayout()
-        review_row.setSpacing(6)
-        review_row.addWidget(self._side_label)
-        review_row.addWidget(self._side_combo)
-        review_row.addStretch(1)
         self._status_label = QLabel()
         self._status_label.setObjectName("mutedLabel")
         self._status_label.setWordWrap(True)
         self._status_label.setVisible(False)
 
-        action_bar = QFrame()
-        action_bar.setObjectName("actionBar")
-        action_layout = QVBoxLayout(action_bar)
-        action_layout.setContentsMargins(12, 10, 12, 10)
-        action_layout.setSpacing(8)
-        action_layout.addLayout(review_row)
-        action_layout.addLayout(button_row)
+        self._accuracy_label = QLabel()
+        self._accuracy_label.setObjectName("accuracyLabel")
+        self._accuracy_label.setWordWrap(True)
+        self._accuracy_label.setVisible(False)
+        self._classification_label = QLabel()
+        self._classification_label.setObjectName("mutedLabel")
+        self._classification_label.setWordWrap(True)
+        self._classification_label.setVisible(False)
+
+        self._side_label = QLabel()
+        self._side_label.setObjectName("mutedLabel")
+        self._review_group = QButtonGroup(self)
+        self._review_group.setExclusive(True)
+        self._review_buttons = {}
+        review_segments = QWidget()
+        review_segments.setObjectName("segmentedControl")
+        review_layout = QHBoxLayout(review_segments)
+        review_layout.setContentsMargins(3, 3, 3, 3)
+        review_layout.setSpacing(3)
+        for index, side in enumerate(REVIEW_SIDES):
+            button = QPushButton()
+            button.setCheckable(True)
+            button.setObjectName("segmentButton")
+            self._review_group.addButton(button, index)
+            review_layout.addWidget(button)
+            self._review_buttons[side] = button
+        self._review_buttons["all"].setChecked(True)
+        self._review_group.idClicked.connect(self._on_review_side_clicked)
+
+        self._review_filter = QWidget()
+        filter_row = QHBoxLayout(self._review_filter)
+        filter_row.setContentsMargins(0, 0, 0, 0)
+        filter_row.setSpacing(8)
+        filter_row.addWidget(self._side_label)
+        filter_row.addWidget(review_segments)
+        filter_row.addStretch(1)
+        self._review_filter.setVisible(False)
 
         self._summary_card = QFrame()
         self._summary_card.setObjectName("summaryCard")
         summary_layout = QVBoxLayout(self._summary_card)
         summary_layout.setContentsMargins(14, 12, 14, 12)
-        summary_layout.setSpacing(4)
+        summary_layout.setSpacing(6)
         summary_layout.addWidget(self._accuracy_label)
+        summary_layout.addWidget(self._review_filter)
         summary_layout.addWidget(self._classification_label)
-        summary_layout.addWidget(self._status_label)
         self._summary_card.setVisible(False)
 
+        action_row = QHBoxLayout()
+        action_row.setContentsMargins(2, 0, 2, 0)
+        action_row.setSpacing(10)
+        action_row.addWidget(self._status_label)
+        action_row.addStretch(1)
+        action_row.addWidget(self._progress)
+        action_row.addWidget(self._btn_analyze)
+
         layout = QVBoxLayout(self)
-        layout.setSpacing(10)
+        layout.setSpacing(8)
+        layout.addWidget(tools)
         layout.addWidget(self._stack, 1)
-        layout.addWidget(self._progress)
-        layout.addWidget(action_bar)
         layout.addWidget(self._summary_card)
+        layout.addLayout(action_row)
 
         self._apply_icons()
         self.retranslate(self._language)
+
+    def _tool_button(self, icon_name):
+        button = QPushButton()
+        button.setIcon(action_icon(self._theme, icon_name))
+        button.setIconSize(QSize(16, 16))
+        return button
 
     def pgn_text(self):
         return self._editor.toPlainText().strip()
@@ -166,19 +193,16 @@ class AnalysisPage(QWidget):
         self._theme = theme
         self._move_list.set_theme(theme)
         self._apply_icons()
-        self._fit_action_buttons()
 
     def _apply_icons(self):
         for button, name in (
             (self._btn_open, "open"),
             (self._btn_image, "image"),
             (self._btn_clear, "trash"),
-            (self._btn_stop, "stop"),
         ):
             button.setIcon(action_icon(self._theme, name))
             button.setIconSize(QSize(16, 16))
-        self._btn_analyze.setIcon(action_icon(self._theme, "analyze", on_accent=True))
-        self._btn_analyze.setIconSize(QSize(16, 16))
+        self._sync_primary_action()
 
     def set_progress(self, percent):
         self._progress.setValue(percent)
@@ -204,16 +228,18 @@ class AnalysisPage(QWidget):
         """Show the review labels and stats, honouring the current side filter."""
         self._annotated = list(annotated or [])
         self._refresh_review()
+        self._sync_primary_action()
 
     def _refresh_review(self):
+        self._review_filter.setVisible(bool(self._annotated))
         self.set_move_labels(labels_for(self._annotated, self._review_side))
         if not self._annotated:
             self.set_classification(None)
             return
         self.set_classification(summary_for(self._annotated, self._review_side))
 
-    def _on_review_side_changed(self, index):
-        self._review_side = self._side_combo.itemData(index) or "all"
+    def _on_review_side_clicked(self, index):
+        self._review_side = REVIEW_SIDES[index]
         self._refresh_review()
 
     def set_move_labels(self, labels):
@@ -228,19 +254,27 @@ class AnalysisPage(QWidget):
     def set_status(self, text):
         self._status_label.setText(text)
         self._status_label.setVisible(bool(text))
-        self._sync_summary()
 
     def _sync_summary(self):
-        widgets = (self._accuracy_label, self._classification_label, self._status_label)
+        widgets = (self._accuracy_label, self._classification_label)
         self._summary_card.setVisible(any(not widget.isHidden() for widget in widgets))
 
     def set_busy(self, busy):
-        self._btn_analyze.setEnabled(not busy)
-        self._btn_stop.setEnabled(busy)
+        self._busy = busy
+        self._editor.setReadOnly(busy)
         self._btn_open.setEnabled(not busy)
         self._btn_image.setEnabled(not busy and IMAGE_RECOGNITION_ENABLED)
-        self._editor.setReadOnly(busy)
+        self._btn_clear.setEnabled(not busy)
+        self._sync_primary_action()
         self._progress.setVisible(busy)
+        if not busy:
+            self._progress.setValue(0)
+
+    def _on_primary_action(self):
+        if self._busy:
+            self.stop_requested.emit()
+            return
+        self._on_analyze()
 
     def _on_analyze(self):
         text = self.pgn_text()
@@ -249,32 +283,48 @@ class AnalysisPage(QWidget):
             return
         self.analyze_requested.emit(text)
 
+    def _sync_primary_action(self):
+        if self._busy:
+            key = "btn_stop"
+        elif self._annotated:
+            key = "btn_reanalyze"
+        else:
+            key = "btn_analyze"
+        self._btn_analyze.setText(t(key, self._language))
+        self._btn_analyze.setObjectName("dangerButton" if self._busy else "primaryButton")
+        if self._busy:
+            icon = action_icon(self._theme, "stop", color=danger_color(self._theme))
+        else:
+            icon = action_icon(self._theme, "analyze", on_accent=True)
+        self._btn_analyze.setIcon(icon)
+        self._btn_analyze.setIconSize(QSize(16, 16))
+        self._btn_analyze.style().unpolish(self._btn_analyze)
+        self._btn_analyze.style().polish(self._btn_analyze)
+        self._fit_action_buttons()
+
     def retranslate(self, language):
         self._language = language
         self._editor.setPlaceholderText(t("placeholder_pgn", language))
-        self._btn_open.setText(t("btn_open_pgn", language))
-        self._btn_image.setText(t("btn_image", language))
-        self._btn_clear.setText(t("btn_clear_pgn", language))
-        self._btn_analyze.setText(t("btn_analyze", language))
-        self._btn_stop.setText(t("btn_stop", language))
+        for button, name_key, tip_key in (
+            (self._btn_open, "btn_open_pgn", "action_open_pgn"),
+            (self._btn_image, "btn_image", "action_open_image"),
+            (self._btn_clear, "btn_clear_pgn", "btn_clear_pgn"),
+        ):
+            button.setText(t(name_key, language))
+            button.setAccessibleName(t(name_key, language))
+            button.setToolTip(t(tip_key, language))
         self._side_label.setText(t("review_side_label", language))
-        self._side_combo.blockSignals(True)
-        for index, key in enumerate(("review_side_all", "review_side_white", "review_side_black")):
-            self._side_combo.setItemText(index, t(key, language))
-        self._side_combo.blockSignals(False)
-        self._fit_action_buttons()
+        for side in REVIEW_SIDES:
+            self._review_buttons[side].setText(t("review_side_" + side, language))
+        self._sync_primary_action()
         self.set_status("")
 
     def _fit_action_buttons(self):
-        for button in (
-            self._btn_open,
-            self._btn_image,
-            self._btn_clear,
-            self._btn_stop,
-            self._btn_analyze,
-        ):
-            button.ensurePolished()
-            button.setMinimumWidth(button.sizeHint().width() + 4)
-        container = self._btn_image.parentWidget()
-        if container is not None and container.layout() is not None:
-            container.layout().activate()
+        current = self._btn_analyze.text()
+        widest = 0
+        for key in ("btn_analyze", "btn_reanalyze", "btn_stop"):
+            self._btn_analyze.setText(t(key, self._language))
+            self._btn_analyze.ensurePolished()
+            widest = max(widest, self._btn_analyze.sizeHint().width())
+        self._btn_analyze.setText(current)
+        self._btn_analyze.setMinimumWidth(widest + 4)

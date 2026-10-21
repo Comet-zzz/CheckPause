@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
     QFormLayout,
+    QFrame,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -15,7 +16,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from checkpause import APP_VERSION, AUTHOR, COPYRIGHT_YEAR, GITHUB_URL
+from checkpause import (
+    APP_VERSION,
+    AUTHOR,
+    COPYRIGHT_YEAR,
+    GITHUB_URL,
+    WEBSITE_URL,
+)
 from checkpause.data.settings import (
     DEFAULT_SERVER_URL,
     MODE_LOCAL,
@@ -23,6 +30,7 @@ from checkpause.data.settings import (
     get_base_url,
     get_model,
 )
+from checkpause.gui.icons import action_icon, app_icon
 from checkpause.gui.workers import AccountWorker
 from checkpause.i18n import t
 
@@ -574,54 +582,112 @@ def confirm_close_dialog(parent, language="zh-CN"):
     return box.clickedButton() is yes_button
 
 
-def show_about(parent, language):
+def show_about(parent, language, theme="light"):
     dialog = QDialog(parent)
+    dialog.setObjectName("aboutDialog")
     dialog.setWindowTitle(t("about_title", language))
-    dialog.setMinimumWidth(440)
+    dialog.setMinimumWidth(480)
+
+    card = QFrame()
+    card.setObjectName("aboutCard")
+    card_layout = QVBoxLayout(card)
+    card_layout.setContentsMargins(24, 22, 24, 18)
+    card_layout.setSpacing(12)
+
+    app_logo = QLabel()
+    app_logo.setPixmap(app_icon().pixmap(48, 48))
+    app_logo.setFixedSize(48, 48)
 
     title = QLabel(t("app_title", language))
-    title_font = title.font()
-    title_font.setPointSize(title_font.pointSize() + 4)
-    title_font.setBold(True)
-    title.setFont(title_font)
-
-    body = QLabel(t("about_text", language).split("\n", 1)[-1])
-    body.setWordWrap(True)
+    title.setObjectName("aboutTitle")
 
     version = QLabel(t("about_version", language, version=APP_VERSION))
-    version_font = version.font()
-    version_font.setBold(True)
-    version.setFont(version_font)
+    version.setObjectName("mutedLabel")
+
+    heading = QVBoxLayout()
+    heading.setContentsMargins(0, 0, 0, 0)
+    heading.setSpacing(2)
+    heading.addWidget(title)
+    heading.addWidget(version)
+    heading.addStretch(1)
+
+    header = QHBoxLayout()
+    header.setContentsMargins(0, 0, 0, 0)
+    header.setSpacing(14)
+    header.addWidget(app_logo, 0, Qt.AlignmentFlag.AlignTop)
+    header.addLayout(heading, 1)
+
+    body = QLabel(t("about_text", language).split("\n", 1)[-1])
+    body.setObjectName("aboutBody")
+    body.setWordWrap(True)
+
+    divider = QFrame()
+    divider.setObjectName("aboutDivider")
+    divider.setFixedHeight(1)
 
     author = QLabel(t("about_author", language, author=AUTHOR))
+    author.setObjectName("mutedLabel")
     copyright_label = QLabel(t("about_copyright", language, year=COPYRIGHT_YEAR, author=AUTHOR))
-    link = QLabel(f'<a href="{GITHUB_URL}">{GITHUB_URL}</a>')
+    copyright_label.setObjectName("mutedLabel")
+
+    meta = QHBoxLayout()
+    meta.setContentsMargins(0, 0, 0, 0)
+    meta.addWidget(author)
+    meta.addStretch(1)
+    meta.addWidget(copyright_label)
+
+    github_logo = QLabel()
+    github_logo.setPixmap(action_icon(theme, "github", size=16).pixmap(16, 16))
+    github_logo.setFixedSize(16, 16)
+    github_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+    github_name = GITHUB_URL.split("://", 1)[-1]
+    link = QLabel(f'<a href="{GITHUB_URL}">{github_name}</a>')
     link.setOpenExternalLinks(True)
     link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
 
-    pieces = QLabel(t("about_pieces", language))
-    pieces.setWordWrap(True)
-    pieces.setObjectName("mutedLabel")
+    github_row = QHBoxLayout()
+    github_row.setContentsMargins(0, 0, 0, 0)
+    github_row.setSpacing(8)
+    github_row.addWidget(github_logo)
+    github_row.addWidget(link)
+    github_row.addStretch(1)
 
-    puzzles = QLabel(t("about_puzzles", language))
-    puzzles.setWordWrap(True)
-    puzzles.setObjectName("mutedLabel")
+    web_logo = QLabel()
+    web_logo.setPixmap(action_icon(theme, "globe", size=16).pixmap(16, 16))
+    web_logo.setFixedSize(16, 16)
+    web_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+
+    website_name = WEBSITE_URL.split("://", 1)[-1]
+    website = QLabel(f'<a href="{WEBSITE_URL}">{website_name}</a>')
+    website.setOpenExternalLinks(True)
+    website.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+
+    website_row = QHBoxLayout()
+    website_row.setContentsMargins(0, 0, 0, 0)
+    website_row.setSpacing(8)
+    website_row.addWidget(web_logo)
+    website_row.addWidget(website)
+    website_row.addStretch(1)
 
     buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-    buttons.button(QDialogButtonBox.StandardButton.Close).setText(t("about_close", language))
+    close_button = buttons.button(QDialogButtonBox.StandardButton.Close)
+    close_button.setText(t("about_close", language))
+    close_button.setObjectName("primaryButton")
+    close_button.setMinimumWidth(96)
     buttons.rejected.connect(dialog.reject)
 
+    card_layout.addLayout(header)
+    card_layout.addWidget(body)
+    card_layout.addWidget(divider)
+    card_layout.addLayout(meta)
+    card_layout.addLayout(github_row)
+    card_layout.addLayout(website_row)
+    card_layout.addWidget(buttons)
+
     layout = QVBoxLayout(dialog)
-    layout.addWidget(title)
-    layout.addWidget(version)
-    layout.addWidget(body)
-    layout.addSpacing(8)
-    layout.addWidget(author)
-    layout.addWidget(copyright_label)
-    layout.addWidget(link)
-    layout.addWidget(pieces)
-    layout.addWidget(puzzles)
-    layout.addWidget(buttons)
+    layout.setContentsMargins(14, 14, 14, 14)
+    layout.addWidget(card)
 
     dialog.exec()
 

@@ -269,6 +269,19 @@ class BoardWidgetTests(unittest.TestCase):
         board.cancel_edit()
         self.assertFalse(board._eval_controls.isHidden())
 
+    def test_eval_strip_stays_clear_of_the_board_in_tight_windows(self):
+        board = BoardWidget()
+        board.set_eval_available(True)
+
+        board._canvas.resize(514, 644)
+        _, _, default_size, _ = board._canvas._geometry()
+        self.assertGreaterEqual(default_size, 460)
+
+        board._canvas.resize(1025, 997)
+        board._canvas.place_eval_controls()
+        _, y0, _, _ = board._canvas._geometry()
+        self.assertGreaterEqual(y0 - board._eval_controls.geometry().bottom(), 5)
+
     def test_eval_control_emits_changes(self):
         board = BoardWidget()
         board.set_eval_available(True)

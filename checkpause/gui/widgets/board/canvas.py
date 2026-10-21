@@ -29,6 +29,9 @@ from checkpause.gui.widgets.board.constants import (
 # full arrow, alternates get progressively thinner and fainter.
 _ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
 
+# Breathing room above and below the evaluation strip; split evenly by _eval_row.
+EVAL_ROW_PADDING = 12
+
 
 class _BoardCanvas(QWidget):
     def __init__(self, owner, parent=None):
@@ -247,6 +250,16 @@ class _BoardCanvas(QWidget):
         side = min(width, height)
         margin = max(16, int(side * 0.05))
         board_size = max(80, side - 2 * margin)
+        row_h = self._eval_row_height(max(1.0, board_size / 8))
+        if row_h:
+            # The strip above the board has a mostly fixed height while the
+            # margin is proportional. Near-square windows make both meet, so
+            # reserve the strip plus a little breathing room. The board is
+            # only sacrificed when the canvas is genuinely tight.
+            board_size = max(
+                80,
+                min(board_size, height - 2 * (row_h + EVAL_ROW_PADDING)),
+            )
         x0 = (width - board_size) / 2
         y0 = (height - board_size) / 2
         return x0, y0, board_size, max(1.0, board_size / 8)
@@ -260,26 +273,34 @@ class _BoardCanvas(QWidget):
         gap = max(4.0, square * 0.045)
         return bar_h, gap
 
+    def _eval_controls_height(self):
+        owner = self._owner
+        controls = getattr(owner, "_eval_controls", None)
+        if not owner._eval_available or controls is None:
+            return 0.0
+        # Measure only: adjustSize() here would shrink the strip back to its
+        # size hint after place_eval_controls() stretched it.
+        controls.layout().activate()
+        return float(controls.sizeHint().height())
+
+    def _eval_row_height(self, square):
+        controls_h = self._eval_controls_height()
+        if not controls_h:
+            return 0.0
+        bar_h, gap = self._eval_bar_metrics(square)
+        return bar_h + gap + controls_h
+
     def _eval_row(self, x0, y0, board_size, square):
         """Geometry for the evaluation bar and the controls under it.
 
         Both live in the empty margin above the board: the bar spans the full
-        board width and the controls stretch across the line below it. Nothing
-        takes layout space, so the board keeps exactly the same size as the
-        play and puzzle boards.
+        board width and the controls stretch across the line below it. The
+        margin is reserved in _geometry so the strip never overlaps the board.
         """
-        owner = self._owner
-        controls = getattr(owner, "_eval_controls", None)
         bar_h, gap = self._eval_bar_metrics(square)
-        controls_h = 0
-        if owner._eval_available and controls is not None:
-            # Measure only: adjustSize() here would shrink the strip back to
-            # its size hint after place_eval_controls() stretched it.
-            controls.layout().activate()
-            controls_h = controls.sizeHint().height()
+        controls_h = self._eval_controls_height()
         row_h = bar_h + (gap + controls_h if controls_h else 0)
-        top_margin = y0
-        row_y = max(0.0, (top_margin - row_h) / 2.0)
+        row_y = max(0.0, (y0 - row_h) / 2.0)
         bar_rect = QRectF(x0, row_y, board_size, bar_h)
         controls_rect = QRectF(
             x0,

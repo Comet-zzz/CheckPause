@@ -695,13 +695,22 @@ QTableWidget#moveTable::item {
     border: none;
     padding: 0px;
 }
-#actionBar {
-    background-color: $surface_alt;
-    border: 1px solid $border;
-    border-radius: 10px;
+#analysisTools QPushButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 4px 8px;
+    min-height: 18px;
 }
-#actionBar QPushButton {
-    padding: 6px 12px;
+#analysisTools QPushButton:hover {
+    background-color: $hover;
+    border-color: $border;
+}
+#analysisTools QPushButton:pressed {
+    background-color: $pressed;
+}
+#analysisTools QPushButton:disabled {
+    background: transparent;
 }
 #summaryCard {
     background-color: $accent_soft;
@@ -752,6 +761,24 @@ QTableWidget#moveTable::item {
 }
 #boardEditBar QLabel {
     color: $text_muted;
+}
+#aboutTitle {
+    color: $text;
+    font-size: 22px;
+    font-weight: 600;
+}
+#aboutBody {
+    color: $text;
+    font-size: 13px;
+}
+#aboutCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 16px;
+}
+#aboutDivider {
+    background-color: $border;
+    border: none;
 }
 #welcomePage {
     background: transparent;

@@ -11,6 +11,7 @@ Effective: 7 October 2026
 2.1 The Software is proprietary. The Licensor grants a non-exclusive, non-transferable, non-sublicensable license for personal, non-commercial use on the User's own devices.
 2.2 The User shall not reverse engineer, decompile, disassemble, modify, rent, sell, distribute or otherwise use the Software without authorization, except where mandatory law provides otherwise.
 2.3 Third-party components (including the chess engine and artwork) are governed by their own licenses.
+2.4 The bundled piece artwork comes from the Lichess open-source piece sets (cburnett, merida, chessnut, fantasy, spatial, celtic, kiwen-suwi, rhosgfx, totoy, mpchess), each owned by its author under GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 licenses. The bundled puzzle sample is curated from the Lichess puzzle database (CC0 public domain).
 
 3. Data Processing
 3.1 To provide and maintain the service, ensure security and improve the product (including training and optimizing related models), the Licensor collects and processes necessary data in accordance with the Privacy Policy.
