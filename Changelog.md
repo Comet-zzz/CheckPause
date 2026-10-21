@@ -1,3 +1,46 @@
+# v2.0.4 – Board Fixes & Interface Polish
+
+> **A focused update: fixes for personalization styles not reaching every board, the board shrinking after switching to English, and the evaluation bar crowding the board when maximized, alongside a cleaner, more compact interface layout.**
+
+---
+
+## 🎯 What's New
+
+### 🐞 Board fixes
+- 修复个性化中更换棋子 / 棋盘样式只在「面板」模块生效的问题，对弈、谜题模块现在同步生效。
+- 修复切换英文界面后棋盘被右侧面板挤压变小的问题，中英文下棋盘尺寸保持一致。
+- 修复窗口最大化时评估工具条贴住甚至遮住棋盘第 8 横线的问题，工具条与棋盘之间现在保留固定间距。
+
+- Fixed piece and board style changes in Personalization only applying in the Panel module; Play and Puzzle now follow them too.
+- Fixed the board shrinking after switching to English; the board now keeps the same size in both languages.
+- Fixed the evaluation toolbar touching or covering the board's 8th rank when the window is maximized; a fixed gap is now kept between the toolbar and the board.
+
+### 🧭 Interface polish
+- 优化了分析页、侧栏与「关于」窗口的界面布局逻辑，重新梳理操作层级和信息层级，整体更紧凑。
+- 打磨了若干控件与间距细节，中英文下的布局表现更一致。
+
+- Refined the layout logic across the analysis panel, side panel and About window, tidying the action and information hierarchy for a more compact result.
+- Polished a number of control and spacing details so the layout behaves more consistently in both languages.
+
+## 🛠️ Full Changelog
+- fix(personalization): apply piece and board styles to every board widget
+- fix(gui): keep the board size stable when switching languages
+- fix(board): reserve space for the evaluation strip above the board
+- feat(gui): refine the analysis panel and side-panel layout
+- chore(gui): tidy the About window and interface details
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.3...v2.0.4
+
 # v2.0.3 – Play Setup Redesign & Analysis Fixes
 
 > **A focused update: the Play setup panel has been rebuilt with clearer segmented controls and a searchable opening picker, alongside a small undo improvement and text fixes in the analysis panel.**
