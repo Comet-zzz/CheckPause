@@ -83,6 +83,18 @@ MESSAGES = {
     "update_title": "Update available",
     "update_available": "CheckPause {version} is available; you are running {current}.",
     "update_download": "Download",
+    "update_download_install": "Download and install",
+    "update_downloading": "Downloading update...",
+    "update_downloading_progress": "Downloading update... {percent}%",
+    "update_cancel": "Cancel",
+    "update_canceling": "Canceling download...",
+    "update_download_failed": "Update download failed: {error}",
+    "update_install_prompt": (
+        "The update is ready. CheckPause will close and restart after installation."
+    ),
+    "update_install_now": "Install and restart",
+    "update_install_later": "Later",
+    "update_install_failed": "Could not start the update installer: {error}",
     "update_later": "Later",
     "cloud_timeout": "The cloud service timed out. Please try again later.",
     "cloud_unreachable": "Could not reach the cloud service. Check your network.",

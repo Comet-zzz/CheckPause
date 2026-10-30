@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QMessageBox,
+    QProgressBar,
     QPushButton,
     QVBoxLayout,
 )
@@ -31,7 +32,7 @@ from checkpause.data.settings import (
     get_model,
 )
 from checkpause.gui.icons import action_icon, app_icon
-from checkpause.gui.workers import AccountWorker
+from checkpause.gui.workers import AccountWorker, UpdateDownloadWorker
 from checkpause.i18n import t
 
 # How often to ask whether a payment has landed, and when to stop asking.
@@ -692,8 +693,8 @@ def show_about(parent, language, theme="light"):
     dialog.exec()
 
 
-def show_update_dialog(parent, language, info):
-    """Offer a link to a newer release. Returns True when the user accepted."""
+def show_update_dialog(parent, language, info, in_app=False):
+    """Offer an update; return True when the user chooses to download it."""
     box = QMessageBox(parent)
     box.setWindowTitle(t("update_title", language))
     box.setIcon(QMessageBox.Icon.Information)
@@ -708,12 +709,95 @@ def show_update_dialog(parent, language, info):
     if info.notes:
         box.setInformativeText(info.notes)
 
-    download = box.addButton(t("update_download", language), QMessageBox.ButtonRole.AcceptRole)
+    download_key = "update_download_install" if in_app else "update_download"
+    download = box.addButton(t(download_key, language), QMessageBox.ButtonRole.AcceptRole)
     download.setObjectName("primaryButton")
     box.addButton(t("update_later", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
 
     if box.clickedButton() is not download:
         return False
-    QDesktopServices.openUrl(QUrl(info.url))
+    if not in_app:
+        QDesktopServices.openUrl(QUrl(info.url))
     return True
+
+
+class _UpdateDownloadDialog(QDialog):
+    def __init__(self, parent, language, info):
+        super().__init__(parent)
+        self._language = language
+        self.installer_path = None
+        self.error = None
+        self.setWindowTitle(t("update_title", language))
+        self.setMinimumWidth(360)
+        self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
+
+        self._status = QLabel(t("update_downloading", language))
+        self._progress = QProgressBar()
+        self._progress.setRange(0, 0)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
+        self._cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
+        self._cancel_button.setText(t("update_cancel", language))
+        buttons.rejected.connect(self._cancel_download)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(self._status)
+        layout.addWidget(self._progress)
+        layout.addWidget(buttons)
+
+        self._worker = UpdateDownloadWorker(info.url, info.version, self)
+        self._worker.progress.connect(self._on_progress)
+        self._worker.finished.connect(self._on_finished)
+        self._worker.start()
+
+    def _on_progress(self, downloaded, total):
+        if total <= 0:
+            return
+        percent = min(100, downloaded * 100 // total)
+        self._progress.setRange(0, 100)
+        self._progress.setValue(percent)
+        self._status.setText(t("update_downloading_progress", self._language, percent=percent))
+
+    def _cancel_download(self):
+        self._cancel_button.setEnabled(False)
+        self._status.setText(t("update_canceling", self._language))
+        self._worker.requestInterruption()
+
+    def _on_finished(self):
+        self.error = self._worker.error
+        self.installer_path = self._worker.installer_path
+        if self.installer_path is not None:
+            self.accept()
+            return
+        self.reject()
+
+
+def download_update_dialog(parent, language, info):
+    dialog = _UpdateDownloadDialog(parent, language, info)
+    if dialog.exec() == QDialog.DialogCode.Accepted:
+        return dialog.installer_path
+    if dialog.error:
+        QMessageBox.warning(
+            parent,
+            t("update_title", language),
+            t("update_download_failed", language, error=dialog.error),
+        )
+    return None
+
+
+def confirm_update_install(parent, language):
+    box = QMessageBox(parent)
+    box.setWindowTitle(t("update_title", language))
+    box.setIcon(QMessageBox.Icon.Question)
+    box.setText(t("update_install_prompt", language))
+    install = box.addButton(
+        t("update_install_now", language),
+        QMessageBox.ButtonRole.AcceptRole,
+    )
+    install.setObjectName("primaryButton")
+    box.addButton(
+        t("update_install_later", language),
+        QMessageBox.ButtonRole.RejectRole,
+    )
+    box.exec()
+    return box.clickedButton() is install

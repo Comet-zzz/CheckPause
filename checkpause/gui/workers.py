@@ -18,7 +18,12 @@ from checkpause.core.engine import (
     read_lines,
 )
 from checkpause.core.recognize import RecognizeError, recognize
-from checkpause.core.updater import check_for_update
+from checkpause.core.updater import (
+    UpdateDownloadCancelledError,
+    UpdateDownloadError,
+    check_for_update,
+    download_update,
+)
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
 from checkpause.resources import get_stockfish_path
@@ -424,3 +429,27 @@ class UpdateCheckWorker(QThread):
             self.failed.emit()
             return
         self.checked.emit(info)
+
+
+class UpdateDownloadWorker(QThread):
+    progress = Signal(int, int)
+
+    def __init__(self, url, version, parent=None):
+        super().__init__(parent)
+        self._url = url
+        self._version = version
+        self.installer_path = None
+        self.error = None
+
+    def run(self):
+        try:
+            self.installer_path = download_update(
+                self._url,
+                self._version,
+                progress=self.progress.emit,
+                should_cancel=self.isInterruptionRequested,
+            )
+        except UpdateDownloadCancelledError:
+            return
+        except UpdateDownloadError as exc:
+            self.error = str(exc)

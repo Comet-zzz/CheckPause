@@ -1,13 +1,20 @@
+import io
 import json
+import tempfile
 import unittest
+import zipfile
+from pathlib import Path
 
 from checkpause.core.updater import (
     FALLBACK_MANIFEST_URLS,
     MANIFEST_URLS,
     PRIMARY_MANIFEST_URLS,
     UpdateCheckError,
+    UpdateDownloadCancelledError,
+    UpdateDownloadError,
     UpdateInfo,
     check_for_update,
+    download_update,
     is_newer,
     parse_version,
     platform_key,
@@ -45,6 +52,132 @@ class FakeOpener:
         if isinstance(response, bytes):
             return response
         return json.dumps(response).encode("utf-8")
+
+
+class FakeDownloadResponse:
+    def __init__(self, payload, url="https://example.com/update.zip", content_length=None):
+        self._payload = io.BytesIO(payload)
+        length = len(payload) if content_length is None else content_length
+        self.headers = {"Content-Length": str(length)}
+        self._url = url
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self._payload.close()
+
+    def geturl(self):
+        return self._url
+
+    def read(self, size):
+        return self._payload.read(size)
+
+
+def _update_archive(version, installer=b"MZtest installer"):
+    payload = io.BytesIO()
+    with zipfile.ZipFile(payload, "w") as archive:
+        archive.writestr(f"CheckPause_Setup_{version}.exe", installer)
+    return payload.getvalue()
+
+
+class UpdateDownloadTests(unittest.TestCase):
+    def test_downloads_and_extracts_the_versioned_installer(self):
+        version = "2.0.5"
+        payload = _update_archive(version)
+        response = FakeDownloadResponse(payload)
+        progress = []
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer_path = download_update(
+                "https://example.com/update.zip",
+                version,
+                progress=lambda downloaded, total: progress.append((downloaded, total)),
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+            )
+            with open(installer_path, "rb") as installer:
+                self.assertEqual(installer.read(), b"MZtest installer")
+        self.assertEqual(progress[-1], (len(payload), len(payload)))
+
+    def test_rejects_non_https_download_urls(self):
+        with self.assertRaises(UpdateDownloadError):
+            download_update("http://example.com/update.zip", "2.0.5")
+
+    def test_rejects_malformed_download_urls(self):
+        with self.assertRaises(UpdateDownloadError):
+            download_update("https://[", "2.0.5")
+
+    def test_rejects_redirects_away_from_https(self):
+        response = FakeDownloadResponse(
+            _update_archive("2.0.5"),
+            url="http://example.com/update.zip",
+        )
+        with tempfile.TemporaryDirectory() as temp_dir, self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                "2.0.5",
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+            )
+
+    def test_rejects_an_archive_without_the_expected_installer(self):
+        payload = io.BytesIO()
+        with zipfile.ZipFile(payload, "w") as archive:
+            archive.writestr("other.exe", b"MZnot the app")
+        response = FakeDownloadResponse(payload.getvalue())
+        with tempfile.TemporaryDirectory() as temp_dir, self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                "2.0.5",
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+            )
+
+    def test_rejects_a_truncated_download(self):
+        payload = _update_archive("2.0.5")
+        response = FakeDownloadResponse(payload, content_length=len(payload) + 1)
+        with tempfile.TemporaryDirectory() as temp_dir, self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                "2.0.5",
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+            )
+
+    def test_cancellation_stops_before_network_access(self):
+        with self.assertRaises(UpdateDownloadCancelledError):
+            download_update(
+                "https://example.com/update.zip",
+                "2.0.5",
+                should_cancel=lambda: True,
+                opener=lambda *_args, **_kwargs: self.fail("network must not be used"),
+            )
+
+    def test_cancellation_removes_the_partial_archive(self):
+        payload = _update_archive("2.0.5")
+        response = FakeDownloadResponse(payload)
+        checks = iter((False, False, True))
+        with tempfile.TemporaryDirectory() as temp_dir:
+            try:
+                download_update(
+                    "https://example.com/update.zip",
+                    "2.0.5",
+                    should_cancel=lambda: next(checks),
+                    download_dir=temp_dir,
+                    opener=lambda *_args, **_kwargs: response,
+                )
+            except UpdateDownloadCancelledError:
+                pass
+            else:
+                self.fail("the update download should be cancelled")
+            partial_path = (
+                Path(temp_dir) / "CheckPause" / "updates" / "CheckPause_Setup_2.0.5.zip.part"
+            )
+            self.assertFalse(partial_path.exists())
+
+    def test_rejects_version_strings_that_could_escape_the_update_folder(self):
+        with self.assertRaises(UpdateDownloadError):
+            download_update("https://example.com/update.zip", "../2.0.5")
 
 
 class VersionTests(unittest.TestCase):

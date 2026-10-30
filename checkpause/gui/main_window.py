@@ -1,3 +1,6 @@
+import subprocess
+import sys
+
 from PySide6.QtCore import QLocale, QSize, Qt, QTimer
 from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
@@ -67,6 +70,8 @@ from checkpause.gui.dialogs import (
     cloud_account_dialog,
     confirm_close_dialog,
     confirm_dialog,
+    confirm_update_install,
+    download_update_dialog,
     show_about,
     show_update_dialog,
 )
@@ -166,6 +171,7 @@ class MainWindow(QMainWindow):
         self._update_worker = None
         self._update_manual = False
         self._skipped_update = ""
+        self._installing_update = False
         self._module = "analysis"
 
         self._stack = QStackedWidget()
@@ -240,8 +246,31 @@ class MainWindow(QMainWindow):
         # "Later" only lasts until the app closes; the next launch asks again.
         if info.version == self._skipped_update:
             return
-        if not show_update_dialog(self, self._language, info):
+        in_app_update = sys.platform == "win32" and getattr(sys, "frozen", False)
+        if not show_update_dialog(self, self._language, info, in_app=in_app_update):
             self._skipped_update = info.version
+            return
+        if not in_app_update:
+            return
+        installer_path = download_update_dialog(self, self._language, info)
+        if installer_path is None:
+            return
+        if not confirm_update_install(self, self._language):
+            return
+        self._start_update_installer(installer_path)
+
+    def _start_update_installer(self, installer_path):
+        try:
+            subprocess.Popen([installer_path], close_fds=True)
+        except OSError as exc:
+            QMessageBox.warning(
+                self,
+                t("update_title", self._language),
+                t("update_install_failed", self._language, error=str(exc)),
+            )
+            return
+        self._installing_update = True
+        self.close()
 
     def _on_update_failed(self):
         if not self._update_manual:
@@ -1096,7 +1125,7 @@ class MainWindow(QMainWindow):
         self._refresh_stats()
 
     def closeEvent(self, event):
-        if not confirm_close_dialog(self, self._language):
+        if not self._installing_update and not confirm_close_dialog(self, self._language):
             event.ignore()
             return
         self._update_timer.stop()
