@@ -1,10 +1,10 @@
 {
-  "latest": "2.0.4",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.4.zip",
+  "latest": "2.0.5",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.0.5.zip",
   "urls": {
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.4.zip",
-    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.4-macOS-M-series.dmg",
-    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.4-macOS-Intel.dmg"
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.0.5.zip",
+    "macos-arm64": "https://checkpause.com/download/CheckPause-2.0.5-macOS-M-series.dmg",
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.0.5-macOS-Intel.dmg"
   },
-  "notes": "修复个性化棋子 / 棋盘样式不生效、英文界面棋盘被挤压、最大化时评估工具条遮挡棋盘；优化分析页与侧栏布局。"
+  "notes": "优化界面细节与操作逻辑；Windows 安装版支持应用内下载更新并自动启动安装。"
 }
