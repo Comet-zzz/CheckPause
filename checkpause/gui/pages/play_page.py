@@ -335,7 +335,7 @@ class PlayPage(QWidget):
         )
         self.board.set_start_fen(self._session.start_fen)
         self.board.set_paused(False)
-        self.board.set_interactive(True, self._session.human_color)
+        self.board.set_interactive(False, self._session.human_color)
         self._sync_views()
         self._update_panel_state()
 
@@ -343,6 +343,7 @@ class PlayPage(QWidget):
         if self._started:
             return
         self._started = True
+        self.board.set_interactive(True, self._session.human_color)
         self._update_panel_state()
         self._sync_clock_timer()
         if self._session.board.turn != self._session.human_color:
@@ -630,7 +631,12 @@ class PlayPage(QWidget):
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
-        if session.paused or session.game_over or self._engine_worker is not None:
+        if (
+            not self._started
+            or session.paused
+            or session.game_over
+            or self._engine_worker is not None
+        ):
             return
         if session.board.turn != session.human_color:
             return

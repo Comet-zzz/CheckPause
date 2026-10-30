@@ -2,6 +2,8 @@ import os
 import unittest
 from unittest import mock
 
+import chess
+
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
@@ -26,6 +28,13 @@ class PlaySetupTests(unittest.TestCase):
         self.assertEqual(self.page._start_mode, "standard")
         self.assertTrue(self.page._opening_card.isHidden())
         self.assertTrue(self.page._endgame_combo.isHidden())
+
+    def test_board_is_disabled_until_start_button_is_clicked(self):
+        self.assertFalse(self.page.board.can_pick(chess.E2))
+
+        self.page._btn_start.click()
+
+        self.assertTrue(self.page.board.can_pick(chess.E2))
 
     def test_cancelling_the_opening_picker_keeps_standard_mode(self):
         with mock.patch.object(play_page_module, "choose_opening_dialog", return_value=None):
