@@ -2,7 +2,7 @@
 
 将博弈树搜索与自然语言生成相结合的国际象棋分析工具，帮助棋手理解自己的决策偏差。
 
-<a href="#⬇️-下载"><img alt="下载量" src="https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=%E4%B8%8B%E8%BD%BD%E9%87%8F&color=brightgreen"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.4/CheckPause_Setup_2.0.4.zip"><img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHptMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHptMTIuNiAwSDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.4/CheckPause-2.0.4-macOS-M-series.dmg"><img alt="macOS M-series" src="https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.4/CheckPause-2.0.4-macOS-Intel.dmg"><img alt="macOS Intel" src="https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white"></a>
+<a href="#⬇️-下载"><img alt="下载量" src="https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=%E4%B8%8B%E8%BD%BD%E9%87%8F&color=brightgreen"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.5/CheckPause_Setup_2.0.5.zip"><img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHptMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHptMTIuNiAwSDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.5/CheckPause-2.0.5-macOS-M-series.dmg"><img alt="macOS M-series" src="https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.5/CheckPause-2.0.5-macOS-Intel.dmg"><img alt="macOS Intel" src="https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white"></a>
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![中文](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-blue?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-gray?style=for-the-badge)](README.md)
@@ -72,7 +72,7 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ### Windows 用户
 
-1. 从文末「下载」获取 `CheckPause_Setup_2.0.4.zip`，解压后得到 `CheckPause_Setup_2.0.4.exe`；
+1. 从文末「下载」获取 `CheckPause_Setup_2.0.5.zip`，解压后得到 `CheckPause_Setup_2.0.5.exe`；
 2. 双击运行安装包，按提示完成安装（无需管理员权限，可勾选创建桌面快捷方式）；
 3. 从桌面或开始菜单启动 CheckPause，首次使用可选择登录/注册云端账号，或直接进入离线模式；
 4. 打开「设置 → API 设置...」，填写任意 OpenAI 兼容接口的 API Key、接口地址与模型名称（例如 DeepSeek）；
@@ -118,18 +118,18 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 ## ⬇️ 下载
 
-**最新版：CheckPause v2.0.4（Windows x64）**
+**最新版：CheckPause v2.0.5（Windows x64）**
 
-- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_2.0.4.zip](https://checkpause.com/download/CheckPause_Setup_2.0.4.zip) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
-- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.4/CheckPause_Setup_2.0.4.zip)（136.3 MB，已内置 Stockfish、开局库、棋子资源、走棋音效与 Lichess 精选题集）
-- SHA-256：`3F246F33C97C05A9348120378C238134A4BB17051F444A1D07CACED4DC8985C7`（压缩包；两个链接是同一个文件，哈希一致）
-- **解压压缩包**，得到 `CheckPause_Setup_2.0.4.exe`（其 SHA-256 为 `4DB34A6BDCFC876CC7CBCD48A65895DB6E1277F74B1B41187EFD9404B011BF6E`），双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
+- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_2.0.5.zip](https://checkpause.com/download/CheckPause_Setup_2.0.5.zip) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
+- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v2.0.5/CheckPause_Setup_2.0.5.zip)（136.3 MiB，已内置 Stockfish、开局库、棋子资源、走棋音效与 Lichess 精选题集）
+- SHA-256：`ECD57DB76A86DFA87F201132E1526B7BFD214B773D18EB51EB9C21CC02CE0AFA`（压缩包；两个链接是同一个文件，哈希一致）
+- **解压压缩包**，得到 `CheckPause_Setup_2.0.5.exe`（其 SHA-256 为 `3E5903F55F6A204D6EDBBD3E219B6490D8311E3A5278AA38468D9349A80D0CA5`），双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 
-**macOS 最新版：CheckPause v2.0.4**
+**macOS 最新版：CheckPause v2.0.5**
 
-- 🚀 **国内加速下载（推荐）**：[M 系列](https://checkpause.com/download/CheckPause-2.0.4-macOS-M-series.dmg)（167.1 MB）｜[Intel](https://checkpause.com/download/CheckPause-2.0.4-macOS-Intel.dmg)（95.7 MB）
-- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.4)（发布页上有两个 `.dmg`）
-- SHA-256：Apple Silicon `CE0766900AE83133F19779C9E9EA61813EB25CC34C97817B09C8AFC31BBFD060`，Intel `FB07C08F5D63E15BE0A6DF0BD502AEF2A2AE9A1F2215593A4B019DE992FFEEFF`
+- 🚀 **国内加速下载（推荐）**：[M 系列](https://checkpause.com/download/CheckPause-2.0.5-macOS-M-series.dmg)（168.0 MiB）｜[Intel](https://checkpause.com/download/CheckPause-2.0.5-macOS-Intel.dmg)（95.4 MiB）
+- 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.0.5)（发布页上有两个 `.dmg`）
+- SHA-256：Apple Silicon `F51F8CA2A98B5254F72C16A973F2D5CD4D6C0AA4212020DE0F541474007FD06C`，Intel `D3D8FF3AC5E8141E1B589477D75677BFE5304DDB6B0156CB57DFD4EEEE492E7A`
 - 打开 `.dmg`，把 CheckPause 拖进「应用程序」，首次打开请**右键点击图标 → 打开**（程序未签名、未公证）。
 - 全部版本：https://github.com/Comet-zzz/CheckPause/releases
 
