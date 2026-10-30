@@ -54,6 +54,11 @@ class ImageRecognitionGateTests(unittest.TestCase):
             self.assertTrue(button.text())
             self.assertFalse(button.icon().isNull())
 
+    def test_input_tools_have_no_tooltips(self):
+        page = AnalysisPage()
+        for button in (page._btn_open, page._btn_image, page._btn_clear):
+            self.assertEqual(button.toolTip(), "")
+
     def test_primary_action_turns_into_stop_while_busy(self):
         page = AnalysisPage()
         page.set_pgn("1. e4 *")

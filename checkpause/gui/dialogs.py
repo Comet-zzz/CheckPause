@@ -31,7 +31,7 @@ from checkpause.data.settings import (
     get_base_url,
     get_model,
 )
-from checkpause.gui.icons import action_icon, app_icon
+from checkpause.gui.icons import action_icon
 from checkpause.gui.workers import AccountWorker, UpdateDownloadWorker
 from checkpause.i18n import t
 
@@ -595,10 +595,6 @@ def show_about(parent, language, theme="light"):
     card_layout.setContentsMargins(24, 22, 24, 18)
     card_layout.setSpacing(12)
 
-    app_logo = QLabel()
-    app_logo.setPixmap(app_icon().pixmap(48, 48))
-    app_logo.setFixedSize(48, 48)
-
     title = QLabel(t("app_title", language))
     title.setObjectName("aboutTitle")
 
@@ -610,13 +606,6 @@ def show_about(parent, language, theme="light"):
     heading.setSpacing(2)
     heading.addWidget(title)
     heading.addWidget(version)
-    heading.addStretch(1)
-
-    header = QHBoxLayout()
-    header.setContentsMargins(0, 0, 0, 0)
-    header.setSpacing(14)
-    header.addWidget(app_logo, 0, Qt.AlignmentFlag.AlignTop)
-    header.addLayout(heading, 1)
 
     body = QLabel(t("about_text", language).split("\n", 1)[-1])
     body.setObjectName("aboutBody")
@@ -678,7 +667,7 @@ def show_about(parent, language, theme="light"):
     close_button.setMinimumWidth(96)
     buttons.rejected.connect(dialog.reject)
 
-    card_layout.addLayout(header)
+    card_layout.addLayout(heading)
     card_layout.addWidget(body)
     card_layout.addWidget(divider)
     card_layout.addLayout(meta)

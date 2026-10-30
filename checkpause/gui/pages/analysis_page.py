@@ -305,14 +305,13 @@ class AnalysisPage(QWidget):
     def retranslate(self, language):
         self._language = language
         self._editor.setPlaceholderText(t("placeholder_pgn", language))
-        for button, name_key, tip_key in (
-            (self._btn_open, "btn_open_pgn", "action_open_pgn"),
-            (self._btn_image, "btn_image", "action_open_image"),
-            (self._btn_clear, "btn_clear_pgn", "btn_clear_pgn"),
+        for button, name_key in (
+            (self._btn_open, "btn_open_pgn"),
+            (self._btn_image, "btn_image"),
+            (self._btn_clear, "btn_clear_pgn"),
         ):
             button.setText(t(name_key, language))
             button.setAccessibleName(t(name_key, language))
-            button.setToolTip(t(tip_key, language))
         self._side_label.setText(t("review_side_label", language))
         for side in REVIEW_SIDES:
             self._review_buttons[side].setText(t("review_side_" + side, language))
