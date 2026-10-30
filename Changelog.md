@@ -1,3 +1,36 @@
+# v2.0.5 – UI & Interaction Refinements
+
+> **A small quality-of-life update with a more focused interface and smoother interaction logic.**
+
+---
+
+## 🎯 What's New
+
+### 🧭 UI & usage refinements
+- 优化了部分页面的界面细节与操作逻辑，让日常使用更清晰、顺手。
+- 调整了部分重复提示与视觉元素，减少干扰，让界面更简洁。
+- Windows 安装版支持在应用内下载更新并显示进度，确认后自动启动安装并重启软件。
+
+- Refined parts of the interface and interaction flow for a clearer, smoother everyday experience.
+- Reduced redundant visual elements and prompts to keep the interface focused.
+- Windows users can download updates in-app with progress feedback, then install and restart the app.
+
+## 🛠️ Full Changelog
+- chore(gui): refine interface details and interaction logic
+- feat(updater): download and install Windows updates in-app
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.4...v2.0.5
+
 # v2.0.4 – Board Fixes & Interface Polish
 
 > **A focused update: fixes for personalization styles not reaching every board, the board shrinking after switching to English, and the evaluation bar crowding the board when maximized, alongside a cleaner, more compact interface layout.**
