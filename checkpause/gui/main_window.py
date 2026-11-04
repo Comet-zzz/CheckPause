@@ -41,6 +41,7 @@ from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
     create_profile,
+    delete_history_records,
     load_profile,
     set_analysis_depth,
     set_board_theme,
@@ -324,6 +325,7 @@ class MainWindow(QMainWindow):
         self.chat_page.send_requested.connect(self._send_chat)
         self.chat_page.reset_requested.connect(self._reset_chat)
         self.stats_page.history_cleared.connect(self._clear_history)
+        self.stats_page.history_delete_requested.connect(self._delete_history_records)
 
         self.tabs = QTabWidget()
         self.tabs.setObjectName("sidePanelTabs")
@@ -1122,6 +1124,19 @@ class MainWindow(QMainWindow):
         ):
             return
         self.profile = clear_history(self.profile)
+        self._refresh_stats()
+
+    def _delete_history_records(self, indices):
+        if not self.profile or not indices:
+            return
+        if not confirm_dialog(
+            self,
+            self._language,
+            "stat_delete_selected_title",
+            "stat_delete_selected_text",
+        ):
+            return
+        self.profile = delete_history_records(self.profile, indices)
         self._refresh_stats()
 
     def closeEvent(self, event):

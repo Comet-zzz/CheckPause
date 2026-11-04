@@ -121,6 +121,49 @@ class ProfileTests(unittest.TestCase):
         self.assertIsNone(cleared["latest_accuracy"])
         self.assertEqual(cleared["history"], [])
 
+    def test_delete_history_record_removes_only_that_game(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 70.0, "1. e4")
+        profile.update_profile(created, 80.0, "1. d4")
+        profile.update_profile(created, 90.0, "1. c4")
+        deleted = profile.delete_history_record(created, 1)
+        self.assertEqual([record["accuracy"] for record in deleted["history"]], [70.0, 90.0])
+        self.assertEqual(deleted["total_games"], 2)
+        self.assertEqual(deleted["latest_accuracy"], 90.0)
+        self.assertEqual(profile.load_profile()["history"], deleted["history"])
+
+    def test_delete_history_record_recalculates_latest_accuracy(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 70.0, "1. e4")
+        profile.update_profile(created, 90.0, "1. d4")
+        deleted = profile.delete_history_record(created, 1)
+        self.assertEqual(deleted["latest_accuracy"], 70.0)
+
+    def test_delete_history_records_removes_several_games(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 70.0, "1. e4")
+        profile.update_profile(created, 80.0, "1. d4")
+        profile.update_profile(created, 90.0, "1. c4")
+        deleted = profile.delete_history_records(created, [0, 2, 2, 99])
+        self.assertEqual([record["accuracy"] for record in deleted["history"]], [80.0])
+        self.assertEqual(deleted["total_games"], 1)
+        self.assertEqual(deleted["latest_accuracy"], 80.0)
+
+    def test_deleting_last_history_record_clears_latest_accuracy(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 88.0, "1. e4 e5")
+        deleted = profile.delete_history_record(created, 0)
+        self.assertEqual(deleted["history"], [])
+        self.assertEqual(deleted["total_games"], 0)
+        self.assertIsNone(deleted["latest_accuracy"])
+
+    def test_delete_history_record_ignores_an_invalid_index(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 88.0, "1. e4 e5")
+        unchanged = profile.delete_history_record(created, 5)
+        self.assertEqual(len(unchanged["history"]), 1)
+        self.assertEqual(unchanged["total_games"], 1)
+
     def test_delete_profile(self):
         profile.create_profile("Tester")
         self.assertTrue(profile.delete_profile())

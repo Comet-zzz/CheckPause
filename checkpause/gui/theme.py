@@ -100,6 +100,8 @@ _TOKENS = {
         "accent_soft": "rgba(16, 20, 26, 0.08)",
         "accent_off_bg": "rgba(16, 20, 26, 0.14)",
         "accent_off_text": "#8b9199",
+        "history_selected_bg": "rgba(53, 102, 245, 0.12)",
+        "history_selected_text": "#2f5bd7",
         "hover": "rgba(16, 20, 26, 0.06)",
         "pressed": "rgba(16, 20, 26, 0.12)",
         "input_bg": "rgba(255, 255, 255, 0.78)",
@@ -146,6 +148,8 @@ _TOKENS = {
         "accent_soft": "rgba(255, 255, 255, 0.12)",
         "accent_off_bg": "rgba(255, 255, 255, 0.10)",
         "accent_off_text": "#7c828a",
+        "history_selected_bg": "rgba(96, 140, 255, 0.22)",
+        "history_selected_text": "#b8ccff",
         "hover": "rgba(255, 255, 255, 0.08)",
         "pressed": "rgba(255, 255, 255, 0.14)",
         "input_bg": "rgba(255, 255, 255, 0.06)",
@@ -390,9 +394,14 @@ QTableWidget, QTableView {
     gridline-color: $border;
     selection-background-color: $selection_bg;
     selection-color: $selection_text;
+    outline: none;
 }
 QTableWidget::item {
     padding: 4px 6px;
+}
+QTableWidget::item:selected {
+    background-color: $accent_soft;
+    color: $text;
 }
 QHeaderView::section {
     background-color: $surface_alt;
@@ -664,6 +673,50 @@ QScrollArea > QWidget > QWidget {
 #statCaption {
     color: $text_muted;
     font-size: 12px;
+}
+#historyScroll {
+    background: transparent;
+    border: none;
+}
+#historyGroupLabel {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 6px 3px 6px;
+}
+#historyRow {
+    background: transparent;
+    border-radius: 8px;
+}
+#historyRow[selecting="true"]:hover {
+    background-color: $hover;
+}
+#historyRow[selected="true"] {
+    background-color: $history_selected_bg;
+}
+#historyRow[selected="true"]:hover {
+    background-color: $history_selected_bg;
+}
+#historyDate {
+    color: $text;
+    font-size: 13px;
+}
+#historyPerformance {
+    color: $text_muted;
+    font-size: 12px;
+}
+#historyRow[selected="true"] #historyDate,
+#historyRow[selected="true"] #historyPerformance {
+    color: $history_selected_text;
+}
+QCheckBox#historyCheck::indicator {
+    width: 18px;
+    height: 18px;
+    border-radius: 9px;
+}
+QCheckBox#historyCheck::indicator:checked {
+    background-color: $history_selected_text;
+    border-color: $history_selected_text;
 }
 QTabWidget#sidePanelTabs::pane {
     background-color: $surface;

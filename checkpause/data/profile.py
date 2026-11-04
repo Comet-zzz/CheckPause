@@ -165,6 +165,25 @@ def update_profile(profile, accuracy, pgn):
     return profile
 
 
+def delete_history_records(profile, indices):
+    """Forget several recorded games, keeping the rest of the history."""
+    history = profile.get("history", [])
+    valid = sorted({index for index in indices if 0 <= index < len(history)}, reverse=True)
+    if not valid:
+        return profile
+    for index in valid:
+        del history[index]
+    profile["total_games"] = max(0, profile.get("total_games", 0) - len(valid))
+    profile["latest_accuracy"] = history[-1]["accuracy"] if history else None
+    save_profile(profile)
+    return profile
+
+
+def delete_history_record(profile, index):
+    """Forget a single recorded game, keeping the rest of the history."""
+    return delete_history_records(profile, [index])
+
+
 def clear_history(profile):
     """Forget the recorded games but keep the profile itself.
 
