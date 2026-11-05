@@ -79,6 +79,7 @@ from checkpause.gui.dialogs import (
 from checkpause.gui.icons import app_icon
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
+from checkpause.gui.pages.learn_page import LearnPage
 from checkpause.gui.pages.play_page import PlayPage
 from checkpause.gui.pages.puzzle_page import PuzzlePage
 from checkpause.gui.pages.stats_page import StatsPage
@@ -99,6 +100,7 @@ from checkpause.i18n import t
 MODULES = (
     {"id": "play", "label_key": "nav_play", "icon": "rail_play"},
     {"id": "puzzle", "label_key": "nav_puzzle", "icon": "rail_puzzle"},
+    {"id": "learn", "label_key": "nav_learn", "icon": "rail_learn"},
     {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
 
@@ -290,11 +292,13 @@ class MainWindow(QMainWindow):
         self.play_page.analysis_requested.connect(self._on_play_import)
 
         self.puzzle_page = PuzzlePage()
+        self.learn_page = LearnPage()
 
         main_stack = QStackedWidget()
         main_stack.addWidget(self._analysis_view)
         main_stack.addWidget(self.play_page)
         main_stack.addWidget(self.puzzle_page)
+        main_stack.addWidget(self.learn_page)
         self._main_stack = main_stack
         return main_stack
 
@@ -361,7 +365,7 @@ class MainWindow(QMainWindow):
             panel.setMinimumWidth(target)
 
     def _on_module_selected(self, module_id):
-        if module_id not in ("analysis", "play", "puzzle"):
+        if module_id not in ("analysis", "play", "puzzle", "learn"):
             return
         self._module = module_id
         if self._stack.currentWidget() is not self._main_view:
@@ -374,6 +378,8 @@ class MainWindow(QMainWindow):
             self._main_stack.setCurrentWidget(self.play_page)
         elif self._module == "puzzle":
             self._main_stack.setCurrentWidget(self.puzzle_page)
+        elif self._module == "learn":
+            self._main_stack.setCurrentWidget(self.learn_page)
         else:
             self._main_stack.setCurrentWidget(self._analysis_view)
         self._rail.set_active(self._module)
@@ -565,6 +571,7 @@ class MainWindow(QMainWindow):
         self.analysis_page.retranslate(self._language)
         self.play_page.retranslate(self._language)
         self.puzzle_page.retranslate(self._language)
+        self.learn_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
         self.stats_page.retranslate(self._language)
         self._sync_side_panels()
@@ -967,6 +974,7 @@ class MainWindow(QMainWindow):
         self.analysis_page.set_theme(self._theme)
         self.play_page.set_theme(self._theme)
         self.puzzle_page.set_theme(self._theme)
+        self.learn_page.set_theme(self._theme)
 
     def _apply_board_preferences(self):
         self.board.set_piece_set(self._piece_set)
@@ -975,6 +983,8 @@ class MainWindow(QMainWindow):
         self.play_page.set_board_theme(self._board_theme)
         self.puzzle_page.set_piece_set(self._piece_set)
         self.puzzle_page.set_board_theme(self._board_theme)
+        self.learn_page.set_piece_set(self._piece_set)
+        self.learn_page.set_board_theme(self._board_theme)
         self.board.set_hint_enabled(self._hint_enabled)
         self.board.set_eval_depth(self._eval_depth)
         self._request_live_eval(self.board.current_fen())
@@ -982,7 +992,12 @@ class MainWindow(QMainWindow):
 
     def _apply_sound(self):
         enabled = self._sound_set != SOUND_OFF
-        for target in (self.board, self.play_page, self.puzzle_page):
+        for target in (
+            self.board,
+            self.play_page,
+            self.puzzle_page,
+            self.learn_page,
+        ):
             target.set_sound_set(self._sound_set)
             target.set_sound_enabled(enabled)
 

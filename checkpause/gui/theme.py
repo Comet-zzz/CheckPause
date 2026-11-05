@@ -908,6 +908,149 @@ QTableWidget#moveTable::item {
     color: $text_disabled;
     border-color: $border;
 }
+#learnPage {
+    background: transparent;
+}
+#learnHeaderTitle {
+    font-size: 24px;
+    font-weight: 700;
+}
+#learnHeaderSubtitle {
+    color: $text_muted;
+    font-size: 13px;
+}
+#learnHeaderProgress {
+    color: $text_muted;
+    font-size: 12px;
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+    padding: 5px 12px;
+}
+#learnSectionLabel {
+    color: $text_muted;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 2px 2px 2px;
+}
+#learnCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#learnCard:hover {
+    background-color: $surface_alt;
+    border-color: $border_strong;
+}
+#learnCardTitle {
+    font-size: 16px;
+    font-weight: 600;
+}
+#learnCardSubtitle {
+    color: $text_muted;
+    font-size: 12px;
+}
+#learnBadge {
+    border-radius: 9px;
+    padding: 3px 9px;
+    font-size: 11px;
+    font-weight: 600;
+}
+#learnBadge[status="done"] {
+    background-color: $accent;
+    color: $accent_text;
+}
+#learnBadge[status="active"] {
+    background-color: $accent_soft;
+    color: $text;
+}
+#learnBadge[status="new"] {
+    background-color: transparent;
+    color: $text_muted;
+    border: 1px solid $border;
+}
+#learnBackButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px 8px;
+    color: $text_muted;
+}
+#learnBackButton:hover {
+    background-color: $hover;
+    border-color: $border;
+    color: $text;
+}
+#learnLessonTitle {
+    font-size: 19px;
+    font-weight: 700;
+}
+#learnLessonSubtitle {
+    color: $text_muted;
+    font-size: 12px;
+}
+#learnStepLabel {
+    color: $text_muted;
+    font-size: 12px;
+}
+#learnProgress {
+    background-color: $accent_soft;
+    border: none;
+    border-radius: 3px;
+    max-height: 6px;
+    min-height: 6px;
+}
+#learnProgress::chunk {
+    background-color: $accent;
+    border-radius: 3px;
+}
+#learnPanel {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#learnInstruction {
+    font-size: 15px;
+    font-weight: 600;
+}
+#learnFeedback {
+    color: $text_muted;
+    font-size: 12px;
+}
+#learnFeedback[state="error"] {
+    color: $danger;
+}
+#learnFeedback[state="success"] {
+    color: $accent;
+    font-weight: 600;
+}
+#learnHintButton, #learnRetryButton {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: $text_muted;
+}
+#learnHintButton:hover, #learnRetryButton:hover {
+    background-color: $hover;
+    color: $text;
+}
+#learnPrimaryButton {
+    background-color: $accent;
+    color: $accent_text;
+    border: 1px solid $accent;
+    border-radius: 8px;
+    padding: 8px 22px;
+    font-weight: 600;
+}
+#learnPrimaryButton:hover {
+    background-color: $accent_hover;
+    border-color: $accent_hover;
+}
+#learnPrimaryButton:pressed {
+    background-color: $accent_pressed;
+    border-color: $accent_pressed;
+}
 """
 )
 

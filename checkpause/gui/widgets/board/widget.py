@@ -82,6 +82,8 @@ class BoardWidget(QWidget):
         self._eval_available = False
         self._live_eval = None
         self._last_position_fen = None
+        self._lesson_marks = set()
+        self._lesson_arrows = []
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -370,6 +372,7 @@ class BoardWidget(QWidget):
 
     def set_start_fen(self, fen):
         self._end_edit()
+        self.clear_lesson_marks()
         self._start_fen = fen or None
         self._moves = []
         self._best_moves = {}
@@ -403,6 +406,40 @@ class BoardWidget(QWidget):
         if self._best_moves.pop(self._index, None) is not None:
             self._canvas.update()
 
+    def set_lesson_mode(self, enabled):
+        """Trim the board chrome for the lesson viewer."""
+        enabled = bool(enabled)
+        self.set_navigation_visible(not enabled)
+        self._btn_flip.setVisible(not enabled)
+        self.set_eval_available(not enabled)
+        layout = self.layout()
+        if enabled and layout is not None:
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(0)
+
+    def set_lesson_marks(self, squares=(), arrows=()):
+        """Draw target squares and teaching arrows over the current position."""
+        self._lesson_marks = set()
+        for name in squares or ():
+            try:
+                self._lesson_marks.add(chess.parse_square(name))
+            except ValueError:
+                continue
+        self._lesson_arrows = []
+        for uci in arrows or ():
+            try:
+                chess.Move.from_uci(uci)
+            except ValueError:
+                continue
+            self._lesson_arrows.append(uci)
+        self._canvas.update()
+
+    def clear_lesson_marks(self):
+        if self._lesson_marks or self._lesson_arrows:
+            self._lesson_marks = set()
+            self._lesson_arrows = []
+            self._canvas.update()
+
     def set_results(self, results):
         self._best_moves = {}
         for i, record in enumerate(results or [], start=1):
@@ -413,6 +450,7 @@ class BoardWidget(QWidget):
 
     def clear(self):
         self._end_edit()
+        self.clear_lesson_marks()
         self._start_fen = None
         self._moves = []
         self._best_moves = {}

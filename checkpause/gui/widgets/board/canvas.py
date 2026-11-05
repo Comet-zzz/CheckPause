@@ -430,6 +430,9 @@ class _BoardCanvas(QWidget):
                 if sq in owner._targets:
                     self._draw_target(painter, rect, square, piece)
 
+                if sq in owner._lesson_marks:
+                    self._draw_lesson_mark(painter, rect, square)
+
         self._draw_coordinates(painter, palette, x0, y0, board_size, square)
         if not owner._editable:
             self._draw_eval_bar(painter, palette, x0, y0, board_size, square)
@@ -441,6 +444,17 @@ class _BoardCanvas(QWidget):
         drag_return = owner._drag_return
         if drag_return is not None and not self._dragging:
             self._draw_drag_return(painter, x0, y0, square, drag_return)
+
+        for uci in owner._lesson_arrows:
+            self._draw_arrow(
+                painter,
+                uci,
+                x0,
+                y0,
+                square,
+                width_scale=0.9,
+                opacity_scale=0.92,
+            )
 
         lines = []
         live = owner._live_eval
@@ -564,6 +578,26 @@ class _BoardCanvas(QWidget):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(color)
             painter.drawEllipse(QPointF(rect.center()), radius, radius)
+
+    def _draw_lesson_mark(self, painter, rect, square):
+        center = rect.center()
+        radius = square * 0.19
+        path = QPainterPath()
+        for index in range(10):
+            angle = -math.pi / 2 + index * math.pi / 5
+            length = radius if index % 2 == 0 else radius * 0.45
+            point = QPointF(
+                center.x() + math.cos(angle) * length,
+                center.y() + math.sin(angle) * length,
+            )
+            if index == 0:
+                path.moveTo(point)
+            else:
+                path.lineTo(point)
+        path.closeSubpath()
+        painter.setPen(QPen(QColor(92, 68, 12, 200), max(1.0, square * 0.025)))
+        painter.setBrush(QColor("#f2c94c"))
+        painter.drawPath(path)
 
     def _draw_coordinates(self, painter, palette, x0, y0, board_size, square):
         font = painter.font()
