@@ -1,3 +1,38 @@
+# v2.1.0 – Learning Module & UI Polish
+
+> **A new learning module for beginners, a cleaner interface, and continued image-recognition work.**
+
+---
+
+## 🎯 What's New
+
+### 🎓 Learning module & UI
+- 新增「学习」模块（从棋子走法到将杀），并优化了整体界面与布局，操作更直接。
+
+- Added a Learn module from piece moves to checkmate, and refined the overall interface and layout for a more direct flow.
+
+### 🖼️ Image recognition
+- 图片识别功能持续优化中。
+
+- Image recognition keeps improving.
+
+## 🛠️ Full Changelog
+- feat(learn): add an interactive beginner lesson module
+- chore(gui): refine the interface and lesson layout
+- chore(recognition): continue improving image recognition
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.0.5...v2.1.0
+
 # v2.0.5 – UI & Interaction Refinements
 
 > **A small quality-of-life update with a more focused interface and smoother interaction logic.**
