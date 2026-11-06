@@ -1,14 +1,14 @@
 """Bundled beginner lessons.
 
-The teaching order follows the classic learn sequence: pieces, fundamentals,
-intermediate rules, then checkmate patterns. Every step owns its FEN so the
-lesson model can jump between positions; text lives in the i18n catalog and is
-referenced by key.
+Each lesson opens directly on an interactive task: the teaching note sits above
+the task, the teaching arrow stays on the board, and the player can start
+moving right away. Every card has three tasks so a beginner repeats the idea
+instead of seeing it once.
 """
 
 import chess
 
-from checkpause.core.lesson import INFO, MOVE, Lesson, LessonStep
+from checkpause.core.lesson import MOVE, Lesson, LessonStep
 
 SECTION_ORDER = ("pieces", "basics", "advanced", "mates")
 
@@ -20,16 +20,6 @@ SECTIONS = (
 )
 
 
-def _info(fen, text_key, arrows=(), marks=()):
-    return LessonStep(
-        kind=INFO,
-        fen=fen,
-        text_key=text_key,
-        arrows=tuple(arrows),
-        marks=tuple(marks),
-    )
-
-
 def _move(
     fen,
     text_key,
@@ -39,7 +29,10 @@ def _move(
     reply=None,
     hint=None,
     marks=(),
+    arrows=(),
     text_params=None,
+    note_key=None,
+    note_params=None,
     success_key="learn_success",
 ):
     return LessonStep(
@@ -47,12 +40,15 @@ def _move(
         fen=fen,
         text_key=text_key,
         text_params=dict(text_params or {}),
+        note_key=note_key,
+        note_params=dict(note_params or {}),
         goal=goal,
         target=target,
         accept=tuple(accept),
         reply=reply,
         hint=hint,
         marks=tuple(marks),
+        arrows=tuple(arrows),
         success_key=success_key,
     )
 
@@ -65,18 +61,30 @@ LESSONS = (
         subtitle_key="learn_rook_subtitle",
         icon="learn_rook",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/R3K3 w - - 0 1",
-                "learn_rook_intro",
-                arrows=("a1a8",),
-            ),
             _move(
-                "4k3/8/8/8/8/8/8/R3K3 w - - 0 1",
+                "4k3/8/8/8/8/8/4K3/R7 w - - 0 1",
                 "learn_task_rook_move",
                 "move_to",
                 target="a8",
                 hint="a1a8",
                 marks=("a8",),
+                note_key="learn_rook_intro",
+            ),
+            _move(
+                "4k3/8/8/8/8/8/4K3/R7 w - - 0 1",
+                "learn_task_rook_move",
+                "move_to",
+                target="h1",
+                hint="a1h1",
+                marks=("h1",),
+            ),
+            _move(
+                "4k3/8/8/8/8/8/4K3/R7 w - - 0 1",
+                "learn_task_rook_move",
+                "move_to",
+                target="a4",
+                hint="a1a4",
+                marks=("a4",),
             ),
         ),
     ),
@@ -87,11 +95,6 @@ LESSONS = (
         subtitle_key="learn_bishop_subtitle",
         icon="learn_bishop",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1",
-                "learn_bishop_intro",
-                arrows=("c1h6",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1",
                 "learn_task_bishop_move",
@@ -99,6 +102,23 @@ LESSONS = (
                 target="h6",
                 hint="c1h6",
                 marks=("h6",),
+                note_key="learn_bishop_intro",
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1",
+                "learn_task_bishop_move",
+                "move_to",
+                target="a3",
+                hint="c1a3",
+                marks=("a3",),
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/2B1K3 w - - 0 1",
+                "learn_task_bishop_move",
+                "move_to",
+                target="g5",
+                hint="c1g5",
+                marks=("g5",),
             ),
         ),
     ),
@@ -109,11 +129,6 @@ LESSONS = (
         subtitle_key="learn_queen_subtitle",
         icon="learn_queen",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
-                "learn_queen_intro",
-                arrows=("d1d6",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
                 "learn_task_queen_move",
@@ -121,6 +136,23 @@ LESSONS = (
                 target="d6",
                 hint="d1d6",
                 marks=("d6",),
+                note_key="learn_queen_intro",
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
+                "learn_task_queen_move",
+                "move_to",
+                target="h5",
+                hint="d1h5",
+                marks=("h5",),
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
+                "learn_task_queen_move",
+                "move_to",
+                target="a4",
+                hint="d1a4",
+                marks=("a4",),
             ),
         ),
     ),
@@ -131,11 +163,6 @@ LESSONS = (
         subtitle_key="learn_king_subtitle",
         icon="learn_king",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
-                "learn_king_intro",
-                arrows=("e1e2",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
                 "learn_task_king_move",
@@ -143,6 +170,23 @@ LESSONS = (
                 target="e2",
                 hint="e1e2",
                 marks=("e2",),
+                note_key="learn_king_intro",
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_king_move",
+                "move_to",
+                target="d2",
+                hint="e1d2",
+                marks=("d2",),
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_king_move",
+                "move_to",
+                target="f1",
+                hint="e1f1",
+                marks=("f1",),
             ),
         ),
     ),
@@ -153,11 +197,6 @@ LESSONS = (
         subtitle_key="learn_knight_subtitle",
         icon="learn_knight",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
-                "learn_knight_intro",
-                arrows=("b1c3",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
                 "learn_task_knight_move",
@@ -165,6 +204,23 @@ LESSONS = (
                 target="c3",
                 hint="b1c3",
                 marks=("c3",),
+                note_key="learn_knight_intro",
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
+                "learn_task_knight_move",
+                "move_to",
+                target="a3",
+                hint="b1a3",
+                marks=("a3",),
+            ),
+            _move(
+                "4k3/8/8/8/8/8/8/1N2K3 w - - 0 1",
+                "learn_task_knight_move",
+                "move_to",
+                target="d2",
+                hint="b1d2",
+                marks=("d2",),
             ),
         ),
     ),
@@ -175,11 +231,6 @@ LESSONS = (
         subtitle_key="learn_pawn_subtitle",
         icon="learn_pawn",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
-                "learn_pawn_intro",
-                arrows=("e2e4",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/4P3/4K3 w - - 0 1",
                 "learn_task_pawn_move",
@@ -187,6 +238,7 @@ LESSONS = (
                 target="e4",
                 hint="e2e4",
                 marks=("e4",),
+                note_key="learn_pawn_intro",
             ),
             _move(
                 "4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1",
@@ -195,6 +247,14 @@ LESSONS = (
                 target="d5",
                 hint="e4d5",
                 text_params={"target": "d5"},
+            ),
+            _move(
+                "4k3/8/8/4p3/3P4/8/8/4K3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="e5",
+                hint="d4e5",
+                text_params={"target": "e5"},
             ),
         ),
     ),
@@ -205,11 +265,6 @@ LESSONS = (
         subtitle_key="learn_capture_subtitle",
         icon="learn_capture",
         steps=(
-            _info(
-                "4k3/8/8/n7/8/8/8/R3K3 w - - 0 1",
-                "learn_capture_intro",
-                arrows=("a1a5",),
-            ),
             _move(
                 "k7/8/8/4b3/8/8/8/4R1K1 w - - 0 1",
                 "learn_task_capture",
@@ -217,6 +272,23 @@ LESSONS = (
                 target="e5",
                 hint="e1e5",
                 text_params={"target": "e5"},
+                note_key="learn_capture_intro",
+            ),
+            _move(
+                "4k3/8/8/8/3r4/8/8/3QK3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="d4",
+                hint="d1d4",
+                text_params={"target": "d4"},
+            ),
+            _move(
+                "4k3/8/8/8/8/2p5/8/1N2K3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="c3",
+                hint="b1c3",
+                text_params={"target": "c3"},
             ),
         ),
     ),
@@ -227,19 +299,34 @@ LESSONS = (
         subtitle_key="learn_protect_subtitle",
         icon="learn_shield",
         steps=(
-            _info(
-                "4r1k1/8/8/8/4R3/8/8/1B2K3 w - - 0 1",
-                "learn_protect_intro",
-                arrows=("e8e4",),
-            ),
             _move(
-                "4r1k1/8/8/8/4R3/8/8/1B2K3 w - - 0 1",
+                "6k1/8/6b1/4P3/3PRP2/4P3/6P1/4KB2 w - - 0 1",
                 "learn_task_protect",
                 "move_to",
                 target="d3",
-                hint="b1d3",
+                hint="f1d3",
                 marks=("d3",),
+                arrows=("g6e4",),
+                note_key="learn_protect_intro",
                 success_key="learn_success_protect",
+            ),
+            _move(
+                "6k1/8/8/8/4r3/8/8/1B2K3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="e4",
+                hint="b1e4",
+                text_params={"target": "e4"},
+                note_key="learn_protect_intro2",
+            ),
+            _move(
+                "6k1/8/8/8/8/3b4/4P3/4K3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="d3",
+                hint="e2d3",
+                text_params={"target": "d3"},
+                note_key="learn_protect_intro2",
             ),
         ),
     ),
@@ -250,36 +337,65 @@ LESSONS = (
         subtitle_key="learn_combat_subtitle",
         icon="learn_swords",
         steps=(
-            _info(
+            _move(
                 "4r1k1/8/8/8/4R3/8/8/1B2K3 w - - 0 1",
-                "learn_combat_intro",
-                arrows=("e8e4",),
+                "learn_task_capture",
+                "capture",
+                target="e8",
+                hint="e4e8",
+                text_params={"target": "e8"},
+                note_key="learn_combat_intro",
             ),
-            _info(
-                "4r1k1/8/8/8/4R3/8/8/1B2K3 w - - 0 1",
-                "learn_combat_intro2",
-                arrows=("b1e4",),
+            _move(
+                "k7/3b4/8/8/8/8/8/3QK3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="d7",
+                hint="d1d7",
+                text_params={"target": "d7"},
+            ),
+            _move(
+                "4k3/8/8/4p3/8/5N2/8/4K3 w - - 0 1",
+                "learn_task_capture",
+                "capture",
+                target="e5",
+                hint="f3e5",
+                text_params={"target": "e5"},
             ),
         ),
     ),
     Lesson(
-        id="basics_check",
+        id="basics_promotion",
         section="basics",
-        title_key="learn_check_title",
-        subtitle_key="learn_check_subtitle",
-        icon="learn_check",
+        title_key="learn_promotion_title",
+        subtitle_key="learn_promotion_subtitle",
+        icon="learn_pawn",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
-                "learn_check_intro",
-                arrows=("d1h5",),
+            _move(
+                "k7/4P3/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_promotion",
+                "move_to",
+                target="e8",
+                hint="e7e8q",
+                marks=("e8",),
+                note_key="learn_promotion_intro",
+                success_key="learn_success_promotion",
             ),
             _move(
-                "4k3/8/8/8/8/8/8/3QK3 w - - 0 1",
-                "learn_task_check",
-                "check",
-                hint="d1h5",
-                success_key="learn_success_check",
+                "r6k/1P6/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_promotion",
+                "capture",
+                target="a8",
+                hint="b7a8q",
+                success_key="learn_success_promotion",
+            ),
+            _move(
+                "3b3k/4P3/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_promotion",
+                "capture",
+                target="d8",
+                hint="e7d8q",
+                success_key="learn_success_promotion",
             ),
         ),
     ),
@@ -290,16 +406,26 @@ LESSONS = (
         subtitle_key="learn_escape_subtitle",
         icon="learn_shield",
         steps=(
-            _info(
-                "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
-                "learn_escape_intro",
-                arrows=("e1e2",),
-            ),
             _move(
                 "4k3/8/8/8/8/8/4r3/4K3 w - - 0 1",
                 "learn_task_escape",
                 "escape_check",
                 hint="e1e2",
+                note_key="learn_escape_intro",
+                success_key="learn_success_escape",
+            ),
+            _move(
+                "4r1k1/8/8/8/8/8/8/4K3 w - - 0 1",
+                "learn_task_escape",
+                "escape_check",
+                hint="e1d1",
+                success_key="learn_success_escape",
+            ),
+            _move(
+                "4r1k1/8/8/8/8/2B5/8/4K3 w - - 0 1",
+                "learn_task_escape",
+                "escape_check",
+                hint="c3e5",
                 success_key="learn_success_escape",
             ),
         ),
@@ -311,16 +437,26 @@ LESSONS = (
         subtitle_key="learn_mate1_subtitle",
         icon="learn_mate",
         steps=(
-            _info(
-                "6k1/5ppp/8/8/8/8/8/K3R3 w - - 0 1",
-                "learn_mate1_intro",
-                arrows=("e1e8",),
-            ),
             _move(
                 "6k1/5ppp/8/8/8/8/8/K3R3 w - - 0 1",
                 "learn_task_mate",
                 "mate",
                 hint="e1e8",
+                note_key="learn_mate1_intro",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "7k/3Q4/5K2/8/8/8/8/8 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="d7g7",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "7k/5K2/8/6Q1/8/8/8/8 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="g5g7",
                 success_key="learn_success_mate",
             ),
         ),
@@ -332,8 +468,31 @@ LESSONS = (
         subtitle_key="learn_setup_subtitle",
         icon="learn_board",
         steps=(
-            _info(chess.STARTING_FEN, "learn_setup_intro"),
-            _info(chess.STARTING_FEN, "learn_setup_intro2"),
+            _move(
+                chess.STARTING_FEN,
+                "learn_task_pawn_move",
+                "move_to",
+                target="e4",
+                hint="e2e4",
+                marks=("e4",),
+                note_key="learn_setup_intro",
+            ),
+            _move(
+                chess.STARTING_FEN,
+                "learn_task_pawn_move",
+                "move_to",
+                target="d4",
+                hint="d2d4",
+                marks=("d4",),
+            ),
+            _move(
+                chess.STARTING_FEN,
+                "learn_task_knight_move",
+                "move_to",
+                target="f3",
+                hint="g1f3",
+                marks=("f3",),
+            ),
         ),
     ),
     Lesson(
@@ -343,13 +502,25 @@ LESSONS = (
         subtitle_key="learn_castle_subtitle",
         icon="learn_castle",
         steps=(
-            _info(
+            _move(
                 "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
-                "learn_castle_intro",
-                arrows=("e1g1",),
+                "learn_task_castle",
+                "castle",
+                hint="e1g1",
+                marks=("g1",),
+                note_key="learn_castle_intro",
+                success_key="learn_success_castle",
             ),
             _move(
                 "r3k2r/8/8/8/8/8/8/R3K2R w KQkq - 0 1",
+                "learn_task_castle",
+                "castle",
+                hint="e1c1",
+                marks=("c1",),
+                success_key="learn_success_castle",
+            ),
+            _move(
+                "4k2r/8/8/8/8/8/8/4K2R w Kk - 0 1",
                 "learn_task_castle",
                 "castle",
                 hint="e1g1",
@@ -365,17 +536,29 @@ LESSONS = (
         subtitle_key="learn_enpassant_subtitle",
         icon="learn_enpassant",
         steps=(
-            _info(
-                "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
-                "learn_enpassant_intro",
-                arrows=("e5d6",),
-            ),
             _move(
                 "4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1",
                 "learn_task_en_passant",
                 "en_passant",
                 hint="e5d6",
                 marks=("d6",),
+                note_key="learn_enpassant_intro",
+                success_key="learn_success_en_passant",
+            ),
+            _move(
+                "4k3/8/8/3Pp3/8/8/8/4K3 w - e6 0 1",
+                "learn_task_en_passant",
+                "en_passant",
+                hint="d5e6",
+                marks=("e6",),
+                success_key="learn_success_en_passant",
+            ),
+            _move(
+                "4k3/8/8/Pp6/8/8/8/4K3 w - b6 0 1",
+                "learn_task_en_passant",
+                "en_passant",
+                hint="a5b6",
+                marks=("b6",),
                 success_key="learn_success_en_passant",
             ),
         ),
@@ -387,13 +570,26 @@ LESSONS = (
         subtitle_key="learn_stalemate_subtitle",
         icon="learn_stalemate",
         steps=(
-            _info("k7/2Q5/2K5/8/8/8/8/8 b - - 0 1", "learn_stalemate_intro"),
             _move(
                 "k7/3Q4/2K5/8/8/8/8/8 w - - 0 1",
                 "learn_task_stalemate",
                 "stalemate",
                 hint="d7c7",
-                marks=("c7",),
+                note_key="learn_stalemate_intro",
+                success_key="learn_success_stalemate",
+            ),
+            _move(
+                "k7/8/2K5/8/3Q4/8/8/8 w - - 0 1",
+                "learn_task_stalemate",
+                "stalemate",
+                hint="d4b6",
+                success_key="learn_success_stalemate",
+            ),
+            _move(
+                "7k/8/5K2/6Q1/8/8/8/8 w - - 0 1",
+                "learn_task_stalemate",
+                "stalemate",
+                hint="g5g6",
                 success_key="learn_success_stalemate",
             ),
         ),
@@ -405,13 +601,23 @@ LESSONS = (
         subtitle_key="learn_backrank_subtitle",
         icon="learn_backrank",
         steps=(
-            _info(
-                "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
-                "learn_backrank_intro",
-                arrows=("e1e8",),
-            ),
             _move(
                 "6k1/5ppp/8/8/8/8/5PPP/4R1K1 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="e1e8",
+                note_key="learn_backrank_intro",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="a1a8",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "k7/ppp5/8/8/8/8/5PPP/4R1K1 w - - 0 1",
                 "learn_task_mate",
                 "mate",
                 hint="e1e8",
@@ -426,11 +632,6 @@ LESSONS = (
         subtitle_key="learn_smothered_subtitle",
         icon="learn_knight",
         steps=(
-            _info(
-                "5r1k/6pp/7N/3Q4/8/8/8/6K1 w - - 0 1",
-                "learn_smothered_intro",
-                arrows=("d5g8",),
-            ),
             _move(
                 "5r1k/6pp/7N/3Q4/8/8/8/6K1 w - - 0 1",
                 "learn_task_smothered_sac",
@@ -438,6 +639,7 @@ LESSONS = (
                 accept=("d5g8",),
                 reply="f8g8",
                 hint="d5g8",
+                note_key="learn_smothered_intro",
                 success_key="learn_success_check",
             ),
             _move(
@@ -445,6 +647,13 @@ LESSONS = (
                 "learn_task_smothered_mate",
                 "mate",
                 hint="h6f7",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "6rk/6pp/8/4N3/8/8/8/6K1 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="e5f7",
                 success_key="learn_success_mate",
             ),
         ),
@@ -456,16 +665,26 @@ LESSONS = (
         subtitle_key="learn_tworooks_subtitle",
         icon="learn_two_rooks",
         steps=(
-            _info(
-                "7k/1R6/8/8/8/8/8/R5K1 w - - 0 1",
-                "learn_tworooks_intro",
-                arrows=("a1a8",),
-            ),
             _move(
                 "7k/1R6/8/8/8/8/8/R5K1 w - - 0 1",
                 "learn_task_mate",
                 "mate",
                 hint="a1a8",
+                note_key="learn_tworooks_intro",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "7k/R7/8/8/8/8/8/1R5K w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="b1b8",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "k7/1R6/2K5/8/8/8/8/7R w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="h1h8",
                 success_key="learn_success_mate",
             ),
         ),
@@ -477,16 +696,26 @@ LESSONS = (
         subtitle_key="learn_queenmate_subtitle",
         icon="learn_queen",
         steps=(
-            _info(
-                "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
-                "learn_queenmate_intro",
-                arrows=("g6g7",),
-            ),
             _move(
                 "7k/8/5KQ1/8/8/8/8/8 w - - 0 1",
                 "learn_task_mate",
                 "mate",
                 hint="g6g7",
+                note_key="learn_queenmate_intro",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "6k1/3Q4/5K2/8/8/8/8/8 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="d7g7",
+                success_key="learn_success_mate",
+            ),
+            _move(
+                "7k/5K2/8/6Q1/8/8/8/8 w - - 0 1",
+                "learn_task_mate",
+                "mate",
+                hint="g5g7",
                 success_key="learn_success_mate",
             ),
         ),

@@ -84,6 +84,7 @@ class BoardWidget(QWidget):
         self._last_position_fen = None
         self._lesson_marks = set()
         self._lesson_arrows = []
+        self._lesson_mode = False
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -409,6 +410,7 @@ class BoardWidget(QWidget):
     def set_lesson_mode(self, enabled):
         """Trim the board chrome for the lesson viewer."""
         enabled = bool(enabled)
+        self._lesson_mode = enabled
         self.set_navigation_visible(not enabled)
         self._btn_flip.setVisible(not enabled)
         self.set_eval_available(not enabled)
@@ -799,7 +801,7 @@ class BoardWidget(QWidget):
         if not self._free_line and self._index != len(self._moves):
             return False
         board = self._board
-        if board.is_game_over():
+        if not self._lesson_mode and board.is_game_over():
             return False
         if self._human_color is not None and board.turn != self._human_color:
             return False

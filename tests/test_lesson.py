@@ -80,7 +80,7 @@ class LessonSessionTests(unittest.TestCase):
     def test_smothered_reply_is_applied(self):
         lesson = find_lesson("mates_smothered")
         self.assertIsNotNone(lesson)
-        session = LessonSession(lesson, 1)
+        session = LessonSession(lesson, 0)
         self.assertEqual(session.play(chess.Move.from_uci("d5g8")), "correct")
         self.assertEqual(
             session.display_moves,
@@ -90,13 +90,13 @@ class LessonSessionTests(unittest.TestCase):
 
     def test_goal_checks(self):
         checks = (
-            ("basics_check", 1, "d1h5"),
-            ("basics_escape", 1, "e1e2"),
-            ("basics_mate1", 1, "e1e8"),
-            ("advanced_castle", 1, "e1g1"),
-            ("advanced_enpassant", 1, "e5d6"),
-            ("advanced_stalemate", 1, "d7c7"),
-            ("mates_tworooks", 1, "a1a8"),
+            ("basics_promotion", 0, "e7e8q"),
+            ("basics_escape", 0, "e1e2"),
+            ("basics_mate1", 0, "e1e8"),
+            ("advanced_castle", 0, "e1g1"),
+            ("advanced_enpassant", 0, "e5d6"),
+            ("advanced_stalemate", 0, "d7c7"),
+            ("mates_tworooks", 0, "a1a8"),
         )
         for lesson_id, step_index, uci in checks:
             lesson = find_lesson(lesson_id)
@@ -108,6 +108,20 @@ class LessonSessionTests(unittest.TestCase):
 
 
 class LessonContentTests(unittest.TestCase):
+    def test_check_in_one_is_replaced_by_promotion(self):
+        self.assertIsNone(find_lesson("basics_check"))
+        self.assertIsNotNone(find_lesson("basics_promotion"))
+
+    def test_every_bundled_step_is_a_move(self):
+        # The lesson opens straight into play: no confirmation-only info step.
+        for lesson in LESSONS:
+            for step in lesson.steps:
+                self.assertEqual(step.kind, MOVE, lesson.id)
+
+    def test_every_lesson_has_three_tasks(self):
+        for lesson in LESSONS:
+            self.assertEqual(len(lesson.steps), 3, lesson.id)
+
     def test_ids_are_unique_and_sections_are_ordered(self):
         ids = [lesson.id for lesson in LESSONS]
         self.assertEqual(len(ids), len(set(ids)))
@@ -181,12 +195,17 @@ class LessonContentTests(unittest.TestCase):
             for step in lesson.steps:
                 keys.append(step.text_key)
                 keys.append(step.success_key)
+                if step.note_key:
+                    keys.append(step.note_key)
             for key in keys:
                 self.assertIn(key, MESSAGES["zh-CN"], key)
                 self.assertIn(key, MESSAGES["en-US"], key)
             for step in lesson.steps:
                 t(step.text_key, "zh-CN", **step.text_params)
                 t(step.text_key, "en-US", **step.text_params)
+                if step.note_key:
+                    t(step.note_key, "zh-CN", **step.note_params)
+                    t(step.note_key, "en-US", **step.note_params)
 
 
 if __name__ == "__main__":

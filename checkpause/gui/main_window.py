@@ -1013,14 +1013,14 @@ class MainWindow(QMainWindow):
         self._piece_set = name
         if self.profile:
             self.profile = set_piece_set(self.profile, name)
-        for page in (self.board, self.play_page, self.puzzle_page):
+        for page in (self.board, self.play_page, self.puzzle_page, self.learn_page):
             page.set_piece_set(name)
 
     def _change_board_theme(self, name):
         self._board_theme = name
         if self.profile:
             self.profile = set_board_theme(self.profile, name)
-        for page in (self.board, self.play_page, self.puzzle_page):
+        for page in (self.board, self.play_page, self.puzzle_page, self.learn_page):
             page.set_board_theme(name)
 
     def _change_sound_set(self, name):

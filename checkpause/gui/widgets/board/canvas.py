@@ -581,23 +581,29 @@ class _BoardCanvas(QWidget):
 
     def _draw_lesson_mark(self, painter, rect, square):
         center = rect.center()
-        radius = square * 0.19
-        path = QPainterPath()
-        for index in range(10):
-            angle = -math.pi / 2 + index * math.pi / 5
-            length = radius if index % 2 == 0 else radius * 0.45
-            point = QPointF(
-                center.x() + math.cos(angle) * length,
-                center.y() + math.sin(angle) * length,
-            )
-            if index == 0:
-                path.moveTo(point)
-            else:
-                path.lineTo(point)
-        path.closeSubpath()
-        painter.setPen(QPen(QColor(92, 68, 12, 200), max(1.0, square * 0.025)))
+        bar_width = square * 0.075
+        bar_height = square * 0.26
+        dot_radius = square * 0.055
+        gap = square * 0.055
+        spacing = square * 0.20
+        painter.save()
+        painter.setPen(QPen(QColor(92, 68, 12, 210), max(1.0, square * 0.02)))
         painter.setBrush(QColor("#f2c94c"))
-        painter.drawPath(path)
+        for offset in (-spacing / 2, spacing / 2):
+            x = center.x() + offset
+            bar = QRectF(
+                x - bar_width / 2,
+                center.y() - square * 0.22,
+                bar_width,
+                bar_height,
+            )
+            painter.drawRoundedRect(bar, bar_width / 2, bar_width / 2)
+            painter.drawEllipse(
+                QPointF(x, bar.bottom() + gap + dot_radius),
+                dot_radius,
+                dot_radius,
+            )
+        painter.restore()
 
     def _draw_coordinates(self, painter, palette, x0, y0, board_size, square):
         font = painter.font()

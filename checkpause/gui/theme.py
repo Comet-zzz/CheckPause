@@ -1009,6 +1009,10 @@ QTableWidget#moveTable::item {
     border: 1px solid $border;
     border-radius: 14px;
 }
+#learnNote {
+    color: $text_muted;
+    font-size: 13px;
+}
 #learnInstruction {
     font-size: 15px;
     font-weight: 600;

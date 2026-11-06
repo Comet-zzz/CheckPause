@@ -6,7 +6,7 @@ board-left / panel-right layout used by the other modules.
 """
 
 import chess
-from PySide6.QtCore import QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
@@ -122,7 +122,7 @@ class _LearnCard(QFrame):
         if completed:
             status = "done"
             text = t("learn_status_done", self._language)
-        elif step > 0:
+        elif 0 < step < total:
             status = "active"
             text = t(
                 "learn_status_progress",
@@ -270,23 +270,23 @@ class LearnPage(QWidget):
         title_box.addWidget(self._lesson_title)
         title_box.addWidget(self._lesson_subtitle)
 
-        self._step_label = QLabel()
-        self._step_label.setObjectName("learnStepLabel")
-        self._step_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+        self._step_progress = QProgressBar()
+        self._step_progress.setObjectName("learnProgress")
+        self._step_progress.setTextVisible(False)
+        self._step_progress.setRange(0, 1)
+        self._step_progress.setValue(0)
+
+        self._advance_timer = QTimer(self)
+        self._advance_timer.setSingleShot(True)
+        self._advance_timer.setInterval(900)
+        self._advance_timer.timeout.connect(self._advance_after_solve)
 
         header = QHBoxLayout()
         header.setContentsMargins(0, 0, 0, 0)
         header.setSpacing(10)
         header.addWidget(self._btn_back)
         header.addLayout(title_box, 1)
-        header.addWidget(self._step_label)
         layout.addLayout(header)
-
-        self._step_progress = QProgressBar()
-        self._step_progress.setObjectName("learnProgress")
-        self._step_progress.setTextVisible(False)
-        self._step_progress.setRange(0, 1)
-        self._step_progress.setValue(0)
         layout.addWidget(self._step_progress)
 
         self._board = BoardWidget()
@@ -312,31 +312,28 @@ class LearnPage(QWidget):
         self._instruction = QLabel()
         self._instruction.setObjectName("learnInstruction")
         self._instruction.setWordWrap(True)
+        self._note = QLabel()
+        self._note.setObjectName("learnNote")
+        self._note.setWordWrap(True)
         self._feedback = QLabel()
         self._feedback.setObjectName("learnFeedback")
         self._feedback.setWordWrap(True)
 
-        self._btn_hint = QPushButton()
-        self._btn_hint.setObjectName("learnHintButton")
-        self._btn_hint.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_hint.clicked.connect(self._on_hint)
-        self._btn_retry = QPushButton()
-        self._btn_retry.setObjectName("learnRetryButton")
-        self._btn_retry.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_retry.clicked.connect(self._on_retry)
         self._btn_primary = QPushButton()
         self._btn_primary.setObjectName("learnPrimaryButton")
         self._btn_primary.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_primary.clicked.connect(self._on_primary)
+        policy = self._btn_primary.sizePolicy()
+        policy.setRetainSizeWhenHidden(True)
+        self._btn_primary.setSizePolicy(policy)
 
         buttons = QHBoxLayout()
         buttons.setContentsMargins(0, 0, 0, 0)
         buttons.setSpacing(8)
-        buttons.addWidget(self._btn_hint)
-        buttons.addWidget(self._btn_retry)
         buttons.addStretch(1)
         buttons.addWidget(self._btn_primary)
 
+        panel_layout.addWidget(self._note)
         panel_layout.addWidget(self._instruction)
         panel_layout.addWidget(self._feedback)
         panel_layout.addLayout(buttons)
@@ -346,10 +343,6 @@ class LearnPage(QWidget):
     def _apply_icons(self):
         self._btn_back.setIcon(action_icon(self._theme, "nav_prev"))
         self._btn_back.setIconSize(QSize(16, 16))
-        self._btn_hint.setIcon(action_icon(self._theme, "hint"))
-        self._btn_hint.setIconSize(QSize(14, 14))
-        self._btn_retry.setIcon(action_icon(self._theme, "reset"))
-        self._btn_retry.setIconSize(QSize(14, 14))
 
     def set_theme(self, theme):
         self._theme = theme
@@ -379,8 +372,6 @@ class LearnPage(QWidget):
         self._refresh_header_progress()
 
         self._btn_back.setText(t("learn_back", language))
-        self._btn_hint.setText(t("learn_hint", language))
-        self._btn_retry.setText(t("learn_retry", language))
         self._btn_primary.setText(t("learn_continue", language))
 
         scroll = self._grid_view
@@ -401,6 +392,7 @@ class LearnPage(QWidget):
         lesson = self._by_id.get(lesson_id)
         if lesson is None:
             return
+        self._advance_timer.stop()
         entry = self._progress.get(lesson.id, {})
         start = 0
         if not entry.get("completed"):
@@ -416,6 +408,7 @@ class LearnPage(QWidget):
         self._render_step()
 
     def _back_to_grid(self):
+        self._advance_timer.stop()
         self._save_progress()
         self._session = None
         self._active_lesson = None
@@ -427,6 +420,11 @@ class LearnPage(QWidget):
     def _step_text(self, step):
         return t(step.text_key, self._language, **step.text_params)
 
+    def _step_note(self, step):
+        if not step.note_key:
+            return ""
+        return t(step.note_key, self._language, **step.note_params)
+
     def _render_step(self, animate=False):
         session = self._session
         if session is None:
@@ -436,14 +434,7 @@ class LearnPage(QWidget):
 
         self._lesson_title.setText(t(lesson.title_key, self._language))
         self._lesson_subtitle.setText(t(lesson.subtitle_key, self._language))
-        self._step_label.setText(
-            t(
-                "learn_step",
-                self._language,
-                current=session.index + 1,
-                total=session.total_steps,
-            )
-        )
+        self._step_progress.setVisible(True)
         self._step_progress.setRange(0, session.total_steps)
         self._step_progress.setValue(session.completed_steps)
 
@@ -453,9 +444,16 @@ class LearnPage(QWidget):
         self._board.set_moves(session.display_moves, animate=animate)
         self._board.clear_hint()
         marks = () if session.solved else step.marks
-        arrows = step.arrows if step.kind == INFO else ()
+        arrows = ()
+        if not session.solved:
+            arrows = tuple(step.arrows)
+            if step.hint and step.hint not in arrows:
+                arrows += (step.hint,)
         self._board.set_lesson_marks(marks, arrows)
 
+        note = self._step_note(step)
+        self._note.setText(note or "\u00a0")
+        self._note.setVisible(True)
         self._instruction.setText(self._step_text(step))
         if session.solved:
             self._set_feedback(t(step.success_key, self._language), "success")
@@ -467,20 +465,17 @@ class LearnPage(QWidget):
         session = self._session
         if session is None:
             return
+        self._advance_timer.stop()
         session.completed = True
         lesson = session.lesson
         self._lesson_title.setText(t(lesson.title_key, self._language))
         self._lesson_subtitle.setText(t(lesson.subtitle_key, self._language))
-        self._step_label.setText(
-            t(
-                "learn_step",
-                self._language,
-                current=session.total_steps,
-                total=session.total_steps,
-            )
-        )
+        self._step_progress.setVisible(True)
         self._step_progress.setRange(0, session.total_steps)
         self._step_progress.setValue(session.total_steps)
+        note = self._step_note(session.current)
+        self._note.setText(note or "\u00a0")
+        self._note.setVisible(True)
         self._instruction.setText(t("learn_lesson_complete", self._language))
         self._set_feedback(
             t(
@@ -495,29 +490,20 @@ class LearnPage(QWidget):
         self._board.set_lesson_marks((), ())
         self._btn_primary.setText(t("learn_back_short", self._language))
         self._btn_primary.setVisible(True)
-        self._btn_hint.setVisible(False)
-        self._btn_retry.setVisible(False)
         self._save_progress()
 
     def _update_buttons(self):
         session = self._session
         if session is None:
             return
-        step = session.current
-        if step.kind == INFO or session.solved:
-            self._btn_primary.setVisible(True)
-            last = session.index + 1 >= session.total_steps
-            key = "learn_finish" if last else "learn_continue"
-            self._btn_primary.setText(t(key, self._language))
-        else:
-            self._btn_primary.setVisible(False)
-        can_hint = step.kind == MOVE and not session.solved and bool(step.hint)
-        self._btn_hint.setVisible(can_hint)
-        self._btn_retry.setVisible(step.kind == MOVE and not session.solved)
+        is_info = session.current.kind == INFO
+        self._btn_primary.setVisible(is_info)
+        if is_info:
+            self._btn_primary.setText(t("learn_continue", self._language))
 
     def _set_feedback(self, text, state=""):
         self._feedback_state = state
-        self._feedback.setText(text)
+        self._feedback.setText(text or "\u00a0")
         self._feedback.setProperty("state", state)
         self._feedback.style().unpolish(self._feedback)
         self._feedback.style().polish(self._feedback)
@@ -550,10 +536,24 @@ class LearnPage(QWidget):
         if status in ("correct", "solved"):
             self._save_progress()
             self._render_step(animate=True)
+            self._advance_timer.start()
         elif status == "wrong":
             self._set_feedback(t("learn_wrong", self._language), "error")
         else:
             self._set_feedback("", "")
+
+    def _advance_after_solve(self):
+        self._advance_timer.stop()
+        session = self._session
+        if session is None or not session.solved or session.completed:
+            return
+        if not session.advance():
+            return
+        self._save_progress()
+        if session.completed:
+            self._render_complete()
+        else:
+            self._render_step()
 
     def _on_primary(self):
         session = self._session
@@ -562,7 +562,7 @@ class LearnPage(QWidget):
         if session.completed:
             self._back_to_grid()
             return
-        if session.current.kind != INFO and not session.solved:
+        if session.current.kind != INFO:
             return
         if session.advance():
             self._save_progress()
@@ -570,25 +570,6 @@ class LearnPage(QWidget):
                 self._render_complete()
             else:
                 self._render_step()
-
-    def _on_hint(self):
-        session = self._session
-        if session is None or session.solved:
-            return
-        hint = session.current.hint
-        if not hint:
-            return
-        self._board.set_hint(hint)
-        self._set_feedback(t("learn_hint_shown", self._language), "")
-
-    def _on_retry(self):
-        session = self._session
-        if session is None or session.solved:
-            return
-        session.retry()
-        self._board.clear_hint()
-        self._set_feedback("", "")
-        self._render_step()
 
     def _save_progress(self):
         session = self._session
@@ -616,7 +597,9 @@ class LearnPage(QWidget):
     def _refresh_header_progress(self):
         if not hasattr(self, "_header_progress"):
             return
-        done = sum(1 for entry in self._progress.values() if entry.get("completed"))
+        done = sum(
+            1 for lesson in self._lessons if self._progress.get(lesson.id, {}).get("completed")
+        )
         self._header_progress.setText(
             t(
                 "learn_progress",

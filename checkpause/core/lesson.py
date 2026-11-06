@@ -33,6 +33,8 @@ class LessonStep:
     fen: str
     text_key: str
     text_params: dict = field(default_factory=dict)
+    note_key: str | None = None
+    note_params: dict = field(default_factory=dict)
     goal: str | None = None
     target: str | None = None
     accept: tuple[str, ...] = ()
