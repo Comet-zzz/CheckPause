@@ -247,6 +247,75 @@ class PuzzleFavoritesTests(unittest.TestCase):
         self.assertEqual(refreshed.get(0)["id"], "a")
 
 
+class PuzzleAttemptTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = self._tmp.name
+
+    def _puzzle(self, puzzle_id, rating=1200, themes=None):
+        return {
+            "id": puzzle_id,
+            "fen": chess.STARTING_FEN,
+            "moves": ["e2e4"],
+            "rating": rating,
+            "themes": themes or ["mate"],
+            "opponent_first": False,
+        }
+
+    def test_record_and_load_attempt(self):
+        entry = puzzles.record_attempt(
+            self._puzzle("p1"),
+            "solved",
+            source_id="c1",
+            duration_ms=4200,
+            hinted=True,
+            base_dir=self.base,
+        )
+        self.assertEqual(entry["result"], "solved")
+        loaded = puzzles.load_attempts(self.base)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["key"], "p1")
+        self.assertTrue(loaded[0]["hinted"])
+        self.assertEqual(loaded[0]["source_id"], "c1")
+
+    def test_summary_uses_unique_puzzles(self):
+        puzzle = self._puzzle("p1", rating=1500)
+        puzzles.record_attempt(puzzle, "failed", base_dir=self.base)
+        puzzles.record_attempt(puzzle, "solved", base_dir=self.base)
+        summary = puzzles.attempt_summary(base_dir=self.base)
+        self.assertEqual(summary["attempts"], 2)
+        self.assertEqual(summary["unique_attempted"], 1)
+        self.assertEqual(summary["unique_solved"], 1)
+        self.assertEqual(summary["accuracy"], 50)
+        self.assertEqual(summary["retryable"], 0)
+
+    def test_summary_tracks_streak_and_themes(self):
+        puzzles.record_attempt(self._puzzle("a", themes=["mate"]), "solved", base_dir=self.base)
+        puzzles.record_attempt(self._puzzle("b", themes=["fork"]), "solved", base_dir=self.base)
+        puzzles.record_attempt(self._puzzle("c", themes=["fork"]), "failed", base_dir=self.base)
+        summary = puzzles.attempt_summary(base_dir=self.base)
+        self.assertEqual(summary["streak"], 0)
+        self.assertEqual(summary["best_streak"], 2)
+        self.assertEqual(summary["failed_avg_rating"], 1200)
+        themes = {row["theme"]: row for row in summary["themes"]}
+        self.assertEqual(themes["fork"]["attempts"], 2)
+        self.assertEqual(themes["fork"]["accuracy"], 50)
+        self.assertEqual(themes["mate"]["accuracy"], 100)
+
+    def test_bad_lines_are_skipped(self):
+        path = puzzles.attempts_path(self.base)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("not json\n")
+            handle.write('{"key": "p1", "result": "solved"}\n')
+        self.assertEqual(len(puzzles.load_attempts(self.base)), 1)
+
+    def test_clear_attempts(self):
+        puzzles.record_attempt(self._puzzle("p1"), "solved", base_dir=self.base)
+        puzzles.clear_attempts(self.base)
+        self.assertEqual(puzzles.attempt_summary(base_dir=self.base)["attempts"], 0)
+
+
 class FavoritesListedTests(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()

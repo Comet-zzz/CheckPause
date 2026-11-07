@@ -1055,6 +1055,197 @@ QTableWidget#moveTable::item {
     background-color: $accent_pressed;
     border-color: $accent_pressed;
 }
+#puzzleScroll {
+    background: transparent;
+    border: none;
+}
+#puzzleHub, #puzzleProfile, #puzzleLibrary, #puzzleTrain {
+    background: transparent;
+}
+#puzzleHeaderTitle {
+    font-size: 24px;
+    font-weight: 700;
+}
+#puzzleHeaderSubtitle {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzleHero {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 16px;
+}
+#puzzleHeroTitle {
+    font-size: 20px;
+    font-weight: 700;
+}
+#puzzleHeroText {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzlePrimaryButton {
+    background-color: $accent;
+    color: $accent_text;
+    border: 1px solid $accent;
+    border-radius: 8px;
+    padding: 8px 22px;
+    font-weight: 600;
+}
+#puzzlePrimaryButton:hover {
+    background-color: $accent_hover;
+    border-color: $accent_hover;
+}
+#puzzlePrimaryButton:pressed {
+    background-color: $accent_pressed;
+    border-color: $accent_pressed;
+}
+#puzzlePrimaryButton:disabled {
+    background-color: $accent_off_bg;
+    color: $accent_off_text;
+    border-color: $border;
+}
+#puzzleSecondaryButton, #puzzleGhostButton {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 7px 14px;
+    color: $text_muted;
+}
+#puzzleGhostButton {
+    background: transparent;
+    border-color: transparent;
+}
+#puzzleSecondaryButton:hover, #puzzleGhostButton:hover {
+    background-color: $hover;
+    color: $text;
+}
+#puzzleSecondaryButton:disabled, #puzzleGhostButton:disabled {
+    color: $text_disabled;
+    border-color: $border;
+}
+#puzzleSectionLabel {
+    color: $text_muted;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 8px 2px 2px 2px;
+}
+#puzzleStatCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+#puzzleStatValue {
+    font-size: 22px;
+    font-weight: 600;
+}
+#puzzleStatCaption {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleCollectionCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 14px;
+    font-weight: 600;
+}
+#puzzleCollectionCard:hover {
+    background-color: $surface_alt;
+    border-color: $border_strong;
+}
+#puzzleEmptyLabel {
+    color: $text_muted;
+    font-size: 13px;
+    padding: 6px 2px;
+}
+#puzzleModeLabel {
+    font-size: 15px;
+    font-weight: 600;
+}
+#puzzleCounterLabel {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzlePrompt {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 4px 0;
+}
+#puzzleResultPanel {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#puzzleResultPanel[state="solved"] {
+    border-color: $accent;
+}
+#puzzleResultPanel[state="failed"] {
+    border-color: $danger;
+}
+#puzzleResultPanel[state="revealed"] {
+    border-color: $border_strong;
+}
+#puzzleResultTitle {
+    font-size: 17px;
+    font-weight: 700;
+}
+#puzzleResultDetail {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzleSolution {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleLibraryInfo {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzleLibraryStatus {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleLibraryList, #puzzleRecentList {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 12px;
+    padding: 4px;
+}
+#puzzleLibraryList::item, #puzzleRecentList::item {
+    border-radius: 8px;
+    padding: 8px 10px;
+}
+#puzzleLibraryList::item:selected {
+    background-color: $history_selected_bg;
+    color: $history_selected_text;
+}
+#puzzleRange {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 5px 10px;
+    color: $text;
+}
+#puzzleThemeBox {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+#puzzleThemeLabel {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzleThemeBar {
+    background-color: $accent_soft;
+    border: none;
+    border-radius: 3px;
+}
+#puzzleThemeBar::chunk {
+    background-color: $accent;
+    border-radius: 3px;
+}
 """
 )
 

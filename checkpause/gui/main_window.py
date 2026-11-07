@@ -356,7 +356,7 @@ class MainWindow(QMainWindow):
         return rail
 
     def _sync_side_panels(self):
-        panels = (self.tabs, self.play_page.panel, self.puzzle_page.panel)
+        panels = (self.tabs, self.play_page.panel)
         target = max(
             SIDE_PANEL_MIN_WIDTH,
             *(panel.minimumSizeHint().width() for panel in panels),

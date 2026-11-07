@@ -4,6 +4,7 @@ import io
 import json
 import os
 import uuid
+from datetime import UTC, datetime, timedelta
 
 import chess
 import chess.pgn
@@ -15,6 +16,7 @@ PUZZLE_DIR = os.path.join(DATA_DIR, "puzzles")
 INDEX_NAME = "index.json"
 PROGRESS_NAME = "progress.json"
 FAVORITES_NAME = "favorites.jsonl"
+ATTEMPTS_NAME = "attempts.jsonl"
 
 BUILTIN_PATH_PARTS = ("assets", "puzzles", "lichess_sample.jsonl")
 BUILTIN_ID = "builtin-lichess-sample"
@@ -121,6 +123,211 @@ def clear_progress(collection_id, base_dir=None):
         save_progress(progress, base_dir)
         return True
     return False
+
+
+def attempts_path(base_dir=None):
+    base = base_dir or PUZZLE_DIR
+    return os.path.join(base, ATTEMPTS_NAME)
+
+
+def _parse_timestamp(value):
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def load_attempts(base_dir=None, since=None):
+    """Every recorded practice attempt, oldest first.
+
+    Bad lines are skipped rather than dropping the whole history: one corrupt
+    append should never erase the rest of a user's progress.
+    """
+    path = attempts_path(base_dir)
+    if not os.path.isfile(path):
+        return []
+    result = []
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                if not isinstance(item, dict):
+                    continue
+                if since is not None:
+                    created = _parse_timestamp(item.get("created_at"))
+                    if created is None or created < since:
+                        continue
+                result.append(item)
+    except OSError:
+        return []
+    return result
+
+
+def record_attempt(
+    puzzle,
+    result,
+    source_id="",
+    duration_ms=0,
+    hinted=False,
+    base_dir=None,
+):
+    """Append one practice attempt. A session is one row, not one wrong move."""
+    if not isinstance(puzzle, dict):
+        return None
+    key = puzzle_key(puzzle)
+    if not key:
+        return None
+    try:
+        rating = int(puzzle.get("rating"))
+    except (TypeError, ValueError):
+        rating = None
+    try:
+        duration = max(0, int(duration_ms))
+    except (TypeError, ValueError):
+        duration = 0
+    entry = {
+        "key": key,
+        "puzzle_id": str(puzzle.get("id") or "").strip(),
+        "fen": str(puzzle.get("fen") or "").strip(),
+        "moves": [str(move) for move in (puzzle.get("moves") or [])],
+        "rating": rating,
+        "themes": [str(theme) for theme in (puzzle.get("themes") or [])],
+        "opponent_first": bool(puzzle.get("opponent_first")),
+        "source_id": str(source_id or ""),
+        "result": "solved" if result == "solved" else "failed",
+        "hinted": bool(hinted),
+        "duration_ms": duration,
+        "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+    base = base_dir or puzzle_dir()
+    os.makedirs(base, exist_ok=True)
+    with open(attempts_path(base), "a", encoding="utf-8") as handle:
+        handle.write(json.dumps(entry, ensure_ascii=False, separators=(",", ":")))
+        handle.write("\n")
+    return entry
+
+
+def clear_attempts(base_dir=None):
+    _remove_quietly(attempts_path(base_dir))
+    return True
+
+
+def _average(values):
+    values = list(values)
+    if not values:
+        return None
+    return round(sum(values) / len(values))
+
+
+def _attempt_facts(attempts):
+    facts = {
+        "attempted": set(),
+        "solved": set(),
+        "session_solved": 0,
+        "runtime": [],
+        "solved_ratings": [],
+        "failed_ratings": [],
+        "themes": {},
+        "active_days": set(),
+    }
+    for entry in attempts:
+        key = entry.get("key") or entry.get("puzzle_id")
+        is_solved = entry.get("result") == "solved"
+        if key:
+            facts["attempted"].add(key)
+            if is_solved:
+                facts["solved"].add(key)
+        if is_solved:
+            facts["session_solved"] += 1
+        rating = _to_int(entry.get("rating"))
+        if rating is not None:
+            bucket = facts["solved_ratings" if is_solved else "failed_ratings"]
+            bucket.append(rating)
+        duration = _to_int(entry.get("duration_ms"))
+        if duration is not None:
+            facts["runtime"].append(max(0, duration))
+        created = _parse_timestamp(entry.get("created_at"))
+        if created is not None:
+            facts["active_days"].add(created.date().isoformat())
+        for theme in entry.get("themes") or []:
+            theme = str(theme)
+            bucket = facts["themes"].setdefault(theme, {"attempts": 0, "solved": 0})
+            bucket["attempts"] += 1
+            if is_solved:
+                bucket["solved"] += 1
+    return facts
+
+
+def _streak_counts(attempts):
+    streak = 0
+    for entry in reversed(attempts):
+        if entry.get("result") != "solved":
+            break
+        streak += 1
+    best = 0
+    running = 0
+    for entry in attempts:
+        if entry.get("result") == "solved":
+            running += 1
+            best = max(best, running)
+        else:
+            running = 0
+    return streak, best
+
+
+def _theme_rows(themes):
+    rows = [
+        {
+            "theme": name,
+            "attempts": bucket["attempts"],
+            "solved": bucket["solved"],
+            "accuracy": round(100 * bucket["solved"] / bucket["attempts"]),
+        }
+        for name, bucket in themes.items()
+    ]
+    rows.sort(key=lambda row: (-row["attempts"], row["theme"]))
+    return rows
+
+
+def attempt_summary(base_dir=None, days=None, now=None):
+    """Aggregate practice history for the puzzle profile.
+
+    Counts are kept in two shapes on purpose: attempts mirror how much someone
+    practised, while unique keys describe how many different puzzles they met.
+    The UI shows both, because 30 tries on 3 puzzles is not 30 puzzles learned.
+    """
+    now = now or datetime.now(UTC)
+    since = now - timedelta(days=days) if days else None
+    attempts = load_attempts(base_dir, since=since)
+    facts = _attempt_facts(attempts)
+    total = len(attempts)
+    streak, best_streak = _streak_counts(attempts)
+    return {
+        "attempts": total,
+        "solved": facts["session_solved"],
+        "failed": total - facts["session_solved"],
+        "accuracy": round(100 * facts["session_solved"] / total) if total else 0,
+        "unique_attempted": len(facts["attempted"]),
+        "unique_solved": len(facts["solved"]),
+        "retryable": len(facts["attempted"] - facts["solved"]),
+        "streak": streak,
+        "best_streak": best_streak,
+        "solved_avg_rating": _average(facts["solved_ratings"]),
+        "failed_avg_rating": _average(facts["failed_ratings"]),
+        "avg_duration_ms": _average(facts["runtime"]),
+        "active_days": len(facts["active_days"]),
+        "themes": _theme_rows(facts["themes"]),
+        "recent": list(reversed(attempts[-30:])),
+    }
 
 
 def favorites_path(base_dir=None):

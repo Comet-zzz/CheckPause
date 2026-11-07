@@ -1,15 +1,23 @@
+import time
+
 import chess
-from PySide6.QtCore import QSize, Qt, QTimer
+from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QComboBox,
     QFileDialog,
+    QFrame,
+    QGridLayout,
     QHBoxLayout,
     QLabel,
     QLineEdit,
     QListWidget,
     QListWidgetItem,
     QMessageBox,
+    QProgressBar,
     QPushButton,
-    QSplitter,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -19,12 +27,13 @@ from checkpause.data.puzzles import (
     FAVORITES_ID,
     PuzzleCollection,
     add_favorite,
+    attempt_summary,
     delete_collection,
     favorite_keys,
-    favorites_collection,
     list_collections,
     mark_solved,
     puzzle_key,
+    record_attempt,
     solved_indices,
     toggle_favorite,
 )
@@ -35,13 +44,841 @@ from checkpause.gui.workers import PuzzleImportWorker
 from checkpause.i18n import t
 
 
+def _collection_name(collection, language):
+    if collection.favorite:
+        return t("puzzle_favorites_name", language)
+    if collection.builtin:
+        return t("puzzle_builtin_name", language)
+    return collection.name
+
+
+def _solution_text(fen, moves):
+    """The movable line as SAN, so the result panel reads like a game."""
+    board = chess.Board(fen)
+    parts = []
+    for uci in moves or []:
+        try:
+            move = chess.Move.from_uci(str(uci))
+        except ValueError:
+            break
+        if move not in board.legal_moves:
+            break
+        san = board.san(move)
+        if board.turn == chess.WHITE:
+            parts.append(f"{board.fullmove_number}.{san}")
+        else:
+            parts.append(san)
+        board.push(move)
+    return " ".join(parts)
+
+
+class _StatCard(QFrame):
+    def __init__(self, caption_key, parent=None):
+        super().__init__(parent)
+        self._caption_key = caption_key
+        self.setObjectName("puzzleStatCard")
+        self.value = QLabel("—")
+        self.value.setObjectName("puzzleStatValue")
+        self.caption = QLabel()
+        self.caption.setObjectName("puzzleStatCaption")
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(2)
+        layout.addWidget(self.value)
+        layout.addWidget(self.caption)
+
+    def set_value(self, value):
+        self.value.setText("—" if value is None else str(value))
+
+    def retranslate(self, language):
+        self.caption.setText(t(self._caption_key, language))
+
+
+class _CollectionCard(QPushButton):
+    clicked_id = Signal(str)
+
+    def __init__(self, collection, language, parent=None):
+        super().__init__(parent)
+        self._collection = collection
+        self.setObjectName("puzzleCollectionCard")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setMinimumHeight(78)
+        self.clicked.connect(lambda: self.clicked_id.emit(self._collection.id))
+        self.retranslate(language)
+
+    def retranslate(self, language):
+        solved = len(solved_indices(self._collection.id))
+        name = _collection_name(self._collection, language)
+        self.setText(f"{name}\n{solved}/{self._collection.count}")
+
+
+class _HubView(QWidget):
+    train_requested = Signal()
+    mistakes_requested = Signal()
+    library_requested = Signal()
+    profile_requested = Signal()
+    collection_requested = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._language = "zh-CN"
+        self._cards = []
+
+        scroll = QScrollArea()
+        scroll.setObjectName("puzzleScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        inner = QWidget()
+        inner.setObjectName("puzzleHub")
+        layout = QVBoxLayout(inner)
+        layout.setContentsMargins(32, 28, 32, 32)
+        layout.setSpacing(18)
+
+        self._title = QLabel()
+        self._title.setObjectName("puzzleHeaderTitle")
+        self._subtitle = QLabel()
+        self._subtitle.setObjectName("puzzleHeaderSubtitle")
+        title_box = QVBoxLayout()
+        title_box.setSpacing(4)
+        title_box.addWidget(self._title)
+        title_box.addWidget(self._subtitle)
+        self._btn_profile = QPushButton()
+        self._btn_profile.setObjectName("puzzleGhostButton")
+        self._btn_profile.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_profile.clicked.connect(self.profile_requested.emit)
+        header = QHBoxLayout()
+        header.addLayout(title_box, 1)
+        header.addWidget(self._btn_profile, 0, Qt.AlignmentFlag.AlignTop)
+        layout.addLayout(header)
+
+        hero = QFrame()
+        hero.setObjectName("puzzleHero")
+        hero_layout = QVBoxLayout(hero)
+        hero_layout.setContentsMargins(20, 18, 20, 18)
+        hero_layout.setSpacing(6)
+        self._hero_title = QLabel()
+        self._hero_title.setObjectName("puzzleHeroTitle")
+        self._hero_text = QLabel()
+        self._hero_text.setObjectName("puzzleHeroText")
+        self._hero_text.setWordWrap(True)
+        self._btn_train = QPushButton()
+        self._btn_train.setObjectName("puzzlePrimaryButton")
+        self._btn_train.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_train.clicked.connect(self.train_requested.emit)
+        hero_layout.addWidget(self._hero_title)
+        hero_layout.addWidget(self._hero_text)
+        hero_layout.addSpacing(6)
+        hero_layout.addWidget(self._btn_train, 0, Qt.AlignmentFlag.AlignLeft)
+        layout.addWidget(hero)
+
+        cards = QHBoxLayout()
+        cards.setSpacing(10)
+        self._attempted = _StatCard("puzzle_home_attempted")
+        self._solved = _StatCard("puzzle_home_solved")
+        self._accuracy = _StatCard("puzzle_home_accuracy")
+        for card in (self._attempted, self._solved, self._accuracy):
+            cards.addWidget(card, 1)
+        layout.addLayout(cards)
+
+        self._tools_label = QLabel()
+        self._tools_label.setObjectName("puzzleSectionLabel")
+        layout.addWidget(self._tools_label)
+        tools = QHBoxLayout()
+        tools.setSpacing(8)
+        self._btn_mistakes = QPushButton()
+        self._btn_mistakes.setObjectName("puzzleSecondaryButton")
+        self._btn_mistakes.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_mistakes.clicked.connect(self.mistakes_requested.emit)
+        self._btn_library = QPushButton()
+        self._btn_library.setObjectName("puzzleSecondaryButton")
+        self._btn_library.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_library.clicked.connect(self.library_requested.emit)
+        tools.addWidget(self._btn_mistakes)
+        tools.addWidget(self._btn_library)
+        tools.addStretch(1)
+        layout.addLayout(tools)
+
+        self._collections_label = QLabel()
+        self._collections_label.setObjectName("puzzleSectionLabel")
+        layout.addWidget(self._collections_label)
+        self._collection_grid = QGridLayout()
+        self._collection_grid.setHorizontalSpacing(12)
+        self._collection_grid.setVerticalSpacing(12)
+        self._collection_grid.setColumnStretch(0, 1)
+        self._collection_grid.setColumnStretch(1, 1)
+        layout.addLayout(self._collection_grid)
+        self._empty_label = QLabel()
+        self._empty_label.setObjectName("puzzleEmptyLabel")
+        self._empty_label.setVisible(False)
+        layout.addWidget(self._empty_label)
+        layout.addStretch(1)
+        scroll.setWidget(inner)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        self.retranslate(self._language)
+
+    def set_summary(self, summary):
+        self._attempted.set_value(summary.get("unique_attempted", 0))
+        self._solved.set_value(summary.get("unique_solved", 0))
+        self._accuracy.set_value(f"{summary.get('accuracy', 0)}%")
+
+    def set_collections(self, collections, language):
+        self._language = language
+        while self._collection_grid.count():
+            item = self._collection_grid.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+        self._cards = []
+        visible = [collection for collection in collections if not collection.favorite]
+        for index, collection in enumerate(visible):
+            card = _CollectionCard(collection, language)
+            card.clicked_id.connect(self.collection_requested.emit)
+            self._cards.append(card)
+            self._collection_grid.addWidget(card, index // 2, index % 2)
+        self._empty_label.setVisible(not visible)
+
+    def retranslate(self, language):
+        self._language = language
+        self._title.setText(t("nav_puzzle", language))
+        self._subtitle.setText(t("puzzle_home_subtitle", language))
+        self._btn_profile.setText(t("puzzle_home_profile", language))
+        self._hero_title.setText(t("puzzle_home_train_title", language))
+        self._hero_text.setText(t("puzzle_home_train_subtitle", language))
+        self._btn_train.setText(t("puzzle_home_train", language))
+        self._tools_label.setText(t("puzzle_home_tools", language))
+        self._btn_mistakes.setText(t("puzzle_home_mistakes", language))
+        self._btn_library.setText(t("puzzle_home_library", language))
+        self._collections_label.setText(t("puzzle_home_collections", language))
+        self._empty_label.setText(t("puzzle_home_no_collections", language))
+        for card in self._cards:
+            card.retranslate(language)
+        for card in (self._attempted, self._solved, self._accuracy):
+            card.retranslate(language)
+
+
+class _TrainView(QWidget):
+    back_requested = Signal()
+    hint_requested = Signal()
+    retry_requested = Signal()
+    favorite_requested = Signal()
+    reveal_requested = Signal()
+    next_requested = Signal()
+    profile_requested = Signal()
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._language = "zh-CN"
+        self._theme = LIGHT
+        self._favorited = False
+        self.setObjectName("puzzleTrain")
+
+        self._btn_back = QPushButton()
+        self._btn_back.setObjectName("puzzleGhostButton")
+        self._btn_back.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_back.clicked.connect(self.back_requested.emit)
+        self._mode_label = QLabel()
+        self._mode_label.setObjectName("puzzleModeLabel")
+        self._counter_label = QLabel()
+        self._counter_label.setObjectName("puzzleCounterLabel")
+        top = QHBoxLayout()
+        top.setSpacing(10)
+        top.addWidget(self._btn_back)
+        top.addWidget(self._mode_label)
+        top.addStretch(1)
+        top.addWidget(self._counter_label)
+
+        self._prompt = QLabel()
+        self._prompt.setObjectName("puzzlePrompt")
+        self._prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._prompt.setWordWrap(True)
+
+        self.board = BoardWidget()
+        self.board.set_navigation_visible(False)
+        self.board.setMinimumWidth(360)
+        self.board.setMaximumWidth(600)
+        self.board.setSizePolicy(
+            QSizePolicy.Policy.Expanding,
+            QSizePolicy.Policy.Expanding,
+        )
+        board_row = QHBoxLayout()
+        board_row.setContentsMargins(0, 0, 0, 0)
+        board_row.addStretch(1)
+        board_row.addWidget(self.board, 6)
+        board_row.addStretch(1)
+
+        self._result_panel = QFrame()
+        self._result_panel.setObjectName("puzzleResultPanel")
+        self._result_panel.setVisible(False)
+        self._result_title = QLabel()
+        self._result_title.setObjectName("puzzleResultTitle")
+        self._result_detail = QLabel()
+        self._result_detail.setObjectName("puzzleResultDetail")
+        self._result_detail.setWordWrap(True)
+        self._result_solution = QLabel()
+        self._result_solution.setObjectName("puzzleSolution")
+        self._result_solution.setWordWrap(True)
+        self._result_solution.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self._btn_result_retry = QPushButton()
+        self._btn_result_retry.setObjectName("puzzleSecondaryButton")
+        self._btn_result_retry.clicked.connect(self.retry_requested.emit)
+        self._btn_result_favorite = QPushButton()
+        self._btn_result_favorite.setObjectName("puzzleSecondaryButton")
+        self._btn_result_favorite.clicked.connect(self.favorite_requested.emit)
+        self._btn_result_profile = QPushButton()
+        self._btn_result_profile.setObjectName("puzzleSecondaryButton")
+        self._btn_result_profile.clicked.connect(self.profile_requested.emit)
+        self._btn_next = QPushButton()
+        self._btn_next.setObjectName("puzzlePrimaryButton")
+        self._btn_next.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_next.clicked.connect(self.next_requested.emit)
+        result_buttons = QHBoxLayout()
+        result_buttons.setSpacing(8)
+        result_buttons.addWidget(self._btn_result_retry)
+        result_buttons.addWidget(self._btn_result_favorite)
+        result_buttons.addWidget(self._btn_result_profile)
+        result_buttons.addStretch(1)
+        result_buttons.addWidget(self._btn_next)
+        result_layout = QVBoxLayout(self._result_panel)
+        result_layout.setContentsMargins(16, 12, 16, 12)
+        result_layout.setSpacing(5)
+        result_layout.addWidget(self._result_title)
+        result_layout.addWidget(self._result_detail)
+        result_layout.addWidget(self._result_solution)
+        result_layout.addLayout(result_buttons)
+
+        self._btn_hint = QPushButton()
+        self._btn_hint.setObjectName("puzzleSecondaryButton")
+        self._btn_hint.clicked.connect(self.hint_requested.emit)
+        self._btn_reveal = QPushButton()
+        self._btn_reveal.setObjectName("puzzleSecondaryButton")
+        self._btn_reveal.clicked.connect(self.reveal_requested.emit)
+        self._btn_favorite = QPushButton()
+        self._btn_favorite.setObjectName("puzzleSecondaryButton")
+        self._btn_favorite.clicked.connect(self.favorite_requested.emit)
+        bottom = QHBoxLayout()
+        bottom.setSpacing(8)
+        bottom.addWidget(self._btn_hint)
+        bottom.addWidget(self._btn_reveal)
+        bottom.addStretch(1)
+        bottom.addWidget(self._btn_favorite)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(24, 16, 24, 18)
+        layout.setSpacing(10)
+        layout.addLayout(top)
+        layout.addWidget(self._prompt)
+        layout.addLayout(board_row, 1)
+        layout.addWidget(self._result_panel)
+        layout.addLayout(bottom)
+
+    def set_session_info(self, mode, index, total, human_color):
+        self._mode_label.setText(mode)
+        self._counter_label.setText(
+            t(
+                "puzzle_train_progress",
+                self._language,
+                index=index + 1,
+                total=total,
+            )
+        )
+        color = t(
+            "puzzle_side_white" if human_color == chess.WHITE else "puzzle_side_black",
+            self._language,
+        )
+        self._prompt.setText(t("puzzle_train_your_turn", self._language, color=color))
+
+    def set_prompt(self, text):
+        self._prompt.setText(text)
+
+    def set_solving(self, solving):
+        self._btn_hint.setEnabled(solving)
+        self._btn_reveal.setEnabled(solving)
+        self._btn_favorite.setEnabled(True)
+
+    def show_result(self, state, title, detail, solution=""):
+        self._result_title.setText(title)
+        self._result_detail.setText(detail)
+        self._result_solution.setText(solution)
+        self._result_solution.setVisible(bool(solution))
+        self._result_panel.setProperty("state", state)
+        self._result_panel.style().unpolish(self._result_panel)
+        self._result_panel.style().polish(self._result_panel)
+        self._result_panel.setVisible(True)
+        self._btn_hint.setEnabled(False)
+        self._btn_reveal.setEnabled(False)
+
+    def hide_result(self):
+        self._result_panel.setVisible(False)
+        self._result_panel.setProperty("state", "")
+        self._result_solution.clear()
+        self.set_solving(True)
+
+    def set_next_enabled(self, enabled):
+        self._btn_next.setEnabled(enabled)
+
+    def set_favorite(self, favorited):
+        self._favorited = bool(favorited)
+        self._btn_favorite.setText(
+            t("puzzle_unfavorite" if favorited else "puzzle_favorite", self._language)
+        )
+        self._btn_result_favorite.setText(self._btn_favorite.text())
+        icon = "star_filled" if favorited else "star"
+        self._btn_favorite.setIcon(action_icon(self._theme, icon))
+        self._btn_result_favorite.setIcon(action_icon(self._theme, icon))
+
+    def apply_icons(self, theme):
+        self._theme = theme
+        for button, name in (
+            (self._btn_back, "nav_prev"),
+            (self._btn_hint, "hint"),
+            (self._btn_reveal, "review_best"),
+            (self._btn_result_retry, "reset"),
+        ):
+            button.setIcon(action_icon(theme, name))
+            button.setIconSize(QSize(16, 16))
+        self.set_favorite(self._favorited)
+
+    def retranslate(self, language):
+        self._language = language
+        self._btn_back.setText(t("puzzle_train_back", language))
+        self._btn_hint.setText(t("puzzle_train_hint", language))
+        self._btn_reveal.setText(t("puzzle_train_reveal", language))
+        self._btn_result_retry.setText(t("puzzle_train_retry", language))
+        self._btn_result_profile.setText(t("puzzle_home_profile", language))
+        self._btn_next.setText(t("puzzle_train_next", language))
+        self._btn_favorite.setText(t("puzzle_favorite", language))
+        self._btn_result_favorite.setText(t("puzzle_favorite", language))
+        self.set_favorite(self._favorited)
+
+    def set_theme(self, theme):
+        self.board.set_theme(theme)
+        self.apply_icons(theme)
+
+    def set_piece_set(self, name):
+        self.board.set_piece_set(name)
+
+    def set_board_theme(self, name):
+        self.board.set_board_theme(name)
+
+    def set_sound_enabled(self, enabled):
+        self.board.set_sound_enabled(enabled)
+
+    def set_sound_set(self, name):
+        self.board.set_sound_set(name)
+
+
+class _LibraryView(QWidget):
+    back_requested = Signal()
+    import_requested = Signal()
+    delete_requested = Signal(str)
+    start_requested = Signal(str)
+    prev_requested = Signal()
+    next_requested = Signal()
+    jump_requested = Signal(int)
+    selection_changed = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._language = "zh-CN"
+        self._collections = []
+        self.setObjectName("puzzleLibrary")
+
+        self._btn_back = QPushButton()
+        self._btn_back.setObjectName("puzzleGhostButton")
+        self._btn_back.clicked.connect(self.back_requested.emit)
+        self._title = QLabel()
+        self._title.setObjectName("puzzleHeaderTitle")
+        self._btn_import = QPushButton()
+        self._btn_import.setObjectName("puzzleSecondaryButton")
+        self._btn_import.clicked.connect(self.import_requested.emit)
+        self._btn_delete = QPushButton()
+        self._btn_delete.setObjectName("puzzleSecondaryButton")
+        self._btn_delete.clicked.connect(self._emit_delete)
+        header = QHBoxLayout()
+        header.setSpacing(8)
+        header.addWidget(self._btn_back)
+        header.addWidget(self._title)
+        header.addStretch(1)
+        header.addWidget(self._btn_import)
+        header.addWidget(self._btn_delete)
+
+        self._info = QLabel()
+        self._info.setObjectName("puzzleLibraryInfo")
+        self._info.setWordWrap(True)
+        self._list = QListWidget()
+        self._list.setObjectName("puzzleLibraryList")
+        self._list.currentRowChanged.connect(self._on_row_changed)
+
+        self._btn_prev = QPushButton()
+        self._btn_prev.clicked.connect(self.prev_requested.emit)
+        self._jump_edit = QLineEdit()
+        self._jump_edit.setFixedWidth(52)
+        self._jump_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._jump_edit.returnPressed.connect(self._emit_jump)
+        self._jump_total = QLabel()
+        self._jump_total.setObjectName("puzzleCounterLabel")
+        self._btn_jump = QPushButton()
+        self._btn_jump.clicked.connect(self._emit_jump)
+        self._btn_next = QPushButton()
+        self._btn_next.clicked.connect(self.next_requested.emit)
+        nav = QHBoxLayout()
+        nav.setSpacing(6)
+        nav.addWidget(self._btn_prev)
+        nav.addWidget(self._jump_edit)
+        nav.addWidget(self._jump_total)
+        nav.addWidget(self._btn_jump)
+        nav.addWidget(self._btn_next)
+        nav.addStretch(1)
+
+        self._btn_start = QPushButton()
+        self._btn_start.setObjectName("puzzlePrimaryButton")
+        self._btn_start.clicked.connect(self._emit_start)
+        self._status = QLabel()
+        self._status.setObjectName("puzzleLibraryStatus")
+        self._status.setWordWrap(True)
+        bottom = QHBoxLayout()
+        bottom.addWidget(self._status, 1)
+        bottom.addWidget(self._btn_start)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 24, 32, 28)
+        layout.setSpacing(12)
+        layout.addLayout(header)
+        layout.addWidget(self._info)
+        layout.addWidget(self._list, 1)
+        layout.addLayout(nav)
+        layout.addLayout(bottom)
+        self.retranslate(self._language)
+        self.set_current(None, 0)
+
+    def set_collections(self, collections, current_id=None):
+        self._collections = list(collections)
+        self._list.blockSignals(True)
+        self._list.clear()
+        for collection in collections:
+            name = _collection_name(collection, self._language)
+            item = QListWidgetItem(f"{name} ({collection.count})")
+            item.setData(Qt.ItemDataRole.UserRole, collection.id)
+            self._list.addItem(item)
+        self._list.blockSignals(False)
+        if current_id is not None:
+            for row in range(self._list.count()):
+                item = self._list.item(row)
+                if item.data(Qt.ItemDataRole.UserRole) == current_id:
+                    self._list.setCurrentRow(row)
+                    return
+
+    def set_current(self, collection, index):
+        has_collection = collection is not None
+        self._btn_delete.setEnabled(
+            has_collection and not collection.favorite and collection.id != FAVORITES_ID
+        )
+        self._btn_start.setEnabled(has_collection and collection.count > 0)
+        self._btn_prev.setEnabled(has_collection)
+        self._btn_next.setEnabled(has_collection)
+        self._btn_jump.setEnabled(has_collection)
+        self._jump_edit.setEnabled(has_collection)
+        if not has_collection:
+            self._info.setText(t("puzzle_library_select", self._language))
+            self._jump_edit.clear()
+            self._jump_total.clear()
+            return
+        self._info.setText(
+            t(
+                "puzzle_info",
+                self._language,
+                name=_collection_name(collection, self._language),
+                solved=len(solved_indices(collection.id)),
+                total=collection.count,
+            )
+        )
+        self._jump_edit.setText(str(index + 1) if collection.count else "")
+        self._jump_total.setText(f"/{collection.count}")
+        self._btn_prev.setEnabled(index > 0)
+        self._btn_next.setEnabled(collection.count > 0 and index + 1 < collection.count)
+
+    def set_status(self, text):
+        self._status.setText(text)
+        self._status.setVisible(bool(text))
+
+    def set_import_enabled(self, enabled):
+        self._btn_import.setEnabled(enabled)
+
+    def select_row(self, collection_id):
+        for row in range(self._list.count()):
+            item = self._list.item(row)
+            if item.data(Qt.ItemDataRole.UserRole) == collection_id:
+                self._list.setCurrentRow(row)
+                return
+
+    def _current_id(self):
+        item = self._list.currentItem()
+        return item.data(Qt.ItemDataRole.UserRole) if item else ""
+
+    def _on_row_changed(self, row):
+        item = self._list.item(row) if row >= 0 else None
+        if item is not None:
+            self.selection_changed.emit(item.data(Qt.ItemDataRole.UserRole))
+
+    def _emit_delete(self):
+        collection_id = self._current_id()
+        if collection_id:
+            self.delete_requested.emit(collection_id)
+
+    def _emit_start(self):
+        collection_id = self._current_id()
+        if collection_id:
+            self.start_requested.emit(collection_id)
+
+    def _emit_jump(self):
+        try:
+            value = int(self._jump_edit.text().strip())
+        except ValueError:
+            return
+        self.jump_requested.emit(value)
+
+    def apply_icons(self, theme):
+        for button, name in (
+            (self._btn_back, "nav_prev"),
+            (self._btn_import, "import"),
+            (self._btn_delete, "trash"),
+            (self._btn_prev, "nav_prev"),
+            (self._btn_next, "nav_next"),
+        ):
+            button.setIcon(action_icon(theme, name))
+            button.setIconSize(QSize(16, 16))
+
+    def retranslate(self, language):
+        self._language = language
+        self._btn_back.setText(t("puzzle_train_back", language))
+        self._title.setText(t("puzzle_library_title", language))
+        self._btn_import.setText(t("puzzle_import", language))
+        self._btn_delete.setText(t("puzzle_delete", language))
+        self._btn_prev.setText(t("puzzle_prev", language))
+        self._btn_next.setText(t("puzzle_next", language))
+        self._btn_jump.setText(t("puzzle_jump", language))
+        self._btn_start.setText(t("puzzle_library_start", language))
+        self._jump_edit.setAccessibleName(t("puzzle_jump_tip", language))
+
+
+class _ProfileView(QWidget):
+    back_requested = Signal()
+    range_changed = Signal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._language = "zh-CN"
+        self._summary = {}
+
+        scroll = QScrollArea()
+        scroll.setObjectName("puzzleScroll")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        inner = QWidget()
+        inner.setObjectName("puzzleProfile")
+        layout = QVBoxLayout(inner)
+        layout.setContentsMargins(32, 24, 32, 32)
+        layout.setSpacing(16)
+
+        self._btn_back = QPushButton()
+        self._btn_back.setObjectName("puzzleGhostButton")
+        self._btn_back.clicked.connect(self.back_requested.emit)
+        self._title = QLabel()
+        self._title.setObjectName("puzzleHeaderTitle")
+        self._range = QComboBox()
+        self._range.setObjectName("puzzleRange")
+        for days in (7, 30, 90, 0):
+            self._range.addItem("", days)
+        self._range.setCurrentIndex(1)
+        self._range.currentIndexChanged.connect(
+            lambda _index: self.range_changed.emit(int(self._range.currentData()))
+        )
+        header = QHBoxLayout()
+        header.setSpacing(8)
+        header.addWidget(self._btn_back)
+        header.addWidget(self._title)
+        header.addStretch(1)
+        header.addWidget(self._range)
+        layout.addLayout(header)
+
+        first = QHBoxLayout()
+        first.setSpacing(10)
+        self._attempted = _StatCard("puzzle_profile_attempts")
+        self._solved = _StatCard("puzzle_profile_solved")
+        self._accuracy = _StatCard("puzzle_profile_accuracy")
+        self._streak = _StatCard("puzzle_profile_streak")
+        for card in (self._attempted, self._solved, self._accuracy, self._streak):
+            first.addWidget(card, 1)
+        layout.addLayout(first)
+
+        second = QHBoxLayout()
+        second.setSpacing(10)
+        self._solved_avg = _StatCard("puzzle_profile_solved_avg")
+        self._failed_avg = _StatCard("puzzle_profile_failed_avg")
+        self._retryable = _StatCard("puzzle_profile_retryable")
+        self._active_days = _StatCard("puzzle_profile_active_days")
+        for card in (self._solved_avg, self._failed_avg, self._retryable, self._active_days):
+            second.addWidget(card, 1)
+        layout.addLayout(second)
+
+        self._themes_label = QLabel()
+        self._themes_label.setObjectName("puzzleSectionLabel")
+        layout.addWidget(self._themes_label)
+        self._themes_box = QFrame()
+        self._themes_box.setObjectName("puzzleThemeBox")
+        self._themes_layout = QVBoxLayout(self._themes_box)
+        self._themes_layout.setContentsMargins(14, 12, 14, 12)
+        self._themes_layout.setSpacing(8)
+        layout.addWidget(self._themes_box)
+        self._empty_themes = QLabel()
+        self._empty_themes.setObjectName("puzzleEmptyLabel")
+        layout.addWidget(self._empty_themes)
+
+        self._recent_label = QLabel()
+        self._recent_label.setObjectName("puzzleSectionLabel")
+        layout.addWidget(self._recent_label)
+        self._recent = QListWidget()
+        self._recent.setObjectName("puzzleRecentList")
+        self._recent.setMinimumHeight(180)
+        layout.addWidget(self._recent)
+        self._empty = QLabel()
+        self._empty.setObjectName("puzzleEmptyLabel")
+        self._empty.setWordWrap(True)
+        layout.addWidget(self._empty)
+        layout.addStretch(1)
+        scroll.setWidget(inner)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(scroll)
+        self.retranslate(self._language)
+        self.refresh({}, self._language)
+
+    def set_range(self, days):
+        for index in range(self._range.count()):
+            if int(self._range.itemData(index)) == days:
+                self._range.blockSignals(True)
+                self._range.setCurrentIndex(index)
+                self._range.blockSignals(False)
+                return
+
+    def refresh(self, summary, language):
+        self._language = language
+        self._summary = summary
+        self._attempted.set_value(summary.get("attempts", 0))
+        self._solved.set_value(summary.get("unique_solved", 0))
+        self._accuracy.set_value(f"{summary.get('accuracy', 0)}%")
+        self._streak.set_value(summary.get("streak", 0))
+        self._solved_avg.set_value(summary.get("solved_avg_rating"))
+        self._failed_avg.set_value(summary.get("failed_avg_rating"))
+        self._retryable.set_value(summary.get("retryable", 0))
+        self._active_days.set_value(summary.get("active_days", 0))
+        self._rebuild_themes(summary.get("themes") or [])
+        self._rebuild_recent(summary.get("recent") or [])
+        has_data = bool(summary.get("attempts"))
+        self._empty.setVisible(not has_data)
+        self._themes_box.setVisible(bool(summary.get("themes")))
+        self._empty_themes.setVisible(has_data and not summary.get("themes"))
+
+    def _clear_theme_rows(self):
+        while self._themes_layout.count():
+            item = self._themes_layout.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _rebuild_themes(self, themes):
+        self._clear_theme_rows()
+        for row in themes:
+            widget = QWidget()
+            layout = QVBoxLayout(widget)
+            layout.setContentsMargins(0, 0, 0, 0)
+            layout.setSpacing(3)
+            label = QLabel(
+                t(
+                    "puzzle_profile_theme_row",
+                    self._language,
+                    theme=row["theme"],
+                    attempts=row["attempts"],
+                    accuracy=row["accuracy"],
+                )
+            )
+            label.setObjectName("puzzleThemeLabel")
+            bar = QProgressBar()
+            bar.setObjectName("puzzleThemeBar")
+            bar.setRange(0, 100)
+            bar.setValue(row["accuracy"])
+            bar.setTextVisible(False)
+            bar.setFixedHeight(6)
+            layout.addWidget(label)
+            layout.addWidget(bar)
+            self._themes_layout.addWidget(widget)
+
+    def _rebuild_recent(self, recent):
+        self._recent.clear()
+        for entry in recent:
+            date = str(entry.get("created_at", ""))[:16].replace("T", " ")
+            rating = entry.get("rating")
+            rating_text = str(rating) if rating else "—"
+            result = t(
+                "puzzle_profile_result_solved"
+                if entry.get("result") == "solved"
+                else "puzzle_profile_result_failed",
+                self._language,
+            )
+            themes = ", ".join(entry.get("themes") or []) or "—"
+            text = t(
+                "puzzle_profile_recent_row",
+                self._language,
+                date=date,
+                rating=rating_text,
+                result=result,
+                themes=themes,
+            )
+            item = QListWidgetItem(text)
+            item.setFlags(Qt.ItemFlag.NoItemFlags)
+            self._recent.addItem(item)
+
+    def retranslate(self, language):
+        self._language = language
+        self._btn_back.setText(t("puzzle_train_back", language))
+        self._title.setText(t("puzzle_profile_title", language))
+        self._range.setItemText(0, t("puzzle_profile_range_7", language))
+        self._range.setItemText(1, t("puzzle_profile_range_30", language))
+        self._range.setItemText(2, t("puzzle_profile_range_90", language))
+        self._range.setItemText(3, t("puzzle_profile_range_all", language))
+        self._themes_label.setText(t("puzzle_profile_themes", language))
+        self._recent_label.setText(t("puzzle_profile_recent", language))
+        self._empty.setText(t("puzzle_profile_empty", language))
+        self._empty_themes.setText(t("puzzle_profile_no_themes", language))
+        for card in (
+            self._attempted,
+            self._solved,
+            self._accuracy,
+            self._streak,
+            self._solved_avg,
+            self._failed_avg,
+            self._retryable,
+            self._active_days,
+        ):
+            card.retranslate(language)
+        if self._summary:
+            self.refresh(self._summary, language)
+
+    def apply_icons(self, theme):
+        self._btn_back.setIcon(action_icon(theme, "nav_prev"))
+        self._btn_back.setIconSize(QSize(16, 16))
+
+
 class PuzzlePage(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._language = "zh-CN"
         self._theme = LIGHT
         self._collections = []
-        self._info_items = []
         self._solved = set()
         self._collection = None
         self._index = 0
@@ -49,182 +886,151 @@ class PuzzlePage(QWidget):
         self._session = None
         self._import_worker = None
         self._favorite_keys = set()
+        self._attempt_recorded = False
+        self._hinted = False
+        self._started_at = 0.0
+        self._last_duration_ms = 0
+        self._revealing = False
+        self._train_origin = "hub"
+        self._library_collection = None
+        self._library_index = 0
+        self._profile_days = 30
 
-        self.board = BoardWidget()
-        self.board.set_navigation_visible(False)
-        self.board.move_requested.connect(self._on_move_requested)
-
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.board)
-        splitter.addWidget(self._build_panel())
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([532, 390])
+        self._hub = _HubView(self)
+        self._train = _TrainView(self)
+        self._library = _LibraryView(self)
+        self._profile = _ProfileView(self)
+        self._stack = QStackedWidget(self)
+        for view in (self._hub, self._train, self._library, self._profile):
+            self._stack.addWidget(view)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(splitter)
+        layout.addWidget(self._stack)
+
+        self._train.board.move_requested.connect(self._on_move_requested)
+        self._hub.train_requested.connect(self._start_training)
+        self._hub.mistakes_requested.connect(self._start_mistakes)
+        self._hub.library_requested.connect(self.show_library)
+        self._hub.profile_requested.connect(self.show_profile)
+        self._hub.collection_requested.connect(self._start_collection)
+        self._train.back_requested.connect(self._back_from_train)
+        self._train.hint_requested.connect(self._show_hint)
+        self._train.retry_requested.connect(self._retry)
+        self._train.favorite_requested.connect(self._toggle_favorite)
+        self._train.reveal_requested.connect(self._reveal_solution)
+        self._train.next_requested.connect(self._next)
+        self._train.profile_requested.connect(self.show_profile)
+        self._library.back_requested.connect(self.show_hub)
+        self._library.import_requested.connect(self._choose_file)
+        self._library.delete_requested.connect(self._delete_collection)
+        self._library.start_requested.connect(self._start_collection)
+        self._library.prev_requested.connect(lambda: self._browse(-1))
+        self._library.next_requested.connect(lambda: self._browse(1))
+        self._library.jump_requested.connect(self._jump)
+        self._library.selection_changed.connect(self._select_collection)
+        self._profile.back_requested.connect(self.show_hub)
+        self._profile.range_changed.connect(self._set_profile_range)
 
         self._apply_icons()
         self.retranslate(self._language)
         self.refresh_collections()
+        self.show_hub()
 
     def _apply_icons(self):
-        for button, name in (
-            (self._btn_import, "import"),
-            (self._btn_delete, "trash"),
-            (self._btn_prev, "nav_prev"),
-            (self._btn_next, "nav_next"),
-            (self._btn_hint, "hint"),
-            (self._btn_retry, "reset"),
-        ):
-            button.setIcon(action_icon(self._theme, name))
-            button.setIconSize(QSize(16, 16))
-        self._update_favorite_button()
+        self._train.apply_icons(self._theme)
+        self._library.apply_icons(self._theme)
+        self._profile.apply_icons(self._theme)
 
-    def _build_panel(self):
-        panel = QWidget()
-        layout = QVBoxLayout(panel)
-
-        self._status_label = QLabel()
-        self._status_label.setWordWrap(True)
-        status_font = self._status_label.font()
-        status_font.setBold(True)
-        self._status_label.setFont(status_font)
-
-        self._collections_label = QLabel()
-        self._collection_list = QListWidget()
-        self._collection_list.currentRowChanged.connect(self._on_collection_selected)
-
-        self._btn_import = QPushButton()
-        self._btn_import.clicked.connect(self._choose_file)
-        self._btn_delete = QPushButton()
-        self._btn_delete.clicked.connect(self._delete_current)
-
-        self._btn_prev = QPushButton()
-        self._btn_prev.clicked.connect(self._prev)
-        self._btn_next = QPushButton()
-        self._btn_next.clicked.connect(self._next)
-
-        self._btn_hint = QPushButton()
-        self._btn_hint.clicked.connect(self._show_hint)
-        self._btn_favorite = QPushButton()
-        self._btn_favorite.clicked.connect(self._toggle_favorite)
-        self._btn_retry = QPushButton()
-        self._btn_retry.clicked.connect(self._retry)
-
-        self._jump_edit = QLineEdit()
-        self._jump_edit.setFixedWidth(48)
-        self._jump_edit.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._jump_edit.returnPressed.connect(self._on_jump)
-        self._jump_total = QLabel()
-        self._jump_total.setObjectName("mutedLabel")
-        self._btn_jump = QPushButton()
-        self._btn_jump.clicked.connect(self._on_jump)
-
-        jump_box = QWidget()
-        jump_layout = QHBoxLayout(jump_box)
-        jump_layout.setContentsMargins(0, 0, 0, 0)
-        jump_layout.setSpacing(4)
-        jump_layout.addWidget(self._jump_edit)
-        jump_layout.addWidget(self._jump_total)
-        jump_layout.addWidget(self._btn_jump)
-        self._jump_box = jump_box
-
-        solve_box = QWidget()
-        solve_layout = QHBoxLayout(solve_box)
-        solve_layout.setContentsMargins(0, 0, 0, 0)
-        solve_layout.addWidget(self._btn_hint)
-        solve_layout.addWidget(self._btn_retry)
-        solve_layout.addWidget(self._btn_favorite)
-        self._solve_box = solve_box
-
-        collection_row = QHBoxLayout()
-        collection_row.addWidget(self._btn_import)
-        collection_row.addWidget(self._btn_delete)
-
-        nav_row = QHBoxLayout()
-        nav_row.addWidget(self._btn_prev, 1)
-        nav_row.addWidget(jump_box)
-        nav_row.addWidget(self._btn_next, 1)
-
-        layout.addWidget(self._status_label)
-        layout.addWidget(self._collections_label)
-        layout.addLayout(collection_row)
-        layout.addWidget(self._collection_list, 1)
-        layout.addLayout(nav_row)
-        layout.addWidget(solve_box)
-        self.panel = panel
-        return panel
+    def _find_collection(self, collection_id):
+        for collection in self._collections:
+            if collection.id == collection_id:
+                return collection
+        return None
 
     def refresh_collections(self, select_id=None):
         self._collections = [PuzzleCollection(meta) for meta in list_collections()]
-        self._clear_info_items()
-        self._collection_list.blockSignals(True)
-        self._collection_list.clear()
-        for collection in self._collections:
-            item = QListWidgetItem(f"{self._display_name(collection)} ({collection.count})")
-            item.setData(Qt.ItemDataRole.UserRole, collection.id)
-            self._collection_list.addItem(item)
-        self._collection_list.setCurrentRow(-1)
-        self._collection_list.blockSignals(False)
-
-        self._collection = None
-        self._solved = set()
-        self._puzzle = None
-        self._session = None
-        self._index = 0
         self._favorite_keys = favorite_keys()
-        self.board.clear()
-        self.board.set_navigation_visible(False)
-
-        if any(not collection.favorite for collection in self._collections):
-            self._set_status("")
-        else:
-            self._set_status(t("puzzle_empty", self._language))
+        self._hub.set_collections(self._collections, self._language)
+        self._library.set_collections(self._collections, select_id)
         if select_id:
-            for row in range(self._collection_list.count()):
-                item = self._collection_list.item(row)
-                if item.data(Qt.ItemDataRole.UserRole) == select_id:
-                    self._collection_list.setCurrentRow(row)
-                    break
-        self._update_controls()
+            self._library.select_row(select_id)
+        self._refresh_library()
 
-    def _on_collection_selected(self, row):
-        item = self._collection_list.item(row)
-        collection_id = item.data(Qt.ItemDataRole.UserRole) if item else None
-        if collection_id is None:
-            self._collection = None
-            self._solved = set()
-            self._puzzle = None
-            self._session = None
-            self._index = 0
-            self._clear_info_items()
-            self.board.clear()
-            self.board.set_navigation_visible(False)
-            self._update_controls()
-            return
+    def show_hub(self):
+        self.refresh_collections()
+        self._hub.set_summary(attempt_summary())
+        self._stack.setCurrentWidget(self._hub)
+
+    def show_library(self):
+        self.refresh_collections()
+        if self._library_collection is None and self._collections:
+            candidates = [item for item in self._collections if item.count > 0]
+            self._select_collection((candidates or self._collections)[0].id)
+        self._stack.setCurrentWidget(self._library)
+
+    def show_profile(self):
+        self._profile.set_range(self._profile_days)
+        self._profile.refresh(self._profile_summary(), self._language)
+        self._stack.setCurrentWidget(self._profile)
+
+    def _profile_summary(self):
+        return attempt_summary(days=self._profile_days or None)
+
+    def _set_profile_range(self, days):
+        self._profile_days = int(days)
+        self._profile.refresh(self._profile_summary(), self._language)
+
+    def _start_training(self):
+        preferred = None
         for collection in self._collections:
-            if collection.id == collection_id:
-                self._load_collection(collection)
-                return
+            if collection.favorite or collection.count == 0:
+                continue
+            if collection.builtin:
+                preferred = collection
+                break
+            if preferred is None:
+                preferred = collection
+        if preferred is None:
+            for collection in self._collections:
+                if collection.favorite and collection.count:
+                    preferred = collection
+                    break
+        if preferred is None:
+            self.show_library()
+            self._library.set_status(t("puzzle_empty", self._language))
+            return
+        self._start_collection(preferred.id)
 
-    def _load_collection(self, collection):
+    def _start_mistakes(self):
+        collection = self._find_collection(FAVORITES_ID)
+        if collection is None or collection.count == 0:
+            QMessageBox.information(
+                self,
+                t("puzzle_home_mistakes", self._language),
+                t("puzzle_favorites_empty", self._language),
+            )
+            return
+        self._start_collection(FAVORITES_ID)
+
+    def _start_collection(self, collection_id, index=None):
+        collection = self._find_collection(collection_id)
+        if collection is None:
+            return
+        if collection.count == 0:
+            self.show_library()
+            self._library.set_status(t("puzzle_status_bad_data", self._language))
+            return
+        from_library = self._stack.currentWidget() is self._library
         self._collection = collection
         self._solved = solved_indices(collection.id)
-        self.board.set_navigation_visible(False)
-        if collection.count == 0:
-            self._puzzle = None
-            self._session = None
-            self._index = 0
-            self.board.clear()
-            self._set_status(
-                "" if collection.favorite else t("puzzle_status_bad_data", self._language)
-            )
-            self._update_info()
-            self._update_controls()
-            return
-        self._load_puzzle(self._start_index())
+        self._train_origin = "library" if from_library else "hub"
+        if index is None:
+            target = self._library_index if from_library else self._start_index()
+        else:
+            target = index
+        self._load_puzzle(max(0, min(int(target), collection.count - 1)))
+        self._stack.setCurrentWidget(self._train)
 
     def _start_index(self):
         if self._collection is None:
@@ -238,12 +1044,12 @@ class PuzzlePage(QWidget):
         if self._collection is None:
             return
         puzzle = self._collection.get(index)
+        self._reset_attempt_state()
         if puzzle is None:
             self._puzzle = None
             self._session = None
-            self._set_status(t("puzzle_status_bad_data", self._language))
-            self._update_info()
-            self._update_controls()
+            self._train.hide_result()
+            self._train.set_prompt(t("puzzle_status_bad_data", self._language))
             return
         try:
             session = PuzzleSession(
@@ -254,91 +1060,61 @@ class PuzzlePage(QWidget):
         except (ValueError, TypeError):
             self._puzzle = None
             self._session = None
-            self._set_status(t("puzzle_status_bad_data", self._language))
-            self._update_info()
-            self._update_controls()
+            self._train.hide_result()
+            self._train.set_prompt(t("puzzle_status_bad_data", self._language))
             return
         self._puzzle = puzzle
         self._session = session
         self._index = index
-        self.board.set_start_fen(puzzle.get("fen", ""))
-        self.board.set_interactive(True, session.human_color)
+        self._started_at = time.monotonic()
+        board = self._train.board
+        board.set_start_fen(puzzle.get("fen", ""))
+        board.set_interactive(True, session.human_color)
         self._sync_board(animate=False)
-        self._update_info()
-        self._update_controls()
-        if session.solved:
-            self._set_status(t("puzzle_status_solved", self._language))
-        else:
-            self._set_status("")
+        self._train.hide_result()
+        self._train.set_session_info(
+            _collection_name(self._collection, self._language),
+            index,
+            self._collection.count,
+            session.human_color,
+        )
+        self._train.set_next_enabled(True)
+        self._train.set_favorite(puzzle_key(puzzle) in self._favorite_keys)
+        self._library.set_current(self._library_collection, self._library_index)
+
+    def _reset_attempt_state(self):
+        self._attempt_recorded = False
+        self._hinted = False
+        self._revealing = False
+        self._last_duration_ms = 0
 
     def _sync_board(self, animate=False):
         if self._session is None:
-            self.board.clear()
+            self._train.board.clear()
             return
-        self.board.set_moves(self._session.applied_moves, animate=animate)
+        self._train.board.set_moves(self._session.applied_moves, animate=animate)
 
-    def _update_info(self):
-        self._clear_info_items()
-        if self._collection is None:
+    def _record_attempt(self, result):
+        if self._attempt_recorded or self._puzzle is None or self._collection is None:
             return
-        if self._puzzle is None:
-            if not (self._collection.favorite and self._collection.count == 0):
-                return
-            lines = [t("puzzle_favorites_empty", self._language)]
-        else:
-            lines = [
-                t(
-                    "puzzle_info",
-                    self._language,
-                    name=self._display_name(self._collection),
-                    solved=len(self._solved),
-                    total=self._collection.count,
-                )
-            ]
-            rating = self._puzzle.get("rating")
-            if rating:
-                lines.append(t("puzzle_rating", self._language, rating=rating))
-            themes = self._puzzle.get("themes") or []
-            if themes:
-                lines.append(t("puzzle_themes", self._language, themes=", ".join(themes)))
-        row = self._current_collection_row()
-        if row < 0:
-            return
-        self._collection_list.blockSignals(True)
-        for offset, line in enumerate(lines, start=1):
-            item = QListWidgetItem(line)
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            font = item.font()
-            font.setItalic(True)
-            item.setFont(font)
-            self._collection_list.insertItem(row + offset, item)
-            self._info_items.append(item)
-        self._collection_list.blockSignals(False)
-
-    def _clear_info_items(self):
-        self._collection_list.blockSignals(True)
-        for item in self._info_items:
-            row = self._collection_list.row(item)
-            if row >= 0:
-                self._collection_list.takeItem(row)
-        self._collection_list.blockSignals(False)
-        self._info_items = []
-
-    def _current_collection_row(self):
-        if self._collection is None:
-            return -1
-        for row in range(self._collection_list.count()):
-            item = self._collection_list.item(row)
-            if item.data(Qt.ItemDataRole.UserRole) == self._collection.id:
-                return row
-        return -1
+        self._attempt_recorded = True
+        self._last_duration_ms = int((time.monotonic() - self._started_at) * 1000)
+        record_attempt(
+            self._puzzle,
+            result,
+            source_id=self._collection.id,
+            duration_ms=self._last_duration_ms,
+            hinted=self._hinted,
+        )
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
-        if session is None or session.solved or not session.is_human_turn:
-            self.board.clear_selection()
+        if session is None or session.solved or not session.is_human_turn or self._revealing:
+            self._train.board.clear_selection()
             return
-
+        if self._attempt_recorded:
+            self._train.board.clear_selection()
+            return
         move = chess.Move(from_square, to_square)
         piece = session.board.piece_at(from_square)
         if (
@@ -346,42 +1122,71 @@ class PuzzlePage(QWidget):
             and piece.piece_type == chess.PAWN
             and chess.square_rank(to_square) in (0, 7)
         ):
-            promotion = self.board.promotion_choice(to_square, piece.color)
+            promotion = self._train.board.promotion_choice(to_square, piece.color)
             if promotion is None:
-                self.board.clear_selection()
+                self._train.board.clear_selection()
                 return
             move = chess.Move(from_square, to_square, promotion=promotion)
-
         if move not in session.board.legal_moves:
-            self.board.clear_selection()
+            self._train.board.clear_selection()
             return
-
         status = session.play(move)
-        self.board.clear_selection()
+        self._train.board.clear_selection()
         if status == "wrong":
+            self._record_attempt("failed")
             self._auto_favorite()
-            self._set_status(t("puzzle_status_wrong", self._language))
+            self._train.show_result(
+                "failed",
+                t("puzzle_train_failed_title", self._language),
+                t("puzzle_train_failed_detail", self._language),
+                self._solution_label(),
+            )
             return
-
         self._sync_board(animate=True)
-        self._update_controls()
         if session.solved:
-            self._mark_current_solved()
-            self._set_status(t("puzzle_status_solved", self._language))
+            self._finish_solved()
         else:
-            self._set_status(t("puzzle_status_correct", self._language))
             QTimer.singleShot(220, lambda s=session: self._play_reply(s))
 
     def _play_reply(self, session):
-        if session is not self._session or session.solved:
+        if session is not self._session or session.solved or self._revealing:
             return
         if session.opponent_reply() is None:
             return
         self._sync_board(animate=True)
         if session.solved:
-            self._mark_current_solved()
-            self._set_status(t("puzzle_status_solved", self._language))
-        self._update_controls()
+            self._finish_solved()
+
+    def _finish_solved(self):
+        self._record_attempt("solved")
+        self._mark_current_solved()
+        self._train.show_result(
+            "solved",
+            t("puzzle_train_solved_title", self._language),
+            self._solved_detail(),
+            self._solution_label(),
+        )
+        self._train.set_next_enabled(True)
+
+    def _solved_detail(self):
+        rating = self._puzzle.get("rating") if self._puzzle else None
+        seconds = max(1, round(self._last_duration_ms / 1000)) if self._last_duration_ms else 0
+        if rating:
+            return t(
+                "puzzle_train_solved_detail",
+                self._language,
+                rating=rating,
+                seconds=seconds,
+            )
+        return t("puzzle_train_solved_plain", self._language, seconds=seconds)
+
+    def _solution_label(self):
+        if not self._puzzle:
+            return ""
+        text = _solution_text(self._puzzle.get("fen", ""), self._puzzle.get("moves", []))
+        if not text:
+            return ""
+        return t("puzzle_train_solution", self._language, moves=text)
 
     def _show_hint(self):
         if self._session is None or self._session.solved:
@@ -389,78 +1194,144 @@ class PuzzlePage(QWidget):
         uci = self._session.expected_move
         if not uci:
             return
-        self.board.set_hint(uci)
-        self._set_status(t("puzzle_status_hint", self._language, move=uci))
+        self._hinted = True
+        self._train.board.set_hint(uci)
+        self._train.set_prompt(t("puzzle_status_hint", self._language, move=uci))
+
+    def _reveal_solution(self):
+        session = self._session
+        if session is None or session.solved or self._revealing:
+            return
+        self._revealing = True
+        self._record_attempt("failed")
+        self._train.set_solving(False)
+        self._auto_play_step(session)
+
+    def _auto_play_step(self, session):
+        if session is not self._session or self._revealing is False:
+            return
+        if session.solved:
+            self._train.show_result(
+                "revealed",
+                t("puzzle_train_revealed_title", self._language),
+                t("puzzle_train_revealed_detail", self._language),
+                self._solution_label(),
+            )
+            return
+        if session.is_human_turn:
+            expected = session.expected_move
+            if not expected:
+                return
+            try:
+                move = chess.Move.from_uci(expected)
+            except ValueError:
+                return
+            if session.play(move) == "wrong":
+                return
+        elif session.opponent_reply() is None:
+            return
+        self._sync_board(animate=True)
+        if session.solved:
+            self._train.show_result(
+                "revealed",
+                t("puzzle_train_revealed_title", self._language),
+                t("puzzle_train_revealed_detail", self._language),
+                self._solution_label(),
+            )
+            return
+        QTimer.singleShot(320, lambda s=session: self._auto_play_step(s))
+
+    def _retry(self):
+        if self._puzzle is not None:
+            self._load_puzzle(self._index)
+
+    def _next(self):
+        if self._collection is None:
+            self.show_hub()
+            return
+        if self._index + 1 < self._collection.count:
+            self._load_puzzle(self._index + 1)
+            return
+        if self._train_origin == "library":
+            self.show_library()
+        else:
+            self.show_hub()
+
+    def _back_from_train(self):
+        if self._train_origin == "library":
+            self.show_library()
+        else:
+            self.show_hub()
 
     def _toggle_favorite(self):
         if self._collection is None or self._puzzle is None:
             return
-        added = toggle_favorite(self._puzzle, source_id=self._collection.id)
+        current_id = self._collection.id
+        added = toggle_favorite(self._puzzle, source_id=current_id)
         self._favorite_keys = favorite_keys()
-        self._refresh_favorites_collection()
-        self._set_status(
-            t(
-                "puzzle_favorited" if added else "puzzle_unfavorited",
-                self._language,
-            )
-        )
-        if self._collection.favorite:
-            self._reload_favorites()
-        else:
-            self._update_controls()
+        self.refresh_collections()
+        fresh = self._find_collection(current_id)
+        if fresh is not None:
+            self._collection = fresh
+        self._train.set_favorite(added)
+        if self._collection is not None and self._collection.favorite and not added:
+            self._solved = solved_indices(self._collection.id)
+            if self._collection.count:
+                self._load_puzzle(min(self._index, self._collection.count - 1))
+            else:
+                self.show_hub()
 
     def _auto_favorite(self):
         if self._collection is None or self._puzzle is None:
             return
         if add_favorite(self._puzzle, source_id=self._collection.id):
             self._favorite_keys = favorite_keys()
-            self._refresh_favorites_collection()
-            self._update_controls()
+            self.refresh_collections()
+            self._train.set_favorite(True)
 
-    def _refresh_favorites_collection(self):
-        for index, collection in enumerate(self._collections):
-            if collection.id == FAVORITES_ID:
-                self._collections[index] = PuzzleCollection(favorites_collection())
-                break
-        for row in range(self._collection_list.count()):
-            item = self._collection_list.item(row)
-            if item.data(Qt.ItemDataRole.UserRole) != FAVORITES_ID:
-                continue
-            for collection in self._collections:
-                if collection.id == FAVORITES_ID:
-                    item.setText(f"{self._display_name(collection)} " f"({collection.count})")
+    def _mark_current_solved(self):
+        if self._collection is None or self._puzzle is None:
+            return
+        if self._index in self._solved:
+            return
+        self._solved.add(self._index)
+        mark_solved(self._collection.id, self._index)
+
+    def _select_collection(self, collection_id):
+        collection = self._find_collection(collection_id)
+        self._library_collection = collection
+        if collection is None:
+            self._library_index = 0
+        else:
+            solved = solved_indices(collection.id)
+            self._library_index = 0
+            for index in range(collection.count):
+                if index not in solved:
+                    self._library_index = index
                     break
-            break
+        self._refresh_library()
 
-    def _reload_favorites(self):
-        for collection in self._collections:
-            if collection.id == FAVORITES_ID:
-                self._load_collection(collection)
-                return
+    def _refresh_library(self):
+        if self._library_collection is not None:
+            current = self._find_collection(self._library_collection.id)
+            self._library_collection = current
+            if current is not None and current.count:
+                self._library_index = max(0, min(self._library_index, current.count - 1))
+        self._library.set_current(self._library_collection, self._library_index)
 
-    def _update_favorite_button(self):
-        favorited = self._puzzle is not None and puzzle_key(self._puzzle) in self._favorite_keys
-        self._btn_favorite.setText(
-            t(
-                "puzzle_unfavorite" if favorited else "puzzle_favorite",
-                self._language,
-            )
-        )
-        name = "star_filled" if favorited else "star"
-        self._btn_favorite.setIcon(action_icon(self._theme, name))
-        self._btn_favorite.setIconSize(QSize(16, 16))
+    def _browse(self, delta):
+        collection = self._library_collection
+        if collection is None or not collection.count:
+            return
+        self._library_index = max(0, min(self._library_index + delta, collection.count - 1))
+        self._refresh_library()
 
-    def _retry(self):
-        if self._puzzle is not None:
-            self._load_puzzle(self._index)
-
-    def _prev(self):
-        if self._collection is not None and self._index > 0:
-            self._load_puzzle(self._index - 1)
-
-    def _next(self):
-        if self._collection is not None and self._index + 1 < self._collection.count:
-            self._load_puzzle(self._index + 1)
+    def _jump(self, value):
+        collection = self._library_collection
+        if collection is None or not collection.count:
+            return
+        self._library_index = max(0, min(int(value) - 1, collection.count - 1))
+        self._refresh_library()
 
     def _choose_file(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -475,8 +1346,8 @@ class PuzzlePage(QWidget):
     def _start_import(self, path):
         if self._import_worker is not None and self._import_worker.isRunning():
             return
-        self._btn_import.setEnabled(False)
-        self._set_status(t("puzzle_status_loading", self._language))
+        self._library.set_import_enabled(False)
+        self._library.set_status(t("puzzle_status_loading", self._language))
         self._import_worker = PuzzleImportWorker(path, parent=self)
         self._import_worker.progress.connect(self._on_import_progress)
         self._import_worker.done.connect(self._on_import_done)
@@ -485,10 +1356,10 @@ class PuzzlePage(QWidget):
         self._import_worker.start()
 
     def _on_import_progress(self, count):
-        self._set_status(t("puzzle_status_importing", self._language, count=count))
+        self._library.set_status(t("puzzle_status_importing", self._language, count=count))
 
     def _on_import_done(self, meta):
-        self._set_status(
+        self._library.set_status(
             t(
                 "puzzle_status_imported",
                 self._language,
@@ -503,17 +1374,18 @@ class PuzzlePage(QWidget):
             message = t(key, self._language, error=detail)
         else:
             message = t(key, self._language)
-        self._set_status(message)
+        self._library.set_status(message)
 
     def _on_import_finished(self):
-        self._btn_import.setEnabled(True)
+        self._library.set_import_enabled(True)
         worker = self._import_worker
         self._import_worker = None
         if worker is not None:
             worker.deleteLater()
 
-    def _delete_current(self):
-        if self._collection is None:
+    def _delete_collection(self, collection_id):
+        collection = self._find_collection(collection_id)
+        if collection is None:
             return
         answer = QMessageBox.question(
             self,
@@ -521,136 +1393,74 @@ class PuzzlePage(QWidget):
             t(
                 "puzzle_delete_text",
                 self._language,
-                name=self._display_name(self._collection),
+                name=_collection_name(collection, self._language),
             ),
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
             QMessageBox.StandardButton.No,
         )
         if answer != QMessageBox.StandardButton.Yes:
             return
-        delete_collection(self._collection.id)
-        self._collection = None
-        self._puzzle = None
-        self._session = None
+        delete_collection(collection_id)
+        if self._collection is not None and self._collection.id == collection_id:
+            self._collection = None
+            self._puzzle = None
+            self._session = None
+        if self._library_collection is not None and self._library_collection.id == collection_id:
+            self._library_collection = None
+            self._library_index = 0
         self.refresh_collections()
+        self._library.set_status("")
 
-    def _set_status(self, text):
-        self._status_label.setText(text)
-        self._status_label.setVisible(bool(text))
-
-    def _display_name(self, collection):
-        if collection.favorite:
-            return t("puzzle_favorites_name", self._language)
-        if collection.builtin:
-            return t("puzzle_builtin_name", self._language)
-        return collection.name
-
-    def _mark_current_solved(self):
-        if self._collection is None or self._puzzle is None:
-            return
-        if self._index in self._solved:
-            return
-        self._solved.add(self._index)
-        mark_solved(self._collection.id, self._index)
-        self._update_info()
-
-    def _on_jump(self):
-        if self._collection is None:
-            return
-        try:
-            value = int(self._jump_edit.text().strip())
-        except ValueError:
-            value = self._index + 1
-        value = max(1, min(value, self._collection.count))
-        if value - 1 != self._index:
-            self._load_puzzle(value - 1)
-        else:
-            self._update_jump()
-
-    def _update_jump(self):
-        if self._collection is None or self._collection.count == 0:
-            self._jump_edit.clear()
-            self._jump_edit.setEnabled(False)
-            self._jump_total.clear()
-            self._btn_jump.setEnabled(False)
-            return
-        self._jump_edit.setText(str(self._index + 1))
-        self._jump_edit.setEnabled(True)
-        self._jump_total.setText(f"/{self._collection.count}")
-        self._btn_jump.setEnabled(True)
-
-    def _update_controls(self):
-        has_session = self._session is not None
-        solved = bool(self._session and self._session.solved)
-        has_collection = self._collection is not None
-        self._jump_box.setVisible(has_collection)
-        self._solve_box.setVisible(has_collection)
-        self._btn_prev.setVisible(has_collection)
-        self._btn_next.setVisible(has_collection)
-        self._btn_hint.setEnabled(has_session and not solved)
-        self._btn_retry.setEnabled(has_session)
-        self._btn_favorite.setEnabled(has_session)
-        self._btn_delete.setEnabled(has_collection and not self._collection.favorite)
-        self._btn_prev.setEnabled(has_collection and self._index > 0)
-        self._btn_next.setEnabled(has_collection and self._index + 1 < self._collection.count)
-        self._update_favorite_button()
-        self._update_jump()
+    def retranslate(self, language):
+        self._language = language
+        self._train.retranslate(language)
+        self._train.board.retranslate(language)
+        self._hub.retranslate(language)
+        self._library.retranslate(language)
+        self._profile.retranslate(language)
+        if self._session is not None and self._collection is not None:
+            self._train.set_session_info(
+                _collection_name(self._collection, language),
+                self._index,
+                self._collection.count,
+                self._session.human_color,
+            )
+        self._hub.set_collections(self._collections, language)
+        self._library.set_collections(
+            self._collections,
+            self._library_collection.id if self._library_collection else None,
+        )
+        self._refresh_library()
 
     def set_theme(self, theme):
         self._theme = theme
-        self.board.set_theme(theme)
-        self._apply_icons()
+        self._train.set_theme(theme)
+        self._library.apply_icons(theme)
+        self._profile.apply_icons(theme)
 
     def set_piece_set(self, name):
-        self.board.set_piece_set(name)
+        self._train.set_piece_set(name)
 
     def set_board_theme(self, name):
-        self.board.set_board_theme(name)
+        self._train.set_board_theme(name)
 
     def set_sound_enabled(self, enabled):
-        self.board.set_sound_enabled(enabled)
+        self._train.set_sound_enabled(enabled)
 
     def set_sound_set(self, name):
-        self.board.set_sound_set(name)
+        self._train.set_sound_set(name)
 
     def reset(self):
         self._collection = None
         self._puzzle = None
         self._session = None
         self._index = 0
-        self.board.clear()
-        self.board.set_navigation_visible(False)
-        self.refresh_collections()
+        self._train.board.clear()
+        self._train.board.set_navigation_visible(False)
+        self.show_hub()
 
     def shutdown(self):
         worker = self._import_worker
         self._import_worker = None
         if worker is not None and worker.isRunning():
             worker.wait(5000)
-
-    def retranslate(self, language):
-        self._language = language
-        self.board.retranslate(language)
-        self._collections_label.setText(t("puzzle_collections", language))
-        self._btn_import.setText(t("puzzle_import", language))
-        self._btn_delete.setText(t("puzzle_delete", language))
-        self._btn_prev.setText(t("puzzle_prev", language))
-        self._btn_next.setText(t("puzzle_next", language))
-        self._btn_hint.setText(t("puzzle_hint", language))
-        self._btn_retry.setText(t("puzzle_retry", language))
-        self._btn_jump.setText(t("puzzle_jump", language))
-        self._jump_edit.setAccessibleName(t("puzzle_jump_tip", language))
-        for row in range(self._collection_list.count()):
-            item = self._collection_list.item(row)
-            collection_id = item.data(Qt.ItemDataRole.UserRole)
-            if collection_id is None:
-                continue
-            for collection in self._collections:
-                if collection.id == collection_id:
-                    item.setText(f"{self._display_name(collection)} ({collection.count})")
-                    break
-        if self._puzzle is not None or self._collection is not None and self._collection.count == 0:
-            self._update_info()
-        elif not self._collections:
-            self._set_status(t("puzzle_empty", language))
-        self._update_controls()

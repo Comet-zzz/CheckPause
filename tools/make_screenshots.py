@@ -270,7 +270,7 @@ def _capture_puzzle(window, language):
     page.refresh_collections(select_id=BUILTIN_ID)
     index = _puzzle_index()
     if index is not None:
-        page._load_puzzle(index)
+        page._start_collection(BUILTIN_ID, index)
     window._module = "puzzle"
     window._show_module()
     _grab(window, _folder(language) / "puzzle.png")
