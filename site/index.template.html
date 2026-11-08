@@ -1,0 +1,593 @@
+﻿<!doctype html>
+<html lang="zh-CN" data-lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#07080b">
+<title>CheckPause — 复盘、对弈、训练</title>
+<meta name="description" content="从棋谱到下一盘：复盘、对弈、谜题、学习与统计，一个客户端完成。Stockfish 本地评估，AI 讲解可选。">
+<meta property="og:title" content="CheckPause — 复盘、对弈、训练">
+<meta property="og:description" content="从棋谱到下一盘，复盘、对弈、训练不用换工具。">
+<meta property="og:type" content="website">
+<!--FAVICON-->
+<script>
+  (function () {
+    var saved = null;
+    try { saved = localStorage.getItem('cp-lang'); } catch (e) {}
+    var fromUrl = (location.search.match(/[?&]lang=(zh|en)/) || [])[1];
+    var lang = fromUrl || saved || ((navigator.language || '').toLowerCase().indexOf('zh') === 0 ? 'zh' : 'en');
+    document.documentElement.dataset.lang = lang;
+    document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  })();
+</script>
+<style>
+  :root{
+    color-scheme:dark;
+    --bg:#07080b;
+    --bg-2:#0a0c11;
+    --panel:#0c0f15;
+    --panel-2:#10141c;
+    --ink:#e7eaf0;
+    --ink-2:#b2bccb;
+    --muted:#7f8a9c;
+    --line:rgba(255,255,255,.10);
+    --line-2:rgba(255,255,255,.17);
+    --cyan:#5fe1ff;
+    --cyan-soft:rgba(95,225,255,.13);
+    --magenta:#ff4d9d;
+    --display:"Bahnschrift","DIN Alternate","Segoe UI","Noto Sans SC",sans-serif;
+    --sans:"Segoe UI","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+    --mono:"Cascadia Mono",Consolas,"SFMono-Regular",ui-monospace,monospace;
+    --pad:clamp(20px,4vw,32px);
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:var(--sans);font-size:16px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+    -webkit-text-size-adjust:100%;overflow-x:hidden;
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      linear-gradient(rgba(255,255,255,.033) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(255,255,255,.033) 1px,transparent 1px);
+    background-size:56px 56px;
+    -webkit-mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 46%,transparent 76%);
+    mask-image:linear-gradient(180deg,#000 0%,rgba(0,0,0,.5) 46%,transparent 76%);
+  }
+  body::after{
+    content:"";position:fixed;inset:-18% -8% auto;height:72vh;z-index:0;pointer-events:none;
+    background:radial-gradient(46% 58% at 70% 32%,rgba(95,225,255,.06),transparent 72%);
+  }
+  a{color:inherit;text-decoration:none}
+  img,svg{display:block;max-width:100%}
+  button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+  ::selection{background:rgba(95,225,255,.28);color:#fff}
+  .topline{position:fixed;top:0;left:0;right:0;height:2px;z-index:60;background:var(--cyan);box-shadow:0 0 14px rgba(95,225,255,.6)}
+  .wrap{position:relative;z-index:1;max-width:1200px;margin:0 auto;padding:0 var(--pad)}
+  html[data-lang="zh"] .only-en{display:none!important}
+  html[data-lang="en"] .only-zh{display:none!important}
+
+  /* ---------- nav ---------- */
+  .nav{
+    position:sticky;top:0;z-index:50;background:rgba(7,8,11,.84);
+    -webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+    border-bottom:1px solid var(--line);
+  }
+  .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:22px;height:70px}
+  .brand{display:flex;align-items:center;gap:10px;font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:.01em}
+  .brand .mark{width:28px;height:28px;border-radius:6px;flex:none;box-shadow:0 0 0 1px rgba(95,225,255,.28)}
+  .nav-right{display:flex;align-items:center;gap:clamp(12px,2vw,22px)}
+  .nav-links{display:flex;align-items:center;gap:clamp(16px,2vw,26px);font-size:13.5px;color:var(--muted)}
+  .nav-links a{padding:4px 0;transition:color .15s ease}
+  .nav-links a:hover{color:var(--ink)}
+  .lang-switch{display:flex;align-items:center;gap:2px;padding:2px;border:1px solid var(--line);border-radius:4px;font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)}
+  .lang-switch button{padding:3px 6px;border-radius:2px;transition:background .15s ease,color .15s ease}
+  .lang-switch button[aria-pressed="true"]{background:var(--cyan-soft);color:var(--cyan)}
+  .nav-cta{
+    display:inline-flex;align-items:center;gap:7px;padding:8px 12px;
+    border:1px solid rgba(95,225,255,.42);border-radius:4px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--cyan);white-space:nowrap;transition:background .15s ease,border-color .15s ease;
+  }
+  .nav-cta:hover{background:var(--cyan-soft);border-color:var(--cyan)}
+  .nav-cta svg{width:13px;height:13px}
+
+  /* ---------- shared ---------- */
+  .kicker{
+    display:inline-flex;align-items:center;gap:9px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+    color:var(--cyan);
+  }
+  .kicker::before{
+    content:"";width:6px;height:6px;background:var(--cyan);
+    box-shadow:0 0 10px rgba(95,225,255,.9);
+    animation:pulse 2.6s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+  h1,.h1{font-family:var(--display);font-weight:600;letter-spacing:-.02em;margin:18px 0 0}
+  .hi{color:var(--cyan)}
+  .btn{
+    display:inline-flex;align-items:center;gap:9px;padding:13px 19px;border-radius:4px;
+    font-size:14px;font-weight:600;line-height:1;white-space:nowrap;
+    transition:background .16s ease,border-color .16s ease,color .16s ease;
+  }
+  .btn svg{width:15px;height:15px;flex:none}
+  .btn-primary{background:var(--cyan);color:#041016;box-shadow:0 0 26px -10px rgba(95,225,255,.65)}
+  .btn-primary:hover{background:#93edff}
+  .btn-ghost{border:1px solid var(--line-2);color:var(--ink-2)}
+  .btn-ghost:hover{border-color:var(--cyan);color:var(--cyan)}
+
+  /* ---------- hero ---------- */
+  .hero{padding:clamp(46px,6.6vw,80px) 0 clamp(40px,5.5vw,60px)}
+  .hero-grid{display:grid;grid-template-columns:1fr 1.02fr;gap:clamp(34px,4.8vw,60px);align-items:center}
+  .hero-copy{min-width:0}
+  .hero-title{font-size:clamp(40px,4.6vw,64px);line-height:1.06;letter-spacing:-.025em}
+  html[data-lang="en"] .hero-title{font-size:clamp(38px,4.1vw,57px);letter-spacing:-.03em}
+  .hero-lede{font-size:clamp(15px,1.3vw,16.5px);line-height:1.72;color:var(--ink-2);max-width:34em;margin:20px 0 0;text-wrap:pretty}
+  .actions{display:flex;align-items:center;flex-wrap:wrap;gap:16px;margin-top:30px}
+  .micro{margin:16px 0 0;font-family:var(--mono);font-size:11px;letter-spacing:.05em;color:var(--muted)}
+  .micro a{color:var(--ink-2);border-bottom:1px solid var(--line-2)}
+  .micro a:hover{color:var(--cyan);border-color:var(--cyan)}
+
+  .hero-art{position:relative;justify-self:end;width:100%;max-width:600px;min-width:0}
+  .hero-art::before{
+    content:"";position:absolute;inset:-12% -9%;z-index:-1;
+    background:radial-gradient(52% 52% at 54% 45%,rgba(95,225,255,.10),transparent 72%);
+  }
+  .board-plate{
+    position:relative;padding:12px;border:1px solid rgba(95,225,255,.28);border-radius:6px;
+    background:linear-gradient(180deg,#0d1119,#0a0c11);
+    box-shadow:0 34px 74px -46px #000,0 0 46px -24px rgba(95,225,255,.55);
+  }
+  .board-plate::before,.board-plate::after{content:"";position:absolute;width:12px;height:12px;border:1px solid var(--cyan);opacity:.75;pointer-events:none}
+  .board-plate::before{top:-1px;left:-1px;border-right:0;border-bottom:0}
+  .board-plate::after{right:-1px;bottom:-1px;border-left:0;border-top:0}
+  .plate-head,.plate-foot{display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:var(--mono)}
+  .plate-head{padding:2px 2px 10px;font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  .plate-eval{display:inline-flex;align-items:baseline;gap:7px;color:var(--muted);white-space:nowrap}
+  .plate-eval b{font-family:var(--mono);font-size:18px;font-weight:600;letter-spacing:0;color:var(--cyan);font-variant-numeric:tabular-nums}
+  .plate-eval.alert b{color:var(--magenta)}
+  .board-frame{border-radius:3px;overflow:hidden;border:1px solid rgba(255,255,255,.07)}
+  .board-frame svg{display:block;width:100%;height:auto}
+  .plate-foot{padding:10px 2px 1px;font-size:10px;letter-spacing:.04em;color:var(--muted)}
+  .plate-foot .move{font-size:12.5px;letter-spacing:0;color:var(--cyan);white-space:nowrap}
+
+  /* arrow reveal */
+  .arrow-line{stroke-dasharray:1;stroke-dashoffset:1;animation:draw .95s .5s cubic-bezier(.2,.7,.2,1) forwards}
+  .arrow-head{opacity:0;animation:fade .35s 1.25s ease forwards}
+  @keyframes draw{to{stroke-dashoffset:0}}
+  @keyframes fade{to{opacity:.95}}
+
+  /* ---------- spec strip ---------- */
+  .spec{border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:rgba(255,255,255,.014)}
+  .spec-inner{display:flex;flex-wrap:wrap;align-items:stretch;min-height:44px}
+  .spec-inner span{
+    display:inline-flex;align-items:center;gap:8px;padding:0 22px;
+    border-left:1px solid var(--line);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);
+  }
+  .spec-inner span:first-child{padding-left:0;border-left:0}
+  .spec-inner b{color:var(--ink-2);font-weight:500}
+
+  /* ---------- sample ---------- */
+  .sample{padding:clamp(52px,6.6vw,80px) 0;background:var(--bg-2);border-bottom:1px solid var(--line)}
+  .review{
+    display:grid;grid-template-columns:1fr .86fr;gap:clamp(30px,4vw,54px);align-items:center;
+    padding:clamp(20px,3vw,34px);border:1px solid var(--line);background:var(--panel);border-radius:6px;
+  }
+  .review-copy{min-width:0}
+  .review-title{font-size:clamp(34px,3.5vw,46px);line-height:1.05}
+  .review-copy p{margin:14px 0 0;font-size:14.5px;line-height:1.7;color:var(--ink-2);max-width:36em;text-wrap:pretty}
+  .moves{margin-top:22px;border-top:1px solid var(--line)}
+  .mv{
+    display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:12px;
+    padding:9px 0;border-bottom:1px solid var(--line);
+    font-family:var(--mono);font-size:12.5px;color:var(--ink-2);
+  }
+  .mv .n{color:var(--muted)}
+  .mv .tag{
+    font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);
+    border:1px solid var(--line);border-radius:2px;padding:2px 6px;
+  }
+  .mv.win .san{color:var(--cyan)}
+  .mv.win .tag{color:var(--cyan);border-color:rgba(95,225,255,.35)}
+  .note{
+    margin-top:18px;padding:12px 14px;border-left:2px solid var(--cyan);
+    background:rgba(95,225,255,.05);font-size:12.5px;line-height:1.65;color:var(--ink-2);
+  }
+  .note .label{display:block;margin-bottom:5px;font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan)}
+  .review-art{width:100%;max-width:420px;justify-self:end;min-width:0}
+  .review-art .board-plate{padding:10px;box-shadow:0 30px 70px -42px #000,0 0 40px -24px rgba(95,225,255,.45)}
+
+  /* ---------- features ---------- */
+  .features{padding:clamp(52px,6.6vw,80px) 0}
+  .features h2{font-family:var(--display);font-size:clamp(27px,2.7vw,36px);font-weight:600;letter-spacing:-.015em;margin:14px 0 0}
+  .feature-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:clamp(24px,3vw,40px);margin-top:34px}
+  .feature{padding-top:17px;border-top:1px solid var(--line);min-width:0}
+  .feature .num{font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan)}
+  .feature h3{font-family:var(--display);font-size:19px;font-weight:600;letter-spacing:-.01em;margin:9px 0 7px}
+  .feature p{margin:0;font-size:13.5px;line-height:1.7;color:var(--ink-2)}
+
+  /* ---------- download ---------- */
+  .download{padding:clamp(48px,6vw,72px) 0;border-top:1px solid var(--line)}
+  .dl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap}
+  .dl-head h2{font-family:var(--display);font-size:clamp(27px,2.7vw,36px);font-weight:600;letter-spacing:-.015em;margin:12px 0 0}
+  .dl-head p{margin:12px 0 0;font-size:13.5px;line-height:1.7;color:var(--ink-2);max-width:34em}
+  .version{font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;color:var(--muted)}
+  .dl-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px}
+  .dl-card{display:flex;flex-direction:column;gap:14px;min-width:0;padding:20px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
+  .dl-card-top{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .dl-os{font-family:var(--display);font-size:16px;font-weight:600;letter-spacing:-.01em}
+  .dl-meta{font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .dl-note{margin:0;font-size:12.5px;line-height:1.6;color:var(--ink-2)}
+  .dl-btn-row{display:flex;gap:9px;margin-top:auto}
+  .dl-btn{
+    display:inline-flex;flex:1;align-items:center;justify-content:space-between;gap:9px;
+    padding:11px 13px;border:1px solid var(--line-2);border-radius:4px;
+    font-family:var(--mono);font-size:10.5px;letter-spacing:.04em;color:var(--ink);
+    transition:border-color .16s ease,color .16s ease,background .16s ease;
+  }
+  .dl-btn:hover{border-color:var(--cyan);color:var(--cyan);background:var(--cyan-soft)}
+  .dl-btn svg{width:13px;height:13px;flex:none}
+
+  /* ---------- footer ---------- */
+  .footer{border-top:1px solid var(--line);padding:24px 0 34px}
+  .footer-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;font-family:var(--mono);font-size:10px;letter-spacing:.05em;color:var(--muted)}
+  .footer-links{display:flex;gap:18px;flex-wrap:wrap}
+  .footer a:hover{color:var(--cyan)}
+
+  /* ---------- motion ---------- */
+  @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+  .hero-copy>*{animation:rise .75s cubic-bezier(.2,.7,.2,1) both}
+  .hero-copy>*:nth-child(1){animation-delay:.03s}
+  .hero-copy>*:nth-child(2){animation-delay:.1s}
+  .hero-copy>*:nth-child(3){animation-delay:.17s}
+  .hero-copy>*:nth-child(4){animation-delay:.24s}
+  .hero-copy>*:nth-child(5){animation-delay:.31s}
+  .board-plate{animation:rise .85s .14s cubic-bezier(.2,.7,.2,1) both}
+  .reveal{opacity:0;transform:translateY(16px);transition:opacity .65s ease,transform .65s ease}
+  .reveal.in{opacity:1;transform:none}
+
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .hero-copy>*,.board-plate{animation:none}
+    .kicker::before{animation:none}
+    .arrow-line{stroke-dashoffset:0;animation:none}
+    .arrow-head{opacity:.95;animation:none}
+    .reveal{opacity:1;transform:none;transition:none}
+  }
+  html.static .reveal{opacity:1;transform:none;transition:none}
+  html.static .hero-copy>*,
+  html.static .board-plate,
+  html.static .kicker::before{animation:none}
+  html.static .arrow-line{stroke-dashoffset:0;animation:none}
+  html.static .arrow-head{opacity:.95;animation:none}
+
+  /* ---------- responsive ---------- */
+  @media (max-width:980px){
+    .hero-grid,.review{grid-template-columns:1fr;gap:40px}
+    .hero-grid>*,.review>*{min-width:0}
+    .dl-grid{grid-template-columns:1fr}
+    .hero-art{justify-self:center;max-width:520px}
+    .review-art{justify-self:start;max-width:420px}
+    .feature-grid{grid-template-columns:1fr;gap:0}
+    .feature{padding:18px 0 20px}
+    .feature:first-child{border-top:1px solid var(--line)}
+    .feature h3{margin-top:7px}
+    .spec-inner span{flex:1 0 50%;min-height:42px;border-bottom:1px solid var(--line)}
+    .spec-inner span:nth-child(2n+1){padding-left:0;border-left:0}
+    .spec-inner span:nth-last-child(-n+2){border-bottom:0}
+  }
+  @media (max-width:820px){
+    .nav-links{display:none}
+    .nav-inner{height:62px}
+    .brand{font-size:18px}
+  }
+  @media (max-width:560px){
+    .hero{padding-top:30px}
+    .hero-title{font-size:clamp(33px,8.8vw,42px)}
+    .hero-lede{font-size:14.5px;line-height:1.75}
+    .review-title{font-size:clamp(28px,7.4vw,36px)}
+    .hero-art,.review-art{max-width:100%}
+    .board-plate{padding:9px;border-radius:5px}
+    .plate-head{font-size:9.5px;padding-bottom:8px}
+    .plate-eval b{font-size:15px}
+    .plate-foot{font-size:9.5px}
+    .plate-foot .move{font-size:11.5px}
+    .actions{gap:12px}
+    .btn{padding:12px 16px;font-size:13px}
+    .nav-inner{gap:10px}
+    .nav-right{gap:8px}
+    .nav-cta{padding:7px 10px}
+    .lang-switch button{padding:3px 5px}
+    .review{padding:18px 16px}
+    .dl-card{padding:16px}
+    .mv{grid-template-columns:34px 1fr auto;gap:9px;font-size:11.5px}
+    .footer-inner{flex-direction:column;align-items:flex-start}
+  }
+</style>
+</head>
+<body>
+<div class="topline" aria-hidden="true"></div>
+
+<header class="nav">
+  <div class="wrap nav-inner">
+    <a class="brand" href="#" aria-label="CheckPause">
+      <svg class="mark" viewBox="0 0 512 512" aria-hidden="true"><defs><linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#31353c"/><stop offset="1" stop-color="#16181c"/></linearGradient></defs><rect width="512" height="512" rx="116" fill="url(#tile)"/><rect x="10" y="10" width="492" height="492" rx="108" fill="none" stroke="#ffffff" stroke-opacity=".07" stroke-width="8"/><g fill="#f6f7f9"><path d="M157 206 L157 153 A10 10 0 0 1 177 153 L186 192 L195 118 A12 12 0 0 1 219 118 L231 178 L241 84 A15 15 0 0 1 271 84 L281 178 L293 118 A12 12 0 0 1 317 118 L326 192 L335 153 A10 10 0 0 1 355 153 L355 206 Z" stroke="#f6f7f9" stroke-width="4" stroke-linejoin="round"/><rect x="156" y="206" width="200" height="30" rx="11"/><path d="M208 244 C 204 300 208 346 145 390 L367 390 C 304 346 308 300 304 244 Z" stroke="#f6f7f9" stroke-width="5" stroke-linejoin="round"/><rect x="139" y="386" width="234" height="26" rx="8"/><rect x="133" y="418" width="246" height="26" rx="10"/></g></svg>
+      <span>CheckPause</span>
+    </a>
+    <div class="nav-right">
+      <nav class="nav-links" aria-label="Main">
+        <a href="#features"><span class="only-zh">功能</span><span class="only-en">Features</span></a>
+        <a href="#sample"><span class="only-zh">示例</span><span class="only-en">Sample</span></a>
+        <a class="only-zh" href="/shop?lang=zh">定价</a>
+        <a class="only-en" href="/shop?lang=en">Pricing</a>
+      </nav>
+      <div class="lang-switch" role="group" aria-label="Language">
+        <button type="button" data-lang="zh" aria-pressed="true">中文</button>
+        <button type="button" data-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <a class="nav-cta" href="#download">
+        <span class="only-zh">下载</span><span class="only-en">Download</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>
+      </a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <span class="kicker">Latest update // v2.1.0 · 2026-11-07</span>
+        <h1 class="hero-title">
+          <span class="only-zh">新增<span class="hi">学习</span>模块</span>
+          <span class="only-en">A new <span class="hi">Learn</span> module</span>
+        </h1>
+        <p class="hero-lede">
+          <span class="only-zh">从棋子走法到基础将杀的分步课程与练习；整体界面与布局也做了优化。</span>
+          <span class="only-en">Step-by-step lessons from piece moves to basic mates, plus a refined interface and layout.</span>
+        </p>
+        <div class="actions">
+          <a class="btn btn-primary" href="#download">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m6 9 6 6 6-6"/><path d="M5 21h14"/></svg>
+            <span class="only-zh">下载客户端</span><span class="only-en">Download app</span>
+          </a>
+          <a class="btn btn-ghost" href="#sample">
+            <span class="only-zh">查看示例</span><span class="only-en">See a sample</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
+          </a>
+        </div>
+        <p class="micro">
+          <span class="only-zh">Windows / macOS · v2.1.0 · 安装无需管理员权限</span>
+          <span class="only-en">Windows / macOS · v2.1.0 · No admin rights needed</span>
+        </p>
+      </div>
+
+      <div class="hero-art">
+        <div class="board-plate" role="img" aria-label="Morphy 对 Duke of Brunswick，1858 年。第 16 手，白方 Qb8+ 两步杀的局面。">
+          <div class="plate-head">
+            <span>Move 16 // White</span>
+            <span class="plate-eval"><b>M2</b><span class="only-zh">两步杀</span><span class="only-en">Mate in 2</span></span>
+          </div>
+          <div class="board-frame">
+            <!--HERO_BOARD-->
+          </div>
+          <div class="plate-foot">
+            <span>Morphy — Duke of Brunswick, 1858</span>
+            <span class="move">16. Qb8+!!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="spec">
+    <div class="wrap spec-inner">
+      <span><b>Engine</b> Stockfish</span>
+      <span><b>Play</b> 100–3000</span>
+      <span><b>Puzzles</b> Lichess</span>
+      <span><b>OS</b> Windows · macOS</span>
+    </div>
+  </div>
+
+  <section class="sample" id="sample">
+    <div class="wrap">
+      <div class="review reveal">
+        <div class="review-copy">
+          <span class="kicker">Sample review</span>
+          <h2 class="review-title"><span class="only-zh">16. <span class="hi">Qb8+!!</span></span><span class="only-en">16. <span class="hi">Qb8+!!</span></span></h2>
+          <p>
+            <span class="only-zh">15...Nxd7 之后，白方弃后；黑方被迫吃后，17.Rd8# 将死。</span>
+            <span class="only-en">After 15...Nxd7, White sacrifices the queen. The knight is forced to take; 17.Rd8# is mate.</span>
+          </p>
+          <div class="moves" aria-label="Moves">
+            <div class="mv"><span class="n">15</span><span class="san">... Nxd7</span><span class="tag">forced</span></div>
+            <div class="mv win"><span class="n">16</span><span class="san">Qb8+!!</span><span class="tag">M2</span></div>
+            <div class="mv win"><span class="n">17</span><span class="san">Rd8#</span><span class="tag">mate</span></div>
+          </div>
+          <div class="note">
+            <span class="label">AI note</span>
+            <span class="only-zh">弃后引离。黑马被迫吃后，d 线打开，17.Rd8# 将死。</span>
+            <span class="only-en">The queen sacrifice deflects the knight and opens the d-file. 17.Rd8# is mate.</span>
+          </div>
+        </div>
+        <div class="review-art">
+          <div class="board-plate" role="img" aria-label="同一局的终局：第 17 手 Rd8 将死。">
+            <div class="plate-head">
+              <span>Move 17 // Final</span>
+              <span class="plate-eval alert"><b>#</b><span class="only-zh">将死</span><span class="only-en">Mate</span></span>
+            </div>
+            <div class="board-frame">
+              <!--MATE_BOARD-->
+            </div>
+            <div class="plate-foot">
+              <span>Morphy — Duke of Brunswick, 1858</span>
+              <span class="move">17. Rd8#</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="features" id="features">
+    <div class="wrap">
+      <div class="reveal">
+        <span class="kicker">Modules</span>
+        <h2><span class="only-zh">六个模块，一套流程。</span><span class="only-en">Six modules. One workflow.</span></h2>
+      </div>
+      <div class="feature-grid">
+        <article class="feature reveal">
+          <span class="num">01</span>
+          <h3><span class="only-zh">复盘</span><span class="only-en">Review</span></h3>
+          <p><span class="only-zh">PGN 导入，Stockfish 本地逐手评估，准确度评级；AI 讲解与追问作为可选增强。</span><span class="only-en">PGN import, local Stockfish evaluation and accuracy rating; AI notes and follow-ups as an optional layer.</span></p>
+        </article>
+        <article class="feature reveal">
+          <span class="num">02</span>
+          <h3><span class="only-zh">对弈</span><span class="only-en">Play</span></h3>
+          <p><span class="only-zh">100–3000 难度的人机对局；计时、执白/执黑、开局与残局。</span><span class="only-en">Human-vs-engine from 100 to 3000; clocks, colours, openings and endgames.</span></p>
+        </article>
+        <article class="feature reveal">
+          <span class="num">03</span>
+          <h3><span class="only-zh">谜题</span><span class="only-en">Puzzles</span></h3>
+          <p><span class="only-zh">Lichess 题集与自定义导入；提示、重试、按难度和主题。</span><span class="only-en">Lichess sets and custom imports; hints, retries, difficulty and themes.</span></p>
+        </article>
+        <article class="feature reveal">
+          <span class="num">04</span>
+          <h3><span class="only-zh">学习</span><span class="only-en">Lessons</span></h3>
+          <p><span class="only-zh">从棋子走法到基础将杀的分步课程与练习。</span><span class="only-en">Step-by-step lessons from piece moves to basic mates.</span></p>
+        </article>
+        <article class="feature reveal">
+          <span class="num">05</span>
+          <h3><span class="only-zh">统计</span><span class="only-en">Stats</span></h3>
+          <p><span class="only-zh">对局数、平均准确度、最近表现与历史记录。</span><span class="only-en">Games played, average accuracy, recent form and history.</span></p>
+        </article>
+        <article class="feature reveal">
+          <span class="num">06</span>
+          <h3><span class="only-zh">个性化</span><span class="only-en">Themes</span></h3>
+          <p><span class="only-zh">10 套棋子、6 种棋盘配色、明暗主题与音效。</span><span class="only-en">10 piece sets, 6 board colours, light/dark themes and sound.</span></p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="download" id="download">
+    <div class="wrap">
+      <div class="dl-head reveal">
+        <div>
+          <span class="kicker">Download</span>
+          <h2><span class="only-zh">下载 CheckPause</span><span class="only-en">Download CheckPause</span></h2>
+          <p>
+            <span class="only-zh">选择平台与芯片；安装无需管理员权限。</span>
+            <span class="only-en">Choose a platform and chip; no admin rights needed.</span>
+          </p>
+        </div>
+        <span class="version">v2.1.0</span>
+      </div>
+      <div class="dl-grid reveal">
+        <div class="dl-card">
+          <div class="dl-card-top">
+            <span class="dl-os">Windows</span>
+            <span class="dl-meta">x64 · .zip</span>
+          </div>
+          <p class="dl-note"><span class="only-zh">Windows 10 / 11 · 解压后运行安装程序</span><span class="only-en">Windows 10 / 11 · Extract, then run the installer</span></p>
+          <div class="dl-btn-row">
+            <a class="dl-btn" href="https://checkpause.com/download/CheckPause_Setup_2.1.0.zip">
+              <span>Windows x64</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m6 9 6 6 6-6"/><path d="M5 21h14"/></svg>
+            </a>
+          </div>
+        </div>
+        <div class="dl-card">
+          <div class="dl-card-top">
+            <span class="dl-os">macOS</span>
+            <span class="dl-meta">11+ · .dmg</span>
+          </div>
+          <p class="dl-note"><span class="only-zh">选择芯片</span><span class="only-en">Choose your chip</span></p>
+          <div class="dl-btn-row">
+            <a class="dl-btn" href="https://checkpause.com/download/CheckPause-2.1.0-macOS-M-series.dmg">
+              <span>Apple silicon</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m6 9 6 6 6-6"/><path d="M5 21h14"/></svg>
+            </a>
+            <a class="dl-btn" href="https://checkpause.com/download/CheckPause-2.1.0-macOS-Intel.dmg">
+              <span>Intel</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><path d="m6 9 6 6 6-6"/><path d="M5 21h14"/></svg>
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <span>CheckPause · CometZZZ</span>
+    <span class="footer-links">
+      <a href="https://github.com/Comet-zzz/CheckPause/releases">GitHub</a>
+      <a class="only-zh" href="/shop?lang=zh">定价</a>
+      <a class="only-en" href="/shop?lang=en">Pricing</a>
+      <a class="only-zh" href="/privacy?lang=zh">隐私政策</a>
+      <a class="only-en" href="/privacy?lang=en">Privacy Policy</a>
+    </span>
+  </div>
+</footer>
+
+<script>
+  (function () {
+    if (/[?&]static=1/.test(location.search)) {
+      document.documentElement.classList.add('static');
+    }
+    var buttons = Array.prototype.slice.call(document.querySelectorAll('.lang-switch button'));
+    var copy = {
+      zh: {
+        title: 'CheckPause — 复盘、对弈、训练',
+        desc: '从棋谱到下一盘：复盘、对弈、谜题、学习与统计，一个客户端完成。Stockfish 本地评估，AI 讲解可选。'
+      },
+      en: {
+        title: 'CheckPause — Review, play, train',
+        desc: 'From a game record to the next game, without switching tools. Stockfish runs locally; AI notes are optional.'
+      }
+    };
+
+    function setLang(lang) {
+      if (lang !== 'zh' && lang !== 'en') lang = 'zh';
+      document.documentElement.dataset.lang = lang;
+      document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+      try { localStorage.setItem('cp-lang', lang); } catch (e) {}
+      buttons.forEach(function (button) {
+        button.setAttribute('aria-pressed', String(button.dataset.lang === lang));
+      });
+      document.title = copy[lang].title;
+      var meta = document.querySelector('meta[name="description"]');
+      if (meta) meta.setAttribute('content', copy[lang].desc);
+    }
+
+    buttons.forEach(function (button) {
+      button.addEventListener('click', function () { setLang(button.dataset.lang); });
+    });
+    setLang(document.documentElement.dataset.lang || 'zh');
+
+    var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var targets = document.querySelectorAll('.reveal');
+    if (reduced || !('IntersectionObserver' in window)) {
+      targets.forEach(function (el) { el.classList.add('in'); });
+      return;
+    }
+    var observer = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('in');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { rootMargin: '0px 0px -8% 0px', threshold: 0.08 });
+    targets.forEach(function (el) { observer.observe(el); });
+  })();
+</script>
+</body>
+</html>
