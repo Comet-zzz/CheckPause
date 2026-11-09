@@ -1160,6 +1160,25 @@ QTableWidget#moveTable::item {
     font-size: 13px;
     padding: 6px 2px;
 }
+#puzzleStatusPill, #puzzleRatingPill {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 9px;
+    padding: 3px 9px;
+    color: $text_muted;
+    font-size: 11px;
+    font-weight: 600;
+}
+#puzzleStatusPill[online="true"] {
+    background-color: $accent_soft;
+    border-color: $border_strong;
+    color: $text;
+}
+#puzzleNotice {
+    color: $text_muted;
+    font-size: 12px;
+    padding: 2px 2px;
+}
 #puzzleModeLabel {
     font-size: 15px;
     font-weight: 600;

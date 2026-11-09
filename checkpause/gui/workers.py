@@ -370,6 +370,9 @@ class AccountWorker(QThread):
             elif self.action == "sign_out":
                 cloud.sign_out(self.server_url, self.token, self.language)
                 result = {"token": "", "account": {}}
+            elif self.action == "delete_account":
+                cloud.close_account(self.server_url, self.token, self.language)
+                result = {"token": "", "account": {}}
             elif self.action == "rename":
                 result = {
                     "token": self.token,
@@ -406,6 +409,66 @@ class AccountWorker(QThread):
             self.failed.emit(str(exc))
             return
         self.done.emit(result)
+
+
+class PuzzleOnlineWorker(QThread):
+    """Fetches or submits online puzzle data without blocking the page."""
+
+    done = Signal(str, dict)
+    failed = Signal(str, str, str)
+
+    def __init__(self, action, server_url, token, language="zh-CN", payload=None, parent=None):
+        super().__init__(parent)
+        self.action = action
+        self.server_url = server_url
+        self.token = token
+        self.language = language
+        self.payload = dict(payload or {})
+
+    def run(self):
+        try:
+            result = self._request()
+        except CloudRequestError as exc:
+            self.failed.emit(self.action, str(exc), exc.code)
+            return
+        except Exception as exc:
+            self.failed.emit(self.action, str(exc), "")
+            return
+        self.done.emit(self.action, result)
+
+    def _request(self):
+        if self.action == "next":
+            return cloud.next_puzzle(
+                self.server_url,
+                self.token,
+                self.payload.get("theme", ""),
+                self.payload.get("difficulty", "normal"),
+                self.language,
+            )
+        if self.action == "retry":
+            return cloud.retry_puzzle(self.server_url, self.token, self.language)
+        if self.action == "attempt":
+            return cloud.submit_puzzle_attempt(
+                self.server_url,
+                self.token,
+                self.payload["puzzle_id"],
+                self.payload["result"],
+                duration_ms=self.payload.get("duration_ms", 0),
+                hinted=self.payload.get("hinted", False),
+                rated=self.payload.get("rated", True),
+                client_attempt_id=self.payload.get("client_attempt_id", ""),
+                language=self.language,
+            )
+        if self.action == "stats":
+            return cloud.fetch_puzzle_stats(
+                self.server_url,
+                self.token,
+                self.payload.get("days", 30),
+                self.language,
+            )
+        if self.action == "profile":
+            return cloud.fetch_puzzle_profile(self.server_url, self.token, self.language)
+        raise ValueError("unknown puzzle action: " + self.action)
 
 
 class UpdateCheckWorker(QThread):

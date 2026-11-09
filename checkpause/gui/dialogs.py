@@ -200,6 +200,8 @@ def cloud_account_dialog(parent, language, config=None):
     rename_button = QPushButton(t("cloud_account_rename", language))
     refresh_button = QPushButton(t("cloud_account_refresh", language))
     sign_out_button = QPushButton(t("cloud_account_sign_out", language))
+    delete_button = QPushButton(t("cloud_account_delete", language))
+    delete_button.setObjectName("dangerButton")
     close_button = QPushButton(t("cloud_account_close", language))
 
     # Buying credits. The server owns the prices; this only picks one of the
@@ -226,6 +228,7 @@ def cloud_account_dialog(parent, language, config=None):
         rename_button,
         refresh_button,
         sign_out_button,
+        delete_button,
     ):
         row.addWidget(button)
     row.addStretch(1)
@@ -254,7 +257,7 @@ def cloud_account_dialog(parent, language, config=None):
     # A hidden input still leaves its label behind, which reads as a bug, so the
     # labels move with their fields.
     credential_labels = [(field, form.labelForField(field)) for field in credentials]
-    session_buttons = (rename_button, refresh_button, sign_out_button)
+    session_buttons = (rename_button, refresh_button, sign_out_button, delete_button)
     topup_widgets = (topup_label, pack_combo, buy_button, topup_status)
     everything = credentials + session_buttons + topup_widgets + (close_button, server_field)
 
@@ -364,6 +367,13 @@ def cloud_account_dialog(parent, language, config=None):
             # A logout ends the dialog rather than leaving the user on a
             # just-emptied form; the window then returns to the sign-in screen.
             dialog.accept()
+        elif action == "delete_account":
+            QMessageBox.information(
+                dialog,
+                t("cloud_delete_title", language),
+                t("cloud_delete_done", language),
+            )
+            dialog.accept()
         elif action == "me" and pack_combo.count() == 0 and signed_in():
             # The prices are the server's to decide; ask once per dialog.
             run("packs")
@@ -435,6 +445,18 @@ def cloud_account_dialog(parent, language, config=None):
 
     def sign_out():
         run("sign_out", token=account.get("token", ""))
+
+    def delete_account():
+        if not signed_in():
+            return
+        answer = QMessageBox.question(
+            dialog,
+            t("cloud_delete_title", language),
+            t("cloud_delete_confirm", language),
+        )
+        if answer != QMessageBox.StandardButton.Yes:
+            return
+        run("delete_account", token=account.get("token", ""))
 
     def rename():
         if not signed_in():
@@ -544,6 +566,7 @@ def cloud_account_dialog(parent, language, config=None):
     rename_button.clicked.connect(rename)
     refresh_button.clicked.connect(lambda: run("me", token=account.get("token", "")))
     sign_out_button.clicked.connect(sign_out)
+    delete_button.clicked.connect(delete_account)
     buy_button.clicked.connect(buy)
     close_button.clicked.connect(dialog.accept)
 

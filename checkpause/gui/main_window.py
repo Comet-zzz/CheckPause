@@ -941,10 +941,10 @@ class MainWindow(QMainWindow):
             clear_account()
         self._account = get_account()
         action = result.get("action", "")
-        if action == "sign_out":
+        if action in ("sign_out", "delete_account"):
             # Logging out is a full logout: go back to the sign-in screen the
             # app started on, instead of leaving the user in the main view with
-            # no account behind it.
+            # no account behind it. A deleted account has nowhere else to go.
             self._refresh_account_menu()
             self._show_welcome()
             return

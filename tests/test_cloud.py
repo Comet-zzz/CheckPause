@@ -301,6 +301,30 @@ class AccountTests(unittest.TestCase):
         self.assertEqual(caught.exception.code, "no_credits")
         self.assertIn("CP积分", str(caught.exception))
 
+    def test_deleting_the_account_calls_the_account_endpoint(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["headers"] = kwargs.get("headers")
+            return FakeResponse(200, body={"status": "ok"})
+
+        with mock.patch.object(cloud.httpx, "delete", capture):
+            result = cloud.close_account("http://server/", "tok")
+
+        self.assertEqual(seen["url"], "http://server/v1/accounts/me")
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
+        self.assertEqual(result["status"], "ok")
+
+    def test_a_dead_session_on_delete_is_reported(self):
+        body = {"detail": {"code": "unknown_token", "message": "gone"}}
+        with (
+            mock.patch.object(cloud.httpx, "delete", return_value=FakeResponse(401, body=body)),
+            self.assertRaises(cloud.CloudRequestError) as caught,
+        ):
+            cloud.close_account("http://server", "stale")
+        self.assertEqual(caught.exception.code, "unknown_token")
+
 
 class TopUpTests(unittest.TestCase):
     def test_the_packs_come_from_the_server(self):
@@ -364,6 +388,75 @@ class TopUpTests(unittest.TestCase):
             cloud.create_order("http://server", "tok", 10)
 
         self.assertEqual(sorted(sent), ["yuan"])
+
+
+class PuzzleOnlineTests(unittest.TestCase):
+    def test_next_puzzle_encodes_the_theme(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["headers"] = kwargs.get("headers")
+            return FakeResponse(200, body={"puzzle": {"id": "p1"}, "rating": 1500})
+
+        with mock.patch.object(cloud.httpx, "get", capture):
+            result = cloud.next_puzzle("http://server", "tok", theme="mate fork", difficulty="hard")
+
+        self.assertIn("/v1/puzzles/next?", seen["url"])
+        self.assertIn("theme=mate+fork", seen["url"])
+        self.assertIn("difficulty=hard", seen["url"])
+        self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
+        self.assertEqual(result["puzzle"]["id"], "p1")
+
+    def test_attempt_sends_the_client_attempt_id(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["json"] = kwargs.get("json")
+            return FakeResponse(200, body={"rating": 1512})
+
+        with mock.patch.object(cloud.httpx, "post", capture):
+            result = cloud.submit_puzzle_attempt(
+                "http://server",
+                "tok",
+                "p1",
+                "solved",
+                duration_ms=3200,
+                hinted=True,
+                rated=False,
+                client_attempt_id="attempt-1",
+            )
+
+        self.assertEqual(seen["url"], "http://server/v1/puzzles/attempt")
+        self.assertEqual(seen["json"]["puzzle_id"], "p1")
+        self.assertEqual(seen["json"]["result"], "solved")
+        self.assertEqual(seen["json"]["client_attempt_id"], "attempt-1")
+        self.assertTrue(seen["json"]["hinted"])
+        self.assertFalse(seen["json"]["rated"])
+        self.assertEqual(result["rating"], 1512)
+
+    def test_stats_ask_for_the_requested_window(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            return FakeResponse(200, body={"attempts": 3, "rating": 1500})
+
+        with mock.patch.object(cloud.httpx, "get", capture):
+            stats = cloud.fetch_puzzle_stats("http://server", "tok", days=90)
+
+        self.assertTrue(seen["url"].endswith("/v1/puzzles/stats?days=90"))
+        self.assertEqual(stats["attempts"], 3)
+
+    def test_puzzle_errors_use_the_shared_wording(self):
+        response = FakeResponse(404, body={"detail": {"code": "no_mistakes"}})
+        with (
+            mock.patch.object(cloud.httpx, "get", lambda *a, **k: response),
+            self.assertRaises(cloud.CloudRequestError) as caught,
+        ):
+            cloud.retry_puzzle("http://server", "tok")
+        self.assertEqual(caught.exception.code, "no_mistakes")
 
 
 if __name__ == "__main__":

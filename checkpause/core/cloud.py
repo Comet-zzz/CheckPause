@@ -10,6 +10,8 @@ Failure messages are built from the server's short error codes rather than its
 English text, so a user reads the same wording the rest of the app uses.
 """
 
+from urllib.parse import urlencode
+
 import httpx
 
 from checkpause.i18n import t
@@ -20,8 +22,14 @@ LOGIN_ENDPOINT = "/v1/accounts/login"
 LOGOUT_ENDPOINT = "/v1/accounts/logout"
 ME_ENDPOINT = "/v1/accounts/me"
 RENAME_ENDPOINT = "/v1/accounts/rename"
+CLOSE_ACCOUNT_ENDPOINT = "/v1/accounts/me"
 PACKS_ENDPOINT = "/v1/pay/packs"
 ORDERS_ENDPOINT = "/v1/pay/orders"
+PUZZLE_NEXT_ENDPOINT = "/v1/puzzles/next"
+PUZZLE_RETRY_ENDPOINT = "/v1/puzzles/retry"
+PUZZLE_ATTEMPT_ENDPOINT = "/v1/puzzles/attempt"
+PUZZLE_STATS_ENDPOINT = "/v1/puzzles/stats"
+PUZZLE_PROFILE_ENDPOINT = "/v1/puzzles/profile"
 
 REQUEST_TIMEOUT = 180.0
 ACCOUNT_TIMEOUT = 30.0
@@ -37,6 +45,9 @@ ERROR_KEYS = {
     "unknown_token": "cloud_signin_required",
     "no_credits": "cloud_no_credit",
     "too_many_attempts": "cloud_too_many_attempts",
+    "no_puzzles": "cloud_no_puzzles",
+    "no_mistakes": "cloud_no_mistakes",
+    "puzzle_not_found": "cloud_puzzle_not_found",
 }
 
 
@@ -179,6 +190,23 @@ def fetch_account(server_url, token, language="zh-CN"):
     return _get(server_url, ME_ENDPOINT, token, language)
 
 
+def close_account(server_url, token, language="zh-CN"):
+    """Delete the account and its practice history. Irreversible."""
+    try:
+        response = httpx.delete(
+            _url(server_url, CLOSE_ACCOUNT_ENDPOINT),
+            headers=headers(token),
+            timeout=ACCOUNT_TIMEOUT,
+        )
+    except httpx.TimeoutException as exc:
+        raise CloudRequestError(t("cloud_timeout", language)) from exc
+    except httpx.RequestError as exc:
+        raise CloudRequestError(t("cloud_unreachable", language)) from exc
+    if response.status_code >= 400:
+        raise _error(response, language)
+    return response.json()
+
+
 def rename(server_url, token, username, language="zh-CN"):
     """Change the login name. Costs credits; the server decides how many."""
     return _post(
@@ -236,3 +264,51 @@ def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN
         raise CloudRequestError(t("cloud_timeout", language)) from exc
     except httpx.RequestError as exc:
         raise CloudRequestError(t("cloud_unreachable", language)) from exc
+
+
+def next_puzzle(server_url, token, theme="", difficulty="normal", language="zh-CN"):
+    """One puzzle near the account's rating."""
+    query = urlencode({"theme": theme, "difficulty": difficulty})
+    return _get(server_url, PUZZLE_NEXT_ENDPOINT + "?" + query, token, language)
+
+
+def retry_puzzle(server_url, token, language="zh-CN"):
+    """A failed puzzle that has not been solved since."""
+    return _get(server_url, PUZZLE_RETRY_ENDPOINT, token, language)
+
+
+def submit_puzzle_attempt(
+    server_url,
+    token,
+    puzzle_id,
+    result,
+    duration_ms=0,
+    hinted=False,
+    rated=True,
+    client_attempt_id="",
+    language="zh-CN",
+):
+    """Record a session. The reply carries the rating after it."""
+    return _post(
+        server_url,
+        PUZZLE_ATTEMPT_ENDPOINT,
+        {
+            "puzzle_id": puzzle_id,
+            "result": result,
+            "duration_ms": int(duration_ms),
+            "hinted": bool(hinted),
+            "rated": bool(rated),
+            "client_attempt_id": client_attempt_id,
+        },
+        language,
+        token=token,
+    )
+
+
+def fetch_puzzle_stats(server_url, token, days=30, language="zh-CN"):
+    query = urlencode({"days": int(days)})
+    return _get(server_url, PUZZLE_STATS_ENDPOINT + "?" + query, token, language)
+
+
+def fetch_puzzle_profile(server_url, token, language="zh-CN"):
+    return _get(server_url, PUZZLE_PROFILE_ENDPOINT, token, language)

@@ -17,6 +17,7 @@ INDEX_NAME = "index.json"
 PROGRESS_NAME = "progress.json"
 FAVORITES_NAME = "favorites.jsonl"
 ATTEMPTS_NAME = "attempts.jsonl"
+OUTBOX_NAME = "online_outbox.jsonl"
 
 BUILTIN_PATH_PARTS = ("assets", "puzzles", "lichess_sample.jsonl")
 BUILTIN_ID = "builtin-lichess-sample"
@@ -218,6 +219,118 @@ def record_attempt(
 
 def clear_attempts(base_dir=None):
     _remove_quietly(attempts_path(base_dir))
+    return True
+
+
+# --- online outbox ---------------------------------------------------------
+#
+# An attempt is recorded locally first and then reported to the server. The
+# report cannot be lost with the process: it is appended here before the first
+# request and only removed once the server has accepted it (or rejected it as
+# permanently unusable). Entries carry the account they belong to, so a shared
+# machine cannot upload one person's attempts onto another account.
+
+
+def outbox_path(base_dir=None):
+    base = base_dir or PUZZLE_DIR
+    return os.path.join(base, OUTBOX_NAME)
+
+
+def _outbox_entry(item):
+    if not isinstance(item, dict):
+        return None
+    puzzle_id = str(item.get("puzzle_id") or "").strip()
+    result = item.get("result")
+    attempt_id = str(item.get("client_attempt_id") or "").strip()
+    if not puzzle_id or result not in ("solved", "failed") or not attempt_id:
+        return None
+    try:
+        duration = max(0, int(item.get("duration_ms") or 0))
+    except (TypeError, ValueError):
+        duration = 0
+    return {
+        "puzzle_id": puzzle_id,
+        "result": result,
+        "duration_ms": duration,
+        "hinted": bool(item.get("hinted")),
+        "rated": bool(item.get("rated", True)),
+        "client_attempt_id": attempt_id[:64],
+        "account": str(item.get("account") or "").strip().lower(),
+        "server_url": str(item.get("server_url") or "").strip(),
+        "created_at": str(item.get("created_at") or "").strip()
+        or datetime.now(UTC).isoformat(timespec="seconds"),
+    }
+
+
+def load_outbox(base_dir=None):
+    """Attempts still waiting to reach the server, oldest first."""
+    path = outbox_path(base_dir)
+    if not os.path.isfile(path):
+        return []
+    result = []
+    seen = set()
+    try:
+        with open(path, encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                entry = _outbox_entry(item)
+                if entry is None or entry["client_attempt_id"] in seen:
+                    continue
+                seen.add(entry["client_attempt_id"])
+                result.append(entry)
+    except OSError:
+        return []
+    return result
+
+
+def _write_outbox(entries, base_dir=None):
+    base = base_dir or puzzle_dir()
+    os.makedirs(base, exist_ok=True)
+    path = outbox_path(base)
+    temp = path + ".tmp"
+    with open(temp, "w", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
+    os.replace(temp, path)
+
+
+def append_outbox(entry, base_dir=None):
+    """Remember one attempt before trying to report it. Idempotent by id."""
+    payload = _outbox_entry(entry)
+    if payload is None:
+        return False
+    base = base_dir or puzzle_dir()
+    existing = load_outbox(base)
+    if any(item["client_attempt_id"] == payload["client_attempt_id"] for item in existing):
+        return False
+    existing.append(payload)
+    _write_outbox(existing, base)
+    return True
+
+
+def remove_outbox(client_attempt_id, base_dir=None):
+    """Forget one attempt once the server has taken responsibility for it."""
+    attempt_id = str(client_attempt_id or "").strip()
+    if not attempt_id:
+        return False
+    base = base_dir or PUZZLE_DIR
+    existing = load_outbox(base)
+    remaining = [item for item in existing if item["client_attempt_id"] != attempt_id]
+    if len(remaining) == len(existing):
+        return False
+    _write_outbox(remaining, base)
+    return True
+
+
+def clear_outbox(base_dir=None):
+    _remove_quietly(outbox_path(base_dir))
     return True
 
 

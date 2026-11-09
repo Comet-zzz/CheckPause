@@ -330,5 +330,61 @@ class FavoritesListedTests(unittest.TestCase):
         self.assertFalse(puzzles.delete_collection(puzzles.FAVORITES_ID))
 
 
+class OnlineOutboxTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.base = self._tmp.name
+
+    def _entry(self, attempt_id="a1", **overrides):
+        entry = {
+            "puzzle_id": "p1",
+            "result": "solved",
+            "duration_ms": 1200,
+            "hinted": False,
+            "rated": True,
+            "client_attempt_id": attempt_id,
+            "account": "Player_One",
+            "server_url": "https://example.test",
+        }
+        entry.update(overrides)
+        return entry
+
+    def test_append_and_load_keeps_the_account(self):
+        self.assertTrue(puzzles.append_outbox(self._entry(), base_dir=self.base))
+        loaded = puzzles.load_outbox(self.base)
+        self.assertEqual(len(loaded), 1)
+        self.assertEqual(loaded[0]["client_attempt_id"], "a1")
+        self.assertEqual(loaded[0]["account"], "player_one")
+        self.assertEqual(loaded[0]["result"], "solved")
+        self.assertTrue(loaded[0]["created_at"])
+
+    def test_append_is_idempotent_by_attempt_id(self):
+        puzzles.append_outbox(self._entry(), base_dir=self.base)
+        self.assertFalse(puzzles.append_outbox(self._entry(), base_dir=self.base))
+        self.assertEqual(len(puzzles.load_outbox(self.base)), 1)
+
+    def test_remove_only_the_named_attempt(self):
+        puzzles.append_outbox(self._entry("a1"), base_dir=self.base)
+        puzzles.append_outbox(self._entry("a2"), base_dir=self.base)
+        self.assertTrue(puzzles.remove_outbox("a1", base_dir=self.base))
+        self.assertFalse(puzzles.remove_outbox("missing", base_dir=self.base))
+        loaded = puzzles.load_outbox(self.base)
+        self.assertEqual([item["client_attempt_id"] for item in loaded], ["a2"])
+
+    def test_unusable_entries_are_skipped(self):
+        path = puzzles.outbox_path(self.base)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("not json\n")
+            handle.write('{"puzzle_id": "p1", "result": "bogus"}\n')
+            handle.write('{"puzzle_id": "p2", "result": "failed"}\n')
+        self.assertEqual(puzzles.load_outbox(self.base), [])
+
+    def test_clear_outbox(self):
+        puzzles.append_outbox(self._entry(), base_dir=self.base)
+        puzzles.clear_outbox(self.base)
+        self.assertEqual(puzzles.load_outbox(self.base), [])
+
+
 if __name__ == "__main__":
     unittest.main()
