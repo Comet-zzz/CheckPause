@@ -131,6 +131,7 @@ class _HubView(QWidget):
     difficulty_changed = Signal(str)
     theme_filter_changed = Signal(str)
     auto_next_changed = Signal(bool)
+    sprint_changed = Signal(bool)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -220,6 +221,8 @@ class _HubView(QWidget):
         )
         self._auto_next = QCheckBox()
         self._auto_next.toggled.connect(self.auto_next_changed.emit)
+        self._sprint = QCheckBox()
+        self._sprint.toggled.connect(self.sprint_changed.emit)
         self._btn_daily = QPushButton()
         self._btn_daily.setObjectName("puzzleSecondaryButton")
         self._btn_daily.clicked.connect(self.daily_requested.emit)
@@ -236,6 +239,7 @@ class _HubView(QWidget):
         filters.addWidget(self._theme_label)
         filters.addWidget(self._theme_filter)
         filters.addWidget(self._auto_next)
+        filters.addWidget(self._sprint)
         filters.addStretch(1)
         filters.addWidget(self._btn_daily)
         filters.addWidget(self._btn_solved)
@@ -317,6 +321,11 @@ class _HubView(QWidget):
     def set_train_enabled(self, enabled):
         self._btn_train.setEnabled(bool(enabled))
 
+    def set_sprint(self, enabled):
+        self._sprint.blockSignals(True)
+        self._sprint.setChecked(bool(enabled))
+        self._sprint.blockSignals(False)
+
     def set_collections(self, collections, language):
         self._language = language
         while self._collection_grid.count():
@@ -356,6 +365,7 @@ class _HubView(QWidget):
         self._difficulty_label.setText(t("puzzle_home_difficulty", language))
         self._theme_label.setText(t("puzzle_home_theme", language))
         self._auto_next.setText(t("puzzle_home_auto_next", language))
+        self._sprint.setText(t("puzzle_home_sprint", language))
         self._btn_daily.setText(t("puzzle_home_daily", language))
         self._btn_solved.setText(t("puzzle_home_review_solved", language))
         self._btn_signin.setText(t("puzzle_home_sign_in", language))
@@ -568,6 +578,9 @@ class _TrainView(QWidget):
 
     def set_prompt(self, text):
         self._prompt.setText(text)
+
+    def set_counter(self, text):
+        self._counter_label.setText(text or "")
 
     def set_notice(self, text=""):
         self._notice.setText(text or "")
@@ -1184,6 +1197,13 @@ class PuzzlePage(QWidget):
         self._auto_next_timer = QTimer(self)
         self._auto_next_timer.setSingleShot(True)
         self._auto_next_timer.timeout.connect(self._next)
+        self._sprint_mode = False
+        self._sprint_active = False
+        self._sprint_remaining = 0
+        self._sprint_solved = 0
+        self._sprint_timer = QTimer(self)
+        self._sprint_timer.setInterval(1000)
+        self._sprint_timer.timeout.connect(self._sprint_tick)
 
         self._hub = _HubView(self)
         self._train = _TrainView(self)
@@ -1209,6 +1229,7 @@ class PuzzlePage(QWidget):
         self._hub.difficulty_changed.connect(self._set_difficulty)
         self._hub.theme_filter_changed.connect(self._set_theme_filter)
         self._hub.auto_next_changed.connect(self._set_auto_next)
+        self._hub.sprint_changed.connect(self._set_sprint)
         self._train.back_requested.connect(self._back_from_train)
         self._train.hint_requested.connect(self._show_hint)
         self._train.retry_requested.connect(self._retry)
@@ -1282,6 +1303,8 @@ class PuzzlePage(QWidget):
     def show_hub(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
+        self._stop_sprint()
+        self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
         self._refresh_account()
@@ -1414,6 +1437,55 @@ class PuzzlePage(QWidget):
 
     def _set_auto_next(self, enabled):
         self._auto_next = bool(enabled)
+
+    def _set_sprint(self, enabled):
+        self._sprint_mode = bool(enabled)
+        if not self._sprint_mode and self._sprint_active:
+            self._stop_sprint()
+            self._train.set_counter("")
+
+    def _start_sprint(self):
+        if not self._sprint_mode or self._sprint_active:
+            return
+        self._sprint_active = True
+        self._sprint_remaining = 180
+        self._sprint_solved = 0
+        self._sprint_timer.start()
+        self._update_sprint_label()
+
+    def _update_sprint_label(self):
+        minutes, seconds = divmod(max(0, self._sprint_remaining), 60)
+        self._train.set_counter(
+            t(
+                "puzzle_train_sprint_time",
+                self._language,
+                time=f"{minutes}:{seconds:02d}",
+            )
+        )
+
+    def _sprint_tick(self):
+        self._sprint_remaining -= 1
+        self._update_sprint_label()
+        if self._sprint_remaining > 0:
+            return
+        self._stop_sprint()
+        self._sprint_mode = False
+        self._hub.set_sprint(False)
+        self._auto_next_timer.stop()
+        self._train.set_counter("")
+        self._train.set_solving(False)
+        if self._session is not None:
+            self._train.board.set_interactive(False, self._session.human_color)
+        self._train.show_result(
+            "sprint",
+            t("puzzle_train_sprint_title", self._language),
+            t("puzzle_train_sprint_detail", self._language, solved=self._sprint_solved),
+        )
+        self._train.set_next_enabled(True)
+
+    def _stop_sprint(self):
+        self._sprint_timer.stop()
+        self._sprint_active = False
 
     def _start_daily(self):
         self._review_puzzles = []
@@ -1549,6 +1621,7 @@ class PuzzlePage(QWidget):
         self._train.set_next_enabled(True)
         self._hub.set_online(True, self._online_rating)
         self._stack.setCurrentWidget(self._train)
+        self._start_sprint()
 
     def _refresh_hub_stats(self):
         if not self._is_online():
@@ -1696,6 +1769,7 @@ class PuzzlePage(QWidget):
         )
         self._train.set_next_enabled(True)
         self._library.set_current(self._library_collection, self._library_index)
+        self._start_sprint()
 
     def _activate_puzzle(self, puzzle):
         self._reset_attempt_state()
@@ -1925,6 +1999,8 @@ class PuzzlePage(QWidget):
 
     def _finish_solved(self):
         self._streak += 1
+        if self._sprint_active:
+            self._sprint_solved += 1
         self._record_attempt("solved")
         self._mark_current_solved()
         self._train.show_result(
@@ -2123,6 +2199,8 @@ class PuzzlePage(QWidget):
     def _back_from_train(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
+        self._stop_sprint()
+        self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
         if self._train_origin == "library":
