@@ -458,6 +458,34 @@ class PuzzleOnlineTests(unittest.TestCase):
             cloud.retry_puzzle("http://server", "tok")
         self.assertEqual(caught.exception.code, "no_mistakes")
 
+    def test_daily_and_solved_requests_carry_their_arguments(self):
+        seen = []
+
+        def capture(url, **kwargs):
+            seen.append(url)
+            return FakeResponse(200, body={})
+
+        with mock.patch.object(cloud.httpx, "get", capture):
+            cloud.fetch_daily_puzzle("http://server", "tok", difficulty="hard")
+            cloud.fetch_solved_puzzles("http://server", "tok", limit=12)
+
+        self.assertTrue(seen[0].endswith("/v1/puzzles/daily?difficulty=hard"))
+        self.assertTrue(seen[1].endswith("/v1/puzzles/solved?limit=12"))
+
+    def test_vote_encodes_the_puzzle_id(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["url"] = url
+            seen["json"] = kwargs.get("json")
+            return FakeResponse(200, body={"vote": -1})
+
+        with mock.patch.object(cloud.httpx, "post", capture):
+            cloud.vote_puzzle("http://server", "tok", "a/b", -1)
+
+        self.assertEqual(seen["url"], "http://server/v1/puzzles/a%2Fb/vote")
+        self.assertEqual(seen["json"], {"vote": -1})
+
 
 if __name__ == "__main__":
     unittest.main()

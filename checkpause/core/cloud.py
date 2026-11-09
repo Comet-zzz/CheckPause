@@ -10,7 +10,7 @@ Failure messages are built from the server's short error codes rather than its
 English text, so a user reads the same wording the rest of the app uses.
 """
 
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 import httpx
 
@@ -27,6 +27,8 @@ PACKS_ENDPOINT = "/v1/pay/packs"
 ORDERS_ENDPOINT = "/v1/pay/orders"
 PUZZLE_NEXT_ENDPOINT = "/v1/puzzles/next"
 PUZZLE_RETRY_ENDPOINT = "/v1/puzzles/retry"
+PUZZLE_DAILY_ENDPOINT = "/v1/puzzles/daily"
+PUZZLE_SOLVED_ENDPOINT = "/v1/puzzles/solved"
 PUZZLE_ATTEMPT_ENDPOINT = "/v1/puzzles/attempt"
 PUZZLE_STATS_ENDPOINT = "/v1/puzzles/stats"
 PUZZLE_PROFILE_ENDPOINT = "/v1/puzzles/profile"
@@ -275,6 +277,24 @@ def next_puzzle(server_url, token, theme="", difficulty="normal", language="zh-C
 def retry_puzzle(server_url, token, language="zh-CN"):
     """A failed puzzle that has not been solved since."""
     return _get(server_url, PUZZLE_RETRY_ENDPOINT, token, language)
+
+
+def fetch_daily_puzzle(server_url, token, difficulty="normal", language="zh-CN"):
+    """The same puzzle for this account for the whole UTC day."""
+    query = urlencode({"difficulty": difficulty})
+    return _get(server_url, PUZZLE_DAILY_ENDPOINT + "?" + query, token, language)
+
+
+def fetch_solved_puzzles(server_url, token, limit=30, language="zh-CN"):
+    """Recently solved puzzles, newest first, for review practice."""
+    query = urlencode({"limit": int(limit)})
+    return _get(server_url, PUZZLE_SOLVED_ENDPOINT + "?" + query, token, language)
+
+
+def vote_puzzle(server_url, token, puzzle_id, vote, language="zh-CN"):
+    """Mark a puzzle as helpful or broken; a down vote also hides it."""
+    path = "/v1/puzzles/" + quote(str(puzzle_id), safe="") + "/vote"
+    return _post(server_url, path, {"vote": int(vote)}, language, token=token)
 
 
 def submit_puzzle_attempt(

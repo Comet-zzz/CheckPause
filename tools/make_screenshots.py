@@ -49,6 +49,7 @@ from PySide6.QtWidgets import QApplication
 
 from checkpause.config import DEFAULT_ANALYSIS_DEPTH
 from checkpause.core.engine import StockfishAnalyzer
+from checkpause.core.openings import opening_san
 from checkpause.core.review import classify
 from checkpause.data.profile import create_profile, delete_profile, save_profile
 from checkpause.data.puzzles import BUILTIN_ID
@@ -221,12 +222,16 @@ def _capture_stats(window, language):
 
 def _capture_play(window):
     page = window.play_page
-    opening_index = page._opening_combo.findText("Italian Game: Giuoco Piano")
-    if opening_index > 0:
-        page._opening_combo.setCurrentIndex(opening_index)
     time_index = page._time_combo.findData("rapid_10_0")
     if time_index >= 0:
         page._time_combo.setCurrentIndex(time_index)
+    for index, opening in enumerate(page._openings):
+        if opening_san(opening).startswith("1. e4 e5 2. Nf3 Nc6 3. Bc4"):
+            page._start_mode = "opening"
+            page._opening_index = index
+            page._sync_start_mode()
+            page._prepare_game()
+            break
 
     page._started = True
     page._session.clock_started = True

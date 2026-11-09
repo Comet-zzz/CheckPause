@@ -447,6 +447,28 @@ class PuzzleOnlineWorker(QThread):
             )
         if self.action == "retry":
             return cloud.retry_puzzle(self.server_url, self.token, self.language)
+        if self.action == "daily":
+            return cloud.fetch_daily_puzzle(
+                self.server_url,
+                self.token,
+                self.payload.get("difficulty", "normal"),
+                self.language,
+            )
+        if self.action == "solved":
+            return cloud.fetch_solved_puzzles(
+                self.server_url,
+                self.token,
+                self.payload.get("limit", 30),
+                self.language,
+            )
+        if self.action == "vote":
+            return cloud.vote_puzzle(
+                self.server_url,
+                self.token,
+                self.payload["puzzle_id"],
+                self.payload["vote"],
+                self.language,
+            )
         if self.action == "attempt":
             return cloud.submit_puzzle_attempt(
                 self.server_url,

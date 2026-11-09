@@ -126,6 +126,71 @@ def clear_progress(collection_id, base_dir=None):
     return False
 
 
+def solved_keys(collection, base_dir=None):
+    """Solved puzzles by stable key, migrating legacy index progress once.
+
+    Older builds stored positions in the collection. Re-importing a set or
+    changing its order silently pointed those at different puzzles, so the
+    first read converts them to puzzle ids (or the puzzle's own fen/moves when
+    it has no id). An index that cannot be resolved is kept as-is rather than
+    discarded, so a broken file never erases somebody's history.
+    """
+    collection_id = getattr(collection, "id", "")
+    if not collection_id:
+        return set()
+    progress = load_progress(base_dir)
+    raw = progress.get(collection_id)
+    if not isinstance(raw, list):
+        return set()
+    keys = set()
+    legacy = []
+    unresolved = []
+    for value in raw:
+        if isinstance(value, str):
+            if value:
+                keys.add(value)
+            continue
+        try:
+            legacy.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    for index in legacy:
+        try:
+            puzzle = collection.get(index)
+        except Exception:
+            puzzle = None
+        key = puzzle_key(puzzle)
+        if key:
+            keys.add(key)
+        else:
+            unresolved.append(index)
+    if legacy:
+        progress[collection_id] = sorted(keys) + sorted(unresolved)
+        save_progress(progress, base_dir)
+    return keys
+
+
+def mark_solved_key(collection_id, key, base_dir=None):
+    """Remember one solved puzzle by its stable key."""
+    key = str(key or "").strip()
+    if not collection_id or not key:
+        return
+    progress = load_progress(base_dir)
+    raw = progress.get(collection_id)
+    values = set()
+    legacy = []
+    if isinstance(raw, list):
+        for value in raw:
+            if isinstance(value, str):
+                if value:
+                    values.add(value)
+            else:
+                legacy.append(value)
+    values.add(key)
+    progress[collection_id] = sorted(values) + legacy
+    save_progress(progress, base_dir)
+
+
 def attempts_path(base_dir=None):
     base = base_dir or PUZZLE_DIR
     return os.path.join(base, ATTEMPTS_NAME)

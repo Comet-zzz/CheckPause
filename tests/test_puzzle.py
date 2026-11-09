@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import tempfile
 import unittest
@@ -186,6 +187,42 @@ class PuzzleProgressTests(unittest.TestCase):
         puzzles.mark_solved(meta["id"], 0, base_dir=self.base)
         puzzles.delete_collection(meta["id"], base_dir=self.base)
         self.assertEqual(puzzles.solved_indices(meta["id"], base_dir=self.base), set())
+
+    def _collection(self, filename, ids, collection_id="c1"):
+        path = os.path.join(self.base, filename)
+        with open(path, "w", encoding="utf-8") as handle:
+            for puzzle_id in ids:
+                handle.write(
+                    json.dumps(
+                        {
+                            "id": puzzle_id,
+                            "fen": chess.STARTING_FEN,
+                            "moves": ["e2e4"],
+                        }
+                    )
+                    + "\n"
+                )
+        return puzzles.PuzzleCollection({"id": collection_id, "file": path, "count": len(ids)})
+
+    def test_legacy_indices_are_migrated_to_puzzle_keys(self):
+        collection = self._collection("a.jsonl", ["p1", "p2", "p3"])
+        puzzles.save_progress({"c1": [0, 2]}, base_dir=self.base)
+
+        self.assertEqual(puzzles.solved_keys(collection, base_dir=self.base), {"p1", "p3"})
+        self.assertEqual(puzzles.load_progress(self.base)["c1"], ["p1", "p3"])
+
+    def test_progress_survives_reordering_after_migration(self):
+        puzzles.save_progress({"c1": [0, 2]}, base_dir=self.base)
+        puzzles.solved_keys(self._collection("a.jsonl", ["p1", "p2", "p3"]), base_dir=self.base)
+
+        reordered = self._collection("b.jsonl", ["p3", "p2", "p1"])
+        self.assertEqual(puzzles.solved_keys(reordered, base_dir=self.base), {"p1", "p3"})
+
+    def test_mark_solved_key_is_deduplicated(self):
+        collection = self._collection("a.jsonl", ["p1", "p2"])
+        puzzles.mark_solved_key("c1", "p2", base_dir=self.base)
+        puzzles.mark_solved_key("c1", "p2", base_dir=self.base)
+        self.assertEqual(puzzles.solved_keys(collection, base_dir=self.base), {"p2"})
 
 
 class PuzzleFavoritesTests(unittest.TestCase):

@@ -292,6 +292,7 @@ class MainWindow(QMainWindow):
         self.play_page.analysis_requested.connect(self._on_play_import)
 
         self.puzzle_page = PuzzlePage()
+        self.puzzle_page.sign_in_requested.connect(self._open_cloud_account)
         self.learn_page = LearnPage()
 
         main_stack = QStackedWidget()
@@ -958,6 +959,8 @@ class MainWindow(QMainWindow):
             self.profile = set_username(self.profile, self._account.get("username", ""))
             self._refresh_stats()
         self._refresh_account_menu()
+        if hasattr(self, "puzzle_page"):
+            self.puzzle_page.refresh_account()
 
     def _reset_chat(self):
         self._messages = self._messages[:2]
