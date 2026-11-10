@@ -1123,6 +1123,31 @@ QTableWidget#moveTable::item {
     color: $text_disabled;
     border-color: $border;
 }
+#puzzleIconButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px;
+}
+#puzzleIconButton:hover {
+    background-color: $hover;
+}
+#puzzleIconButton:disabled {
+    background: transparent;
+}
+#puzzleLinkButton {
+    background: transparent;
+    border: none;
+    color: $text_muted;
+    font-size: 13px;
+    padding: 4px 2px;
+}
+#puzzleLinkButton:hover {
+    color: $text;
+}
+#puzzleLinkButton:disabled {
+    color: $text_disabled;
+}
 #puzzleSectionLabel {
     color: $text_muted;
     font-size: 13px;
@@ -1266,9 +1291,9 @@ QTableWidget#moveTable::item {
     border-radius: 3px;
 }
 #puzzleTrainSide {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 14px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
 }
 #puzzleTrainMeta {
     color: $text_muted;
@@ -1287,20 +1312,6 @@ QWidget#puzzleMoveList QTableWidget {
     font-size: 16px;
     font-weight: 600;
     padding: 0;
-}
-#puzzleGameLink {
-    color: $text_muted;
-    font-size: 12px;
-}
-#puzzleVoteButton {
-    background: transparent;
-    border: none;
-    color: $text_muted;
-    font-size: 11px;
-    padding: 2px 4px;
-}
-#puzzleVoteButton:hover {
-    color: $text;
 }
 #puzzleResultPanel {
     background-color: $surface_alt;

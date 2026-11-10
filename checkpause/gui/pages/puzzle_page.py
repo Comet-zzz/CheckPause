@@ -1,4 +1,3 @@
-import html
 import time
 import uuid
 
@@ -50,7 +49,7 @@ from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
-from checkpause.gui.workers import PuzzleImportWorker, PuzzleOnlineWorker
+from checkpause.gui.workers import PuzzleGameWorker, PuzzleImportWorker, PuzzleOnlineWorker
 from checkpause.i18n import t
 
 
@@ -584,7 +583,6 @@ class _TrainView(QWidget):
     next_requested = Signal()
     replay_requested = Signal()
     analysis_requested = Signal(str)
-    vote_requested = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -592,9 +590,7 @@ class _TrainView(QWidget):
         self._theme = LIGHT
         self._favorited = False
         self._rating = None
-        self._game_url = ""
         self._puzzle_rating = None
-        self._puzzle_themes = []
         self.setObjectName("puzzleTrain")
 
         self._btn_back = QPushButton()
@@ -617,14 +613,32 @@ class _TrainView(QWidget):
         top.addWidget(self._counter_label)
 
         self._turn_text = ""
-        self._meta = QLabel()
-        self._meta.setObjectName("puzzleTrainMeta")
-        self._meta.setWordWrap(True)
-        self._game_link = QLabel()
-        self._game_link.setObjectName("puzzleGameLink")
-        self._game_link.setOpenExternalLinks(True)
-        self._game_link.setTextFormat(Qt.TextFormat.RichText)
-        self._game_link.setVisible(False)
+        self._difficulty = QLabel()
+        self._difficulty.setObjectName("puzzleRatingPill")
+        self._difficulty.setVisible(False)
+
+        self._btn_favorite = QPushButton()
+        self._btn_favorite.setObjectName("puzzleIconButton")
+        self._btn_favorite.setFixedSize(30, 30)
+        self._btn_favorite.setIconSize(QSize(16, 16))
+        self._btn_favorite.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_favorite.clicked.connect(self.favorite_requested.emit)
+        self._btn_analyze = QPushButton()
+        self._btn_analyze.setObjectName("puzzleIconButton")
+        self._btn_analyze.setFixedSize(30, 30)
+        self._btn_analyze.setIconSize(QSize(16, 16))
+        self._btn_analyze.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_analyze.clicked.connect(self._request_analysis)
+        utility = QHBoxLayout()
+        utility.setSpacing(4)
+        utility.addWidget(self._difficulty)
+        utility.addStretch(1)
+        utility.addWidget(self._btn_favorite)
+        utility.addWidget(self._btn_analyze)
+
+        self._prompt = QLabel()
+        self._prompt.setObjectName("puzzlePrompt")
+        self._prompt.setWordWrap(True)
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
         self._notice.setWordWrap(True)
@@ -662,9 +676,9 @@ class _TrainView(QWidget):
         self._btn_result_retry = QPushButton()
         self._btn_result_retry.setObjectName("puzzleSecondaryButton")
         self._btn_result_retry.clicked.connect(self.retry_requested.emit)
-        self._btn_analyze = QPushButton()
-        self._btn_analyze.setObjectName("puzzleSecondaryButton")
-        self._btn_analyze.clicked.connect(self._request_analysis)
+        self._btn_result_reveal = QPushButton()
+        self._btn_result_reveal.setObjectName("puzzleSecondaryButton")
+        self._btn_result_reveal.clicked.connect(self.reveal_requested.emit)
         self._btn_replay = QPushButton()
         self._btn_replay.setObjectName("puzzleSecondaryButton")
         self._btn_replay.clicked.connect(self.replay_requested.emit)
@@ -672,9 +686,11 @@ class _TrainView(QWidget):
         self._btn_next.setObjectName("puzzlePrimaryButton")
         self._btn_next.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_next.clicked.connect(self.next_requested.emit)
+
         feedback_primary = QHBoxLayout()
         feedback_primary.setSpacing(6)
         feedback_primary.addWidget(self._btn_result_retry)
+        feedback_primary.addWidget(self._btn_result_reveal)
         feedback_primary.addWidget(self._btn_replay)
         feedback_primary.addStretch(1)
         feedback_primary.addWidget(self._btn_next)
@@ -688,71 +704,48 @@ class _TrainView(QWidget):
         feedback_layout.addLayout(feedback_primary)
 
         self._btn_hint = QPushButton()
-        self._btn_hint.setObjectName("puzzleSecondaryButton")
+        self._btn_hint.setObjectName("puzzleLinkButton")
+        self._btn_hint.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_hint.clicked.connect(self.hint_requested.emit)
         self._btn_reveal = QPushButton()
-        self._btn_reveal.setObjectName("puzzleSecondaryButton")
+        self._btn_reveal.setObjectName("puzzleLinkButton")
+        self._btn_reveal.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_reveal.clicked.connect(self.reveal_requested.emit)
-        self._btn_favorite = QPushButton()
-        self._btn_favorite.setObjectName("puzzleSecondaryButton")
-        self._btn_favorite.clicked.connect(self.favorite_requested.emit)
-        actions = QHBoxLayout()
-        actions.setSpacing(6)
-        actions.addWidget(self._btn_hint)
-        actions.addWidget(self._btn_reveal)
-        actions.addStretch(1)
-        actions.addWidget(self._btn_favorite)
-        analysis_row = QHBoxLayout()
-        analysis_row.setSpacing(6)
-        analysis_row.addWidget(self._btn_analyze)
-        analysis_row.addStretch(1)
+        self._solve_actions = QWidget()
+        solve_layout = QHBoxLayout(self._solve_actions)
+        solve_layout.setContentsMargins(0, 0, 0, 0)
+        solve_layout.setSpacing(18)
+        solve_layout.addWidget(self._btn_hint)
+        solve_layout.addWidget(self._btn_reveal)
+        solve_layout.addStretch(1)
 
-        self._move_label = QLabel()
-        self._move_label.setObjectName("puzzleSectionLabel")
         self._move_list = MoveListWidget()
         self._move_list.setObjectName("puzzleMoveList")
-        self._move_list.setMinimumHeight(130)
+        self._move_list.setVisible(False)
         self._move_list.ply_selected.connect(self.board.goto)
         self.board.index_changed.connect(self._move_list.set_current_ply)
         self._moves_empty = QLabel()
         self._moves_empty.setObjectName("puzzleEmptyLabel")
         self._moves_empty.setWordWrap(True)
-        self._move_box = QFrame()
-        self._move_box.setObjectName("puzzleMoveBox")
-        move_box_layout = QVBoxLayout(self._move_box)
-        move_box_layout.setContentsMargins(6, 4, 6, 4)
-        move_box_layout.setSpacing(0)
-        move_box_layout.addWidget(self._moves_empty)
-        move_box_layout.addWidget(self._move_list, 1)
-
-        self._btn_vote_up = QPushButton()
-        self._btn_vote_up.setObjectName("puzzleVoteButton")
-        self._btn_vote_up.clicked.connect(lambda: self.vote_requested.emit(1))
-        self._btn_vote_down = QPushButton()
-        self._btn_vote_down.setObjectName("puzzleVoteButton")
-        self._btn_vote_down.clicked.connect(lambda: self.vote_requested.emit(-1))
-        votes = QHBoxLayout()
-        votes.setSpacing(4)
-        votes.addWidget(self._btn_vote_up)
-        votes.addWidget(self._btn_vote_down)
-        votes.addStretch(1)
-        self.set_vote_visible(False)
+        self._moves_empty.setAlignment(Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignLeft)
+        self._moves_empty.setSizePolicy(
+            QSizePolicy.Policy.Preferred,
+            QSizePolicy.Policy.Expanding,
+        )
 
         side = QFrame()
         side.setObjectName("puzzleTrainSide")
         side.setMinimumWidth(300)
         side.setMaximumWidth(370)
         side_layout = QVBoxLayout(side)
-        side_layout.setContentsMargins(14, 12, 14, 12)
-        side_layout.setSpacing(8)
-        side_layout.addWidget(self._meta)
-        side_layout.addWidget(self._game_link)
+        side_layout.setContentsMargins(6, 4, 6, 4)
+        side_layout.setSpacing(10)
+        side_layout.addLayout(utility)
+        side_layout.addWidget(self._prompt)
         side_layout.addWidget(self._feedback)
-        side_layout.addWidget(self._move_label)
-        side_layout.addWidget(self._move_box, 1)
-        side_layout.addLayout(actions)
-        side_layout.addLayout(analysis_row)
-        side_layout.addLayout(votes)
+        side_layout.addWidget(self._moves_empty)
+        side_layout.addWidget(self._move_list, 1)
+        side_layout.addWidget(self._solve_actions)
 
         splitter = QSplitter(Qt.Orientation.Horizontal)
         splitter.setChildrenCollapsible(False)
@@ -783,13 +776,14 @@ class _TrainView(QWidget):
         self._rating_label.setVisible(True)
 
     def set_online_info(self, mode, rating):
-        self._mode_label.setText(mode)
+        self._mode_label.setText(mode or "")
+        self._mode_label.setVisible(bool(mode))
         self._counter_label.clear()
         self.set_rating(rating)
-        self.set_vote_visible(True)
 
     def set_session_info(self, mode, index, total, human_color):
-        self._mode_label.setText(mode)
+        self._mode_label.setText(mode or "")
+        self._mode_label.setVisible(bool(mode))
         self.set_rating(None)
         self._counter_label.setText(
             t(
@@ -804,36 +798,33 @@ class _TrainView(QWidget):
             self._language,
         )
         self.set_prompt(t("puzzle_train_your_turn", self._language, color=color))
-        self.set_vote_visible(False)
 
     def set_prompt(self, text):
         self._turn_text = text or ""
-        if not self._feedback.property("state") or self._feedback.property("state") == "playing":
-            self._result_title.setText(self._turn_text)
+        self._prompt.setText(self._turn_text)
+        if self._feedback.isHidden():
+            self._prompt.setVisible(bool(self._turn_text))
 
-    def set_meta(self, text):
-        self._meta.setText(text or "")
-        self._meta.setVisible(bool(text))
-
-    def set_puzzle_info(self, rating, themes):
+    def set_puzzle_info(self, rating):
         self._puzzle_rating = rating
-        self._puzzle_themes = list(themes or [])
-        parts = []
         if rating:
-            parts.append(t("puzzle_rating", self._language, rating=rating))
-        if self._puzzle_themes:
-            names = "、".join(_theme_name(name, self._language) for name in self._puzzle_themes[:4])
-            parts.append(t("puzzle_themes", self._language, themes=names))
-        self.set_meta(" · ".join(parts))
+            self._difficulty.setText(t("puzzle_rating", self._language, rating=rating))
+            self._difficulty.setVisible(True)
+        else:
+            self._difficulty.clear()
+            self._difficulty.setVisible(False)
 
     def set_line(self, pgn):
-        self._move_list.setVisible(bool(pgn))
-        self._moves_empty.setVisible(not pgn)
         if not pgn:
             self._move_list.clear()
+            self._move_list.setVisible(False)
+            self._moves_empty.setVisible(True)
+            self._update_analyze_state()
             return
         if self._move_list.set_moves(pgn):
+            self._move_list.setVisible(True)
             self._move_list.set_current_ply(self.board.index)
+            self._moves_empty.setVisible(False)
         else:
             self._move_list.clear()
             self._move_list.setVisible(False)
@@ -841,11 +832,7 @@ class _TrainView(QWidget):
         self._update_analyze_state()
 
     def _update_analyze_state(self):
-        enabled = self.board.index > 0
-        self._btn_analyze.setEnabled(enabled)
-        self._btn_analyze.setToolTip(
-            "" if enabled else t("puzzle_train_analyze_tip", self._language)
-        )
+        self._btn_analyze.setEnabled(self.board.index > 0)
 
     def set_counter(self, text):
         self._counter_label.setText(text or "")
@@ -853,10 +840,6 @@ class _TrainView(QWidget):
     def set_notice(self, text=""):
         self._notice.setText(text or "")
         self._notice.setVisible(bool(text))
-
-    def set_vote_visible(self, visible):
-        self._btn_vote_up.setVisible(bool(visible))
-        self._btn_vote_down.setVisible(bool(visible))
 
     def set_solving(self, solving):
         self._btn_hint.setEnabled(solving)
@@ -876,7 +859,9 @@ class _TrainView(QWidget):
         self._result_solution.setText(solution)
         self._result_solution.setVisible(bool(solution))
         self._set_feedback_state(state)
+        self._prompt.setVisible(False)
         self._feedback.setVisible(True)
+        self._solve_actions.setVisible(False)
         self._btn_hint.setEnabled(False)
         self._btn_reveal.setEnabled(state == "failed")
         is_challenge = state == "challenge"
@@ -886,6 +871,7 @@ class _TrainView(QWidget):
         )
         self._btn_result_retry.style().unpolish(self._btn_result_retry)
         self._btn_result_retry.style().polish(self._btn_result_retry)
+        self._btn_result_reveal.setVisible(state == "failed")
         self._btn_replay.setVisible(
             not is_challenge and state in ("solved", "revealed") and bool(solution)
         )
@@ -899,9 +885,8 @@ class _TrainView(QWidget):
     def set_attempt_result(self, data, streak=0):
         if not isinstance(data, dict):
             return
-        if not data.get("rated"):
-            text = t("puzzle_result_practice", self._language)
-        else:
+        text = ""
+        if data.get("rated"):
             before = data.get("rating_before")
             after = data.get("rating_after")
             delta = data.get("rating_delta")
@@ -915,21 +900,9 @@ class _TrainView(QWidget):
                 delta=f"{float(delta):+g}",
             )
         if streak:
-            text += " · " + t("puzzle_result_streak", self._language, streak=streak)
+            label = t("puzzle_result_streak", self._language, streak=streak)
+            text = f"{text} · {label}" if text else label
         self.set_result_meta(text)
-
-    def set_game_link(self, url):
-        self._game_url = (url or "").strip()
-        if not self._game_url:
-            self._game_link.clear()
-            self._game_link.setVisible(False)
-            return
-        safe = html.escape(self._game_url, quote=True)
-        self._game_link.setText(
-            t("puzzle_game_from", self._language)
-            + f': <a href="{safe}">{t("puzzle_game_open", self._language)}</a>'
-        )
-        self._game_link.setVisible(True)
 
     def _request_analysis(self):
         if self.board.index <= 0:
@@ -938,11 +911,16 @@ class _TrainView(QWidget):
 
     def hide_result(self):
         self._set_feedback_state("playing")
-        self._result_title.setText(self._turn_text)
+        self._result_title.clear()
         self._result_detail.clear()
         self._result_solution.clear()
         self.set_result_meta("")
+        self._feedback.setVisible(False)
+        self._prompt.setText(self._turn_text)
+        self._prompt.setVisible(bool(self._turn_text))
+        self._solve_actions.setVisible(True)
         self._btn_result_retry.setVisible(False)
+        self._btn_result_reveal.setVisible(False)
         self._btn_replay.setVisible(False)
         self._btn_next.setVisible(False)
         self.set_solving(True)
@@ -952,9 +930,8 @@ class _TrainView(QWidget):
 
     def set_favorite(self, favorited):
         self._favorited = bool(favorited)
-        self._btn_favorite.setText(
-            t("puzzle_unfavorite" if favorited else "puzzle_favorite", self._language)
-        )
+        label = t("puzzle_unfavorite" if favorited else "puzzle_favorite", self._language)
+        self._btn_favorite.setAccessibleName(label)
         icon = "star_filled" if favorited else "star"
         self._btn_favorite.setIcon(action_icon(self._theme, icon))
 
@@ -963,9 +940,10 @@ class _TrainView(QWidget):
         for button, name in (
             (self._btn_back, "nav_prev"),
             (self._btn_hint, "hint"),
-            (self._btn_reveal, "review_best"),
+            (self._btn_reveal, "flag"),
             (self._btn_result_retry, "reset"),
-            (self._btn_analyze, "analyze"),
+            (self._btn_result_reveal, "flag"),
+            (self._btn_analyze, "rail_analysis"),
             (self._btn_replay, "resume"),
             (self._btn_next, "nav_next"),
         ):
@@ -979,19 +957,15 @@ class _TrainView(QWidget):
         self._btn_hint.setText(t("puzzle_train_hint", language))
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_result_retry.setText(t("puzzle_train_retry", language))
+        self._btn_result_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_next.setText(t("puzzle_train_next", language))
         self._btn_replay.setText(t("puzzle_train_replay", language))
-        self._btn_analyze.setText(t("puzzle_train_analyze", language))
-        self._btn_vote_up.setText(t("puzzle_vote_up", language))
-        self._btn_vote_down.setText(t("puzzle_vote_down", language))
-        self._btn_favorite.setText(t("puzzle_favorite", language))
-        self._move_label.setText(t("puzzle_train_moves", language))
         self._moves_empty.setText(t("puzzle_train_no_moves", language))
+        self._btn_analyze.setAccessibleName(t("puzzle_train_analyze", language))
         self.set_favorite(self._favorited)
         self.set_rating(self._rating)
-        self.set_game_link(self._game_url)
-        if hasattr(self, "_puzzle_themes"):
-            self.set_puzzle_info(getattr(self, "_puzzle_rating", None), self._puzzle_themes)
+        self.set_puzzle_info(self._puzzle_rating)
+        self._update_analyze_state()
 
     def set_theme(self, theme):
         self.board.set_theme(theme)
@@ -1591,7 +1565,10 @@ class PuzzlePage(QWidget):
         self._streak = 0
         self._review_puzzles = []
         self._review_index = -1
-        self._vote_worker = None
+        self._game_workers = set()
+        self._history_moves = []
+        self._history_start_fen = None
+        self._history_applied = False
         self._replay_moves = []
         self._replay_index = 0
         self._replay_timer = QTimer(self)
@@ -1643,7 +1620,6 @@ class PuzzlePage(QWidget):
         self._train.reveal_requested.connect(self._reveal_solution)
         self._train.next_requested.connect(self._next)
         self._train.replay_requested.connect(self._replay_solution)
-        self._train.vote_requested.connect(self._vote_puzzle)
         self._library.back_requested.connect(self.show_hub)
         self._library.import_requested.connect(self._choose_file)
         self._library.delete_requested.connect(self._delete_collection)
@@ -2072,8 +2048,6 @@ class PuzzlePage(QWidget):
         self._review_puzzles = []
         self._review_index = -1
         self._load_online_puzzle(result, rated=action != "retry")
-        if action == "retry":
-            self._train.set_notice(t("puzzle_online_retry_unrated", self._language))
 
     def _load_review_puzzle(self):
         if not (0 <= self._review_index < len(self._review_puzzles)):
@@ -2090,7 +2064,6 @@ class PuzzlePage(QWidget):
             {"puzzle": puzzle, "rating": self._online_rating, "rd": self._online_rd},
             rated=False,
         )
-        self._train.set_notice(t("puzzle_online_practice", self._language))
 
     def _on_online_next_failed(self, action, message, code):
         self._hub.set_train_enabled(True)
@@ -2130,10 +2103,7 @@ class PuzzlePage(QWidget):
             self._stack.setCurrentWidget(self._train)
             return
         self._train.set_online_info(
-            t(
-                "puzzle_online_practice" if not self._online_rated else "puzzle_online_mode",
-                self._language,
-            ),
+            t("puzzle_online_mode", self._language) if self._online_rated else "",
             self._online_rating,
         )
         self._train.set_prompt(
@@ -2247,8 +2217,6 @@ class PuzzlePage(QWidget):
             self._hub_stats_worker = None
         elif kind == "attempt" and self._attempt_worker is worker:
             self._attempt_worker = None
-        elif kind == "vote" and self._vote_worker is worker:
-            self._vote_worker = None
         elif kind == "me" and self._account_id_worker is worker:
             self._account_id_worker = None
         worker.deleteLater()
@@ -2306,6 +2274,9 @@ class PuzzlePage(QWidget):
 
     def _activate_puzzle(self, puzzle):
         self._reset_attempt_state()
+        self._history_moves = []
+        self._history_start_fen = None
+        self._history_applied = False
         self._puzzle = None
         self._session = None
         if not isinstance(puzzle, dict) or not puzzle.get("fen"):
@@ -2329,13 +2300,13 @@ class PuzzlePage(QWidget):
         board = self._train.board
         board.set_start_fen(puzzle.get("fen", ""))
         board.set_interactive(True, session.human_color)
-        self._train.set_puzzle_info(puzzle.get("rating"), puzzle.get("themes"))
+        self._train.set_puzzle_info(puzzle.get("rating"))
         self._sync_board(animate=False)
         self._train.hide_result()
         self._train.set_notice("")
-        self._train.set_game_link(puzzle.get("game_url"))
         self._train.set_favorite(puzzle_key(puzzle) in self._favorite_keys)
         self._client_attempt_id = uuid.uuid4().hex
+        self._load_game_history(puzzle)
         return True
 
     def _reset_attempt_state(self):
@@ -2349,8 +2320,41 @@ class PuzzlePage(QWidget):
             self._train.board.clear()
             self._train.set_line("")
             return
-        self._train.board.set_moves(self._session.applied_moves, animate=animate)
+        moves = list(self._session.applied_moves)
+        if self._history_applied:
+            moves = self._history_moves + moves
+        self._train.board.set_moves(moves, animate=animate)
         self._train.set_line(self._train.board.line_pgn())
+
+    def _load_game_history(self, puzzle):
+        puzzle_id = str(puzzle.get("id") or "").strip()
+        if not puzzle_id:
+            return
+        worker = PuzzleGameWorker(
+            puzzle_id,
+            puzzle.get("fen", ""),
+            bool(puzzle.get("opponent_first")),
+            parent=self,
+        )
+        self._game_workers.add(worker)
+        worker.done.connect(self._on_game_history)
+        worker.finished.connect(lambda w=worker: self._game_workers.discard(w))
+        worker.start()
+
+    def _on_game_history(self, puzzle_id, moves, start_fen):
+        if self._puzzle is None:
+            return
+        if str(self._puzzle.get("id") or "").strip() != puzzle_id:
+            return
+        if not moves:
+            return
+        if self._puzzle.get("opponent_first") and moves:
+            moves = moves[:-1]
+        self._history_moves = list(moves)
+        self._history_start_fen = start_fen or None
+        self._history_applied = True
+        self._train.board.set_start_fen(self._history_start_fen)
+        self._sync_board(animate=False)
 
     def _record_attempt(self, result):
         if self._attempt_recorded or self._puzzle is None:
@@ -2492,7 +2496,10 @@ class PuzzlePage(QWidget):
         if session is None or session.solved or not session.is_human_turn or self._revealing:
             self._train.board.clear_selection()
             return
-        if self._train.board.index != len(session.applied_moves):
+        expected_index = len(session.applied_moves)
+        if self._history_applied:
+            expected_index += len(self._history_moves)
+        if self._train.board.index != expected_index:
             self._train.board.last()
             self._train.board.clear_selection()
             return
@@ -2580,13 +2587,12 @@ class PuzzlePage(QWidget):
             self._auto_next_timer.start(1500)
 
     def _result_meta_text(self):
-        if self._online:
-            key = "puzzle_result_pending_rating" if self._online_rated else "puzzle_result_practice"
-        else:
-            key = "puzzle_result_local_practice"
-        text = t(key, self._language)
+        text = ""
+        if self._online and self._online_rated:
+            text = t("puzzle_result_pending_rating", self._language)
         if self._streak:
-            text += " · " + t("puzzle_result_streak", self._language, streak=self._streak)
+            streak = t("puzzle_result_streak", self._language, streak=self._streak)
+            text = f"{text} · {streak}" if text else streak
         return text
 
     def _solved_detail(self):
@@ -2622,29 +2628,10 @@ class PuzzlePage(QWidget):
         except ValueError:
             san = uci
         self._train.set_prompt(t("puzzle_status_hint", self._language, move=san))
-        if self._online and self._online_rated:
-            self._train.set_notice(t("puzzle_hint_rated_note", self._language))
 
     def _reveal_solution(self):
         session = self._session
         if session is None or session.solved or self._revealing:
-            return
-        box = QMessageBox(self)
-        box.setWindowTitle(t("puzzle_reveal_choice_title", self._language))
-        box.setText(t("puzzle_reveal_choice", self._language))
-        hint_button = box.addButton(
-            t("puzzle_reveal_choice_hint", self._language),
-            QMessageBox.ButtonRole.AcceptRole,
-        )
-        full_button = box.addButton(
-            t("puzzle_reveal_choice_full", self._language),
-            QMessageBox.ButtonRole.DestructiveRole,
-        )
-        box.exec()
-        if box.clickedButton() is hint_button:
-            self._show_hint()
-            return
-        if box.clickedButton() is not full_button:
             return
         already_failed = self._attempt_recorded
         self._streak = 0
@@ -2718,10 +2705,17 @@ class PuzzlePage(QWidget):
             return
         self._auto_next_timer.stop()
         self._replay_timer.stop()
-        self._replay_moves = moves
-        self._replay_index = 0
+        history = [move.uci() for move in self._history_moves] if self._history_applied else []
+        self._replay_moves = history + moves
+        self._replay_index = len(history)
         self._train.board.set_interactive(False, self._session.human_color)
-        self._train.board.set_start_fen(self._puzzle.get("fen", ""))
+        start_fen = (
+            self._history_start_fen if self._history_applied else self._puzzle.get("fen", "")
+        )
+        self._train.board.set_start_fen(start_fen)
+        if history:
+            self._train.board.set_moves(history, index=len(history))
+            self._train.set_line(self._train.board.line_pgn())
         self._replay_timer.start()
 
     def _replay_step(self):
@@ -2733,29 +2727,6 @@ class PuzzlePage(QWidget):
         self._train.set_line(self._train.board.line_pgn())
         if self._replay_index >= len(self._replay_moves):
             self._replay_timer.stop()
-
-    def _vote_puzzle(self, value):
-        if not self._is_online() or self._puzzle is None:
-            self._train.set_notice(t("cloud_signin_required", self._language))
-            return
-        puzzle_id = str(self._puzzle.get("id") or "").strip()
-        if not puzzle_id or (self._vote_worker is not None and self._vote_worker.isRunning()):
-            return
-        worker = PuzzleOnlineWorker(
-            "vote",
-            self._server_url,
-            self._token,
-            self._language,
-            {"puzzle_id": puzzle_id, "vote": int(value)},
-            self,
-        )
-        self._vote_worker = worker
-        worker.done.connect(
-            lambda _action, _result: self._train.set_notice(t("puzzle_vote_thanks", self._language))
-        )
-        worker.failed.connect(lambda _action, message, _code: self._train.set_notice(message))
-        worker.finished.connect(lambda w=worker: self._clear_worker("vote", w))
-        worker.start()
 
     def _next(self):
         self._auto_next_timer.stop()
@@ -2948,7 +2919,7 @@ class PuzzlePage(QWidget):
         self._profile.retranslate(language)
         if self._session is not None and self._online:
             self._train.set_online_info(
-                t("puzzle_online_mode", language),
+                t("puzzle_online_mode", language) if self._online_rated else "",
                 self._online_rating,
             )
             self._train.set_prompt(
@@ -3014,3 +2985,7 @@ class PuzzlePage(QWidget):
             setattr(self, name, None)
             if worker is not None and worker.isRunning():
                 worker.wait(5000)
+        for worker in list(self._game_workers):
+            if worker.isRunning():
+                worker.wait(8000)
+        self._game_workers.clear()

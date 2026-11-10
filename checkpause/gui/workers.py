@@ -17,6 +17,7 @@ from checkpause.core.engine import (
     open_stockfish,
     read_lines,
 )
+from checkpause.core.puzzle_game import load_history
 from checkpause.core.recognize import RecognizeError, recognize
 from checkpause.core.updater import (
     UpdateDownloadCancelledError,
@@ -255,6 +256,31 @@ class PuzzleImportWorker(QThread):
 
     def _emit_progress(self, count):
         self.progress.emit(count)
+
+
+class PuzzleGameWorker(QThread):
+    """Loads the source game's move history in the background."""
+
+    done = Signal(str, list, str)
+    failed = Signal(str)
+
+    def __init__(self, puzzle_id, fen, opponent_first=False, parent=None):
+        super().__init__(parent)
+        self.puzzle_id = str(puzzle_id)
+        self.fen = fen
+        self.opponent_first = bool(opponent_first)
+
+    def run(self):
+        try:
+            moves, start_fen = load_history(
+                self.puzzle_id,
+                self.fen,
+                self.opponent_first,
+            )
+        except Exception as exc:
+            self.failed.emit(str(exc))
+            return
+        self.done.emit(self.puzzle_id, moves, start_fen or "")
 
 
 class ChatWorker(QThread):
