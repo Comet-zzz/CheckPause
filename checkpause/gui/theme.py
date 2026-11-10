@@ -1071,8 +1071,8 @@ QTableWidget#moveTable::item {
     font-size: 13px;
 }
 #puzzleHero {
-    background-color: $surface;
-    border: 1px solid $border;
+    background-color: $accent_soft;
+    border: 1px solid $border_strong;
     border-radius: 16px;
 }
 #puzzleHeroTitle {
@@ -1264,6 +1264,159 @@ QTableWidget#moveTable::item {
 #puzzleThemeBar::chunk {
     background-color: $accent;
     border-radius: 3px;
+}
+#puzzleTrainSide {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#puzzleTrainMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleMoveBox {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+QWidget#puzzleMoveList QTableWidget {
+    background: transparent;
+    border: none;
+}
+#puzzlePrompt {
+    font-size: 16px;
+    font-weight: 600;
+    padding: 0;
+}
+#puzzleGameLink {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleVoteButton {
+    background: transparent;
+    border: none;
+    color: $text_muted;
+    font-size: 11px;
+    padding: 2px 4px;
+}
+#puzzleVoteButton:hover {
+    color: $text;
+}
+#puzzleResultPanel {
+    background-color: $surface_alt;
+}
+#puzzleResultPanel[state="playing"] {
+    background: transparent;
+    border-color: transparent;
+}
+#puzzleResultPanel[state="solved"] {
+    border-color: $accent;
+    background-color: $accent_soft;
+}
+#puzzleResultPanel[state="failed"] {
+    border-color: $danger;
+    background-color: $danger_soft;
+}
+#puzzleResultPanel[state="revealed"] {
+    border-color: $border_strong;
+}
+#puzzleResultMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleModeCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#puzzleModeTitle {
+    font-size: 15px;
+    font-weight: 700;
+}
+#puzzleModeText {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleHeroLead {
+    font-size: 15px;
+    font-weight: 600;
+}
+#puzzleSettings {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 10px;
+}
+#puzzleRatingHero {
+    background-color: $accent_soft;
+    border: 1px solid $border_strong;
+    border-radius: 16px;
+}
+#puzzleRatingCaption {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+}
+#puzzleRatingValue {
+    font-size: 34px;
+    font-weight: 700;
+}
+#puzzleRatingSub {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleProfileDetails {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+#puzzleDetailCaption {
+    color: $text_muted;
+    font-size: 11px;
+}
+#puzzleDetailValue {
+    font-size: 15px;
+    font-weight: 600;
+}
+#puzzleThemeHeader {
+    color: $text_muted;
+    font-size: 11px;
+    font-weight: 600;
+}
+#puzzleThemeName {
+    font-size: 13px;
+}
+#puzzleThemeMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleRecentBox {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+}
+#puzzleRecentRow {
+    border-radius: 8px;
+}
+#puzzleRecentRow:hover {
+    background-color: $surface_alt;
+}
+#puzzleRecentBadge {
+    color: $text_muted;
+    font-size: 13px;
+    font-weight: 700;
+}
+#puzzleRecentBadge[result="solved"] {
+    color: $accent;
+}
+#puzzleRecentBadge[result="failed"] {
+    color: $danger;
+}
+#puzzleRecentTheme {
+    font-size: 13px;
+}
+#puzzleRecentMeta {
+    color: $text_muted;
+    font-size: 12px;
 }
 """
 )

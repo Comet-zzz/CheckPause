@@ -525,6 +525,10 @@ class BoardWidget(QWidget):
         self._eval_depth = int(depth)
         self.eval_depth_changed.emit(self._eval_depth)
 
+    @property
+    def index(self):
+        return self._index
+
     def set_moves(self, moves, index=None, animate=False, sound=True):
         self._end_edit()
         previous_count = len(self._moves)
@@ -771,7 +775,7 @@ class BoardWidget(QWidget):
         self.index_changed.emit(self._index)
         return True
 
-    def line_pgn(self):
+    def line_pgn(self, up_to=None):
         game = chess.pgn.Game()
         if self._start_fen:
             try:
@@ -781,7 +785,8 @@ class BoardWidget(QWidget):
             if start is not None:
                 game.setup(start)
         node = game
-        for move in self._moves:
+        moves = self._moves if up_to is None else self._moves[: max(0, int(up_to))]
+        for move in moves:
             node = node.add_main_variation(move)
         return str(game)
 

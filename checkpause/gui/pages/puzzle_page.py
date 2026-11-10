@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -48,6 +49,7 @@ from checkpause.data.settings import get_account, get_server_url, save_account
 from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
+from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import PuzzleImportWorker, PuzzleOnlineWorker
 from checkpause.i18n import t
 
@@ -78,6 +80,101 @@ def _solution_text(fen, moves):
             parts.append(san)
         board.push(move)
     return " ".join(parts)
+
+
+_THEME_NAMES = {
+    "advancedPawn": ("进阶兵", "Advanced pawn"),
+    "advantage": ("占据优势", "Advantage"),
+    "anastasiaMate": ("阿纳斯塔西娅杀", "Anastasia's mate"),
+    "arabianMate": ("阿拉伯杀", "Arabian mate"),
+    "attackingF2F7": ("攻击 f2/f7", "Attacking f2/f7"),
+    "attraction": ("吸引", "Attraction"),
+    "backRankMate": ("底线杀", "Back-rank mate"),
+    "baldwinMate": ("鲍德温杀", "Baldwin's mate"),
+    "bishopEndgame": ("象残局", "Bishop endgame"),
+    "bodenMate": ("博登杀", "Boden's mate"),
+    "capturingDefender": ("消灭防守者", "Capturing the defender"),
+    "castling": ("易位", "Castling"),
+    "clearance": ("清线", "Clearance"),
+    "collinearMove": ("共线移动", "Collinear move"),
+    "crushing": ("碾压", "Crushing"),
+    "defensiveMove": ("防守着", "Defensive move"),
+    "deflection": ("引离", "Deflection"),
+    "discoveredAttack": ("发现攻击", "Discovered attack"),
+    "doubleBishopMate": ("双象杀", "Double-bishop mate"),
+    "doubleCheck": ("双将", "Double check"),
+    "dovetailMate": ("燕尾杀", "Dovetail mate"),
+    "endgame": ("残局", "Endgame"),
+    "enPassant": ("吃过路兵", "En passant"),
+    "epauletteMate": ("肩章杀", "Epaulette mate"),
+    "equality": ("均势", "Equality"),
+    "exposedKing": ("暴露的王", "Exposed king"),
+    "fork": ("捉双", "Fork"),
+    "grecoMate": ("格雷科杀", "Greco's mate"),
+    "hangingPiece": ("悬子", "Hanging piece"),
+    "hookMate": ("钩杀", "Hook mate"),
+    "interference": ("阻断", "Interference"),
+    "intermezzo": ("中间着", "Intermezzo"),
+    "killBoxMate": ("杀棋盒", "Kill-box mate"),
+    "kingEndgame": ("王残局", "King endgame"),
+    "kingsideAttack": ("王翼进攻", "Kingside attack"),
+    "knightEndgame": ("马残局", "Knight endgame"),
+    "long": ("长题", "Long puzzle"),
+    "mate": ("将杀", "Mate"),
+    "mateIn1": ("一步杀", "Mate in 1"),
+    "mateIn2": ("两步杀", "Mate in 2"),
+    "mateIn3": ("三步杀", "Mate in 3"),
+    "mateIn4": ("四步杀", "Mate in 4"),
+    "mateIn5": ("五步杀", "Mate in 5"),
+    "middlegame": ("中局", "Middlegame"),
+    "morphysMate": ("摩尔菲杀", "Morphy's mate"),
+    "oneMove": ("一步题", "One move"),
+    "opening": ("开局", "Opening"),
+    "operaMate": ("歌剧杀", "Opera mate"),
+    "overloading": ("过载", "Overloading"),
+    "pawnEndgame": ("兵残局", "Pawn endgame"),
+    "pin": ("牵制", "Pin"),
+    "promotion": ("升变", "Promotion"),
+    "queenEndgame": ("后残局", "Queen endgame"),
+    "queenRookEndgame": ("后车残局", "Queen and rook endgame"),
+    "queensideAttack": ("后翼进攻", "Queenside attack"),
+    "quietMove": ("静着", "Quiet move"),
+    "rookEndgame": ("车残局", "Rook endgame"),
+    "sacrifice": ("弃子", "Sacrifice"),
+    "sharpMate": ("尖锐杀", "Sharp mate"),
+    "short": ("短题", "Short puzzle"),
+    "skewer": ("串击", "Skewer"),
+    "smotheredMate": ("闷杀", "Smothered mate"),
+    "stalemate": ("逼和", "Stalemate"),
+    "supportedMate": ("有援杀", "Supported mate"),
+    "trapping": ("困子", "Trapping"),
+    "underPromotion": ("低升变", "Underpromotion"),
+    "undervaluedPiece": ("低估棋子", "Undervalued piece"),
+    "veryLong": ("超长题", "Very long puzzle"),
+    "vukovicMate": ("武科维奇杀", "Vukovic mate"),
+    "xRay": ("X 射线", "X-ray"),
+    "zugzwang": ("迫走", "Zugzwang"),
+}
+
+
+def _theme_name(theme, language):
+    pair = _THEME_NAMES.get(str(theme))
+    if pair is None:
+        text = str(theme).replace("_", " ")
+        text = "".join(" " + char.lower() if char.isupper() else char for char in text).strip()
+        return text or "—"
+    return pair[0] if language.startswith("zh") else pair[1]
+
+
+def _format_duration(duration_ms):
+    try:
+        seconds = max(0, round(int(duration_ms or 0) / 1000))
+    except (TypeError, ValueError):
+        seconds = 0
+    if seconds <= 0:
+        return "—"
+    minutes, seconds = divmod(seconds, 60)
+    return f"{minutes}:{seconds:02d}"
 
 
 class _StatCard(QFrame):
@@ -117,7 +214,49 @@ class _CollectionCard(QPushButton):
     def retranslate(self, language):
         solved = len(solved_keys(self._collection))
         name = _collection_name(self._collection, language)
-        self.setText(f"{name}\n{solved}/{self._collection.count}")
+        progress = t(
+            "puzzle_collection_progress",
+            language,
+            solved=solved,
+            total=self._collection.count,
+        )
+        self.setText(f"{name}\n{progress}")
+
+
+class _ModeCard(QFrame):
+    clicked = Signal()
+
+    def __init__(self, title_key, text_key, parent=None):
+        super().__init__(parent)
+        self._title_key = title_key
+        self._text_key = text_key
+        self._description = ""
+        self.setObjectName("puzzleModeCard")
+        self.title = QLabel()
+        self.title.setObjectName("puzzleModeTitle")
+        self.text = QLabel()
+        self.text.setObjectName("puzzleModeText")
+        self.text.setWordWrap(True)
+        self.button = QPushButton()
+        self.button.setObjectName("puzzleSecondaryButton")
+        self.button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.button.clicked.connect(self.clicked.emit)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(16, 14, 16, 14)
+        layout.setSpacing(4)
+        layout.addWidget(self.title)
+        layout.addWidget(self.text)
+        layout.addStretch(1)
+        layout.addWidget(self.button, 0, Qt.AlignmentFlag.AlignLeft)
+
+    def set_description(self, text):
+        self._description = text or ""
+        self.text.setText(self._description)
+
+    def retranslate(self, language):
+        self.title.setText(t(self._title_key, language))
+        self.text.setText(self._description or t(self._text_key, language))
+        self.button.setText(t("puzzle_mode_start", language))
 
 
 class _HubView(QWidget):
@@ -140,6 +279,7 @@ class _HubView(QWidget):
         self._online = False
         self._rating = None
         self._cards = []
+        self._continue_text = ""
         self._topics = (
             ("", "puzzle_theme_all"),
             ("mate", "puzzle_theme_mate"),
@@ -161,7 +301,7 @@ class _HubView(QWidget):
         inner.setObjectName("puzzleHub")
         layout = QVBoxLayout(inner)
         layout.setContentsMargins(32, 28, 32, 32)
-        layout.setSpacing(18)
+        layout.setSpacing(16)
 
         self._title = QLabel()
         self._title.setObjectName("puzzleHeaderTitle")
@@ -173,13 +313,19 @@ class _HubView(QWidget):
         title_box.addWidget(self._subtitle)
         self._status = QLabel()
         self._status.setObjectName("puzzleStatusPill")
+        self._btn_signin = QPushButton()
+        self._btn_signin.setObjectName("puzzleSecondaryButton")
+        self._btn_signin.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_signin.clicked.connect(self.sign_in_requested.emit)
         self._btn_profile = QPushButton()
         self._btn_profile.setObjectName("puzzleGhostButton")
         self._btn_profile.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_profile.clicked.connect(self.profile_requested.emit)
         header = QHBoxLayout()
+        header.setSpacing(8)
         header.addLayout(title_box, 1)
         header.addWidget(self._status, 0, Qt.AlignmentFlag.AlignTop)
+        header.addWidget(self._btn_signin, 0, Qt.AlignmentFlag.AlignTop)
         header.addWidget(self._btn_profile, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header)
 
@@ -192,22 +338,46 @@ class _HubView(QWidget):
         hero = QFrame()
         hero.setObjectName("puzzleHero")
         hero_layout = QVBoxLayout(hero)
-        hero_layout.setContentsMargins(20, 18, 20, 18)
+        hero_layout.setContentsMargins(20, 18, 20, 16)
         hero_layout.setSpacing(6)
+        hero_top = QHBoxLayout()
+        hero_top.setSpacing(12)
         self._hero_title = QLabel()
         self._hero_title.setObjectName("puzzleHeroTitle")
-        self._hero_text = QLabel()
-        self._hero_text.setObjectName("puzzleHeroText")
-        self._hero_text.setWordWrap(True)
+        self._btn_settings = QPushButton()
+        self._btn_settings.setObjectName("puzzleGhostButton")
+        self._btn_settings.setCheckable(True)
+        self._btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_settings.toggled.connect(self._toggle_settings)
+        hero_top.addWidget(self._hero_title)
+        hero_top.addStretch(1)
+        hero_top.addWidget(self._btn_settings)
+        hero_layout.addLayout(hero_top)
+        self._continue_label = QLabel()
+        self._continue_label.setObjectName("puzzleHeroLead")
+        self._continue_label.setWordWrap(True)
+        hero_layout.addWidget(self._continue_label)
+        hero_actions = QHBoxLayout()
+        hero_actions.setSpacing(8)
         self._btn_train = QPushButton()
         self._btn_train.setObjectName("puzzlePrimaryButton")
         self._btn_train.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_train.clicked.connect(self.train_requested.emit)
-        hero_layout.addWidget(self._hero_title)
-        hero_layout.addWidget(self._hero_text)
-        hero_layout.addSpacing(6)
-        hero_layout.addWidget(self._btn_train, 0, Qt.AlignmentFlag.AlignLeft)
+        self._btn_solved = QPushButton()
+        self._btn_solved.setObjectName("puzzleGhostButton")
+        self._btn_solved.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_solved.clicked.connect(self.solved_requested.emit)
+        hero_actions.addWidget(self._btn_train)
+        hero_actions.addWidget(self._btn_solved)
+        hero_actions.addStretch(1)
+        hero_layout.addLayout(hero_actions)
 
+        self._settings = QFrame()
+        self._settings.setObjectName("puzzleSettings")
+        settings = QGridLayout(self._settings)
+        settings.setContentsMargins(14, 10, 14, 10)
+        settings.setHorizontalSpacing(10)
+        settings.setVerticalSpacing(8)
         self._difficulty_label = QLabel()
         self._difficulty = QComboBox()
         self._difficulty.setObjectName("puzzleRange")
@@ -222,65 +392,47 @@ class _HubView(QWidget):
         )
         self._auto_next = QCheckBox()
         self._auto_next.toggled.connect(self.auto_next_changed.emit)
+        settings.addWidget(self._difficulty_label, 0, 0)
+        settings.addWidget(self._difficulty, 0, 1)
+        settings.addWidget(self._theme_label, 0, 2)
+        settings.addWidget(self._theme_filter, 0, 3)
+        settings.addWidget(self._auto_next, 1, 0, 1, 4)
+        settings.setColumnStretch(1, 1)
+        settings.setColumnStretch(3, 1)
+        self._settings.setVisible(False)
+        hero_layout.addWidget(self._settings)
+        layout.addWidget(hero)
+
+        modes = QHBoxLayout()
+        modes.setSpacing(10)
+        self._mistakes_card = _ModeCard("puzzle_home_mistakes", "puzzle_mistakes_text")
+        self._mistakes_card.clicked.connect(self.mistakes_requested.emit)
+        self._daily_card = _ModeCard("puzzle_home_daily", "puzzle_daily_text")
+        self._daily_card.clicked.connect(self.daily_requested.emit)
+        self._challenge_card = _ModeCard("puzzle_home_challenge", "puzzle_challenge_text")
         self._challenge = QComboBox()
         self._challenge.setObjectName("puzzleRange")
         self._challenge.currentIndexChanged.connect(
             lambda _index: self.challenge_changed.emit(self._challenge.currentData() or "")
         )
-        self._btn_daily = QPushButton()
-        self._btn_daily.setObjectName("puzzleSecondaryButton")
-        self._btn_daily.clicked.connect(self.daily_requested.emit)
-        self._btn_solved = QPushButton()
-        self._btn_solved.setObjectName("puzzleSecondaryButton")
-        self._btn_solved.clicked.connect(self.solved_requested.emit)
-        self._btn_signin = QPushButton()
-        self._btn_signin.setObjectName("puzzleSecondaryButton")
-        self._btn_signin.clicked.connect(self.sign_in_requested.emit)
-        filters = QHBoxLayout()
-        filters.setSpacing(8)
-        filters.addWidget(self._difficulty_label)
-        filters.addWidget(self._difficulty)
-        filters.addWidget(self._theme_label)
-        filters.addWidget(self._theme_filter)
-        filters.addWidget(self._auto_next)
-        filters.addWidget(self._challenge)
-        filters.addStretch(1)
-        filters.addWidget(self._btn_daily)
-        filters.addWidget(self._btn_solved)
-        filters.addWidget(self._btn_signin)
-        hero_layout.addLayout(filters)
-        layout.addWidget(hero)
+        self._challenge_card.layout().insertWidget(3, self._challenge)
+        self._challenge_card.clicked.connect(self.train_requested.emit)
+        modes.addWidget(self._mistakes_card, 1)
+        modes.addWidget(self._daily_card, 1)
+        modes.addWidget(self._challenge_card, 1)
+        layout.addLayout(modes)
 
-        cards = QHBoxLayout()
-        cards.setSpacing(10)
-        self._attempted = _StatCard("puzzle_home_attempted")
-        self._solved = _StatCard("puzzle_home_solved")
-        self._accuracy = _StatCard("puzzle_home_accuracy")
-        for card in (self._attempted, self._solved, self._accuracy):
-            cards.addWidget(card, 1)
-        layout.addLayout(cards)
-
-        self._tools_label = QLabel()
-        self._tools_label.setObjectName("puzzleSectionLabel")
-        layout.addWidget(self._tools_label)
-        tools = QHBoxLayout()
-        tools.setSpacing(8)
-        self._btn_mistakes = QPushButton()
-        self._btn_mistakes.setObjectName("puzzleSecondaryButton")
-        self._btn_mistakes.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_mistakes.clicked.connect(self.mistakes_requested.emit)
-        self._btn_library = QPushButton()
-        self._btn_library.setObjectName("puzzleSecondaryButton")
-        self._btn_library.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_library.clicked.connect(self.library_requested.emit)
-        tools.addWidget(self._btn_mistakes)
-        tools.addWidget(self._btn_library)
-        tools.addStretch(1)
-        layout.addLayout(tools)
-
+        collections_header = QHBoxLayout()
         self._collections_label = QLabel()
         self._collections_label.setObjectName("puzzleSectionLabel")
-        layout.addWidget(self._collections_label)
+        self._btn_library = QPushButton()
+        self._btn_library.setObjectName("puzzleGhostButton")
+        self._btn_library.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_library.clicked.connect(self.library_requested.emit)
+        collections_header.addWidget(self._collections_label)
+        collections_header.addStretch(1)
+        collections_header.addWidget(self._btn_library)
+        layout.addLayout(collections_header)
         self._collection_grid = QGridLayout()
         self._collection_grid.setHorizontalSpacing(12)
         self._collection_grid.setVerticalSpacing(12)
@@ -303,24 +455,37 @@ class _HubView(QWidget):
         outer.addWidget(scroll)
         self.retranslate(self._language)
 
-    def set_summary(self, summary):
-        self._attempted.set_value(summary.get("unique_attempted", 0))
-        self._solved.set_value(summary.get("unique_solved", 0))
-        self._accuracy.set_value(f"{summary.get('accuracy', 0)}%")
+    def _toggle_settings(self, visible):
+        self._settings.setVisible(bool(visible))
+
+    def set_continue_info(self, text):
+        self._continue_text = text or ""
+        self._continue_label.setText(self._continue_text)
 
     def set_online(self, online, rating=None):
         self._online = bool(online)
         self._rating = rating
         text = t("puzzle_home_online" if online else "puzzle_home_local", self._language)
-        if online and rating is not None:
-            text += f" · {round(float(rating))}"
         self._status.setText(text)
         self._status.setProperty("online", bool(online))
         self._status.style().unpolish(self._status)
         self._status.style().polish(self._status)
-        self._btn_daily.setVisible(self._online)
-        self._btn_solved.setVisible(self._online)
+        self._hero_title.setText(
+            t(
+                "puzzle_home_train_title" if self._online else "puzzle_home_local_title",
+                self._language,
+            )
+        )
+        self._btn_train.setText(t("puzzle_home_train", self._language))
         self._btn_signin.setVisible(not self._online)
+        self._btn_solved.setVisible(self._online)
+        self._daily_card.button.setEnabled(self._online)
+        self._daily_card.button.setVisible(self._online)
+        self._daily_card.set_description(
+            t("puzzle_daily_text", self._language)
+            if self._online
+            else t("puzzle_daily_offline", self._language)
+        )
 
     def set_notice(self, text=""):
         self._notice.setText(text or "")
@@ -370,9 +535,12 @@ class _HubView(QWidget):
         self._title.setText(t("nav_puzzle", language))
         self._subtitle.setText(t("puzzle_home_subtitle", language))
         self._btn_profile.setText(t("puzzle_home_profile", language))
-        self._hero_title.setText(t("puzzle_home_train_title", language))
-        self._hero_text.setText(t("puzzle_home_train_subtitle", language))
-        self._btn_train.setText(t("puzzle_home_train", language))
+        self._btn_signin.setText(t("puzzle_home_sign_in", language))
+        self._continue_label.setText(
+            self._continue_text or t("puzzle_home_train_subtitle", language)
+        )
+        self._btn_library.setText(t("puzzle_home_library", language))
+        self._btn_settings.setText(t("puzzle_home_settings", language))
         self._difficulty_label.setText(t("puzzle_home_difficulty", language))
         self._theme_label.setText(t("puzzle_home_theme", language))
         self._auto_next.setText(t("puzzle_home_auto_next", language))
@@ -385,9 +553,7 @@ class _HubView(QWidget):
             ),
             "",
         )
-        self._btn_daily.setText(t("puzzle_home_daily", language))
         self._btn_solved.setText(t("puzzle_home_review_solved", language))
-        self._btn_signin.setText(t("puzzle_home_sign_in", language))
         self._fill_combo(
             self._difficulty,
             (
@@ -398,16 +564,14 @@ class _HubView(QWidget):
             "normal",
         )
         self._fill_combo(self._theme_filter, self._topics, "")
-        self._tools_label.setText(t("puzzle_home_tools", language))
-        self._btn_mistakes.setText(t("puzzle_home_mistakes", language))
-        self._btn_library.setText(t("puzzle_home_library", language))
+        self._mistakes_card.retranslate(language)
+        self._daily_card.retranslate(language)
+        self._challenge_card.retranslate(language)
         self._collections_label.setText(t("puzzle_home_collections", language))
         self._empty_label.setText(t("puzzle_home_no_collections", language))
         self._source_note.setText(t("puzzle_source_note", language))
         self.set_online(self._online, self._rating)
         for card in self._cards:
-            card.retranslate(language)
-        for card in (self._attempted, self._solved, self._accuracy):
             card.retranslate(language)
 
 
@@ -418,8 +582,8 @@ class _TrainView(QWidget):
     favorite_requested = Signal()
     reveal_requested = Signal()
     next_requested = Signal()
-    profile_requested = Signal()
     replay_requested = Signal()
+    analysis_requested = Signal(str)
     vote_requested = Signal(int)
 
     def __init__(self, parent=None):
@@ -429,6 +593,8 @@ class _TrainView(QWidget):
         self._favorited = False
         self._rating = None
         self._game_url = ""
+        self._puzzle_rating = None
+        self._puzzle_themes = []
         self.setObjectName("puzzleTrain")
 
         self._btn_back = QPushButton()
@@ -450,41 +616,37 @@ class _TrainView(QWidget):
         top.addStretch(1)
         top.addWidget(self._counter_label)
 
-        self._prompt = QLabel()
-        self._prompt.setObjectName("puzzlePrompt")
-        self._prompt.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self._prompt.setWordWrap(True)
+        self._turn_text = ""
+        self._meta = QLabel()
+        self._meta.setObjectName("puzzleTrainMeta")
+        self._meta.setWordWrap(True)
         self._game_link = QLabel()
         self._game_link.setObjectName("puzzleGameLink")
-        self._game_link.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._game_link.setOpenExternalLinks(True)
         self._game_link.setTextFormat(Qt.TextFormat.RichText)
         self._game_link.setVisible(False)
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
-        self._notice.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self._notice.setWordWrap(True)
         self._notice.setVisible(False)
 
         self.board = BoardWidget()
-        self.board.set_navigation_visible(False)
+        self.board.set_navigation_visible(True)
+        self.board.set_edit_available(False)
+        self.board.set_undo_visible(False)
         self.board.setMinimumWidth(360)
         self.board.setMaximumWidth(600)
         self.board.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-        board_row = QHBoxLayout()
-        board_row.setContentsMargins(0, 0, 0, 0)
-        board_row.addStretch(1)
-        board_row.addWidget(self.board, 6)
-        board_row.addStretch(1)
 
-        self._result_panel = QFrame()
-        self._result_panel.setObjectName("puzzleResultPanel")
-        self._result_panel.setVisible(False)
+        self._feedback = QFrame()
+        self._feedback.setObjectName("puzzleResultPanel")
+        self._feedback.setProperty("state", "playing")
         self._result_title = QLabel()
         self._result_title.setObjectName("puzzleResultTitle")
+        self._result_title.setWordWrap(True)
         self._result_detail = QLabel()
         self._result_detail.setObjectName("puzzleResultDetail")
         self._result_detail.setWordWrap(True)
@@ -496,46 +658,34 @@ class _TrainView(QWidget):
         self._result_solution.setObjectName("puzzleSolution")
         self._result_solution.setWordWrap(True)
         self._result_solution.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+
         self._btn_result_retry = QPushButton()
         self._btn_result_retry.setObjectName("puzzleSecondaryButton")
         self._btn_result_retry.clicked.connect(self.retry_requested.emit)
-        self._btn_result_favorite = QPushButton()
-        self._btn_result_favorite.setObjectName("puzzleSecondaryButton")
-        self._btn_result_favorite.clicked.connect(self.favorite_requested.emit)
-        self._btn_result_profile = QPushButton()
-        self._btn_result_profile.setObjectName("puzzleSecondaryButton")
-        self._btn_result_profile.clicked.connect(self.profile_requested.emit)
+        self._btn_analyze = QPushButton()
+        self._btn_analyze.setObjectName("puzzleSecondaryButton")
+        self._btn_analyze.clicked.connect(self._request_analysis)
         self._btn_replay = QPushButton()
         self._btn_replay.setObjectName("puzzleSecondaryButton")
         self._btn_replay.clicked.connect(self.replay_requested.emit)
-        self._btn_vote_up = QPushButton()
-        self._btn_vote_up.setObjectName("puzzleSecondaryButton")
-        self._btn_vote_up.clicked.connect(lambda: self.vote_requested.emit(1))
-        self._btn_vote_down = QPushButton()
-        self._btn_vote_down.setObjectName("puzzleSecondaryButton")
-        self._btn_vote_down.clicked.connect(lambda: self.vote_requested.emit(-1))
         self._btn_next = QPushButton()
         self._btn_next.setObjectName("puzzlePrimaryButton")
         self._btn_next.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_next.clicked.connect(self.next_requested.emit)
-        result_buttons = QHBoxLayout()
-        result_buttons.setSpacing(8)
-        result_buttons.addWidget(self._btn_result_retry)
-        result_buttons.addWidget(self._btn_result_favorite)
-        result_buttons.addWidget(self._btn_result_profile)
-        result_buttons.addWidget(self._btn_replay)
-        result_buttons.addWidget(self._btn_vote_up)
-        result_buttons.addWidget(self._btn_vote_down)
-        result_buttons.addStretch(1)
-        result_buttons.addWidget(self._btn_next)
-        result_layout = QVBoxLayout(self._result_panel)
-        result_layout.setContentsMargins(16, 12, 16, 12)
-        result_layout.setSpacing(5)
-        result_layout.addWidget(self._result_title)
-        result_layout.addWidget(self._result_detail)
-        result_layout.addWidget(self._result_meta)
-        result_layout.addWidget(self._result_solution)
-        result_layout.addLayout(result_buttons)
+        feedback_primary = QHBoxLayout()
+        feedback_primary.setSpacing(6)
+        feedback_primary.addWidget(self._btn_result_retry)
+        feedback_primary.addWidget(self._btn_replay)
+        feedback_primary.addStretch(1)
+        feedback_primary.addWidget(self._btn_next)
+        feedback_layout = QVBoxLayout(self._feedback)
+        feedback_layout.setContentsMargins(14, 12, 14, 12)
+        feedback_layout.setSpacing(6)
+        feedback_layout.addWidget(self._result_title)
+        feedback_layout.addWidget(self._result_detail)
+        feedback_layout.addWidget(self._result_meta)
+        feedback_layout.addWidget(self._result_solution)
+        feedback_layout.addLayout(feedback_primary)
 
         self._btn_hint = QPushButton()
         self._btn_hint.setObjectName("puzzleSecondaryButton")
@@ -546,23 +696,81 @@ class _TrainView(QWidget):
         self._btn_favorite = QPushButton()
         self._btn_favorite.setObjectName("puzzleSecondaryButton")
         self._btn_favorite.clicked.connect(self.favorite_requested.emit)
-        bottom = QHBoxLayout()
-        bottom.setSpacing(8)
-        bottom.addWidget(self._btn_hint)
-        bottom.addWidget(self._btn_reveal)
-        bottom.addStretch(1)
-        bottom.addWidget(self._btn_favorite)
+        actions = QHBoxLayout()
+        actions.setSpacing(6)
+        actions.addWidget(self._btn_hint)
+        actions.addWidget(self._btn_reveal)
+        actions.addStretch(1)
+        actions.addWidget(self._btn_favorite)
+        analysis_row = QHBoxLayout()
+        analysis_row.setSpacing(6)
+        analysis_row.addWidget(self._btn_analyze)
+        analysis_row.addStretch(1)
+
+        self._move_label = QLabel()
+        self._move_label.setObjectName("puzzleSectionLabel")
+        self._move_list = MoveListWidget()
+        self._move_list.setObjectName("puzzleMoveList")
+        self._move_list.setMinimumHeight(130)
+        self._move_list.ply_selected.connect(self.board.goto)
+        self.board.index_changed.connect(self._move_list.set_current_ply)
+        self._moves_empty = QLabel()
+        self._moves_empty.setObjectName("puzzleEmptyLabel")
+        self._moves_empty.setWordWrap(True)
+        self._move_box = QFrame()
+        self._move_box.setObjectName("puzzleMoveBox")
+        move_box_layout = QVBoxLayout(self._move_box)
+        move_box_layout.setContentsMargins(6, 4, 6, 4)
+        move_box_layout.setSpacing(0)
+        move_box_layout.addWidget(self._moves_empty)
+        move_box_layout.addWidget(self._move_list, 1)
+
+        self._btn_vote_up = QPushButton()
+        self._btn_vote_up.setObjectName("puzzleVoteButton")
+        self._btn_vote_up.clicked.connect(lambda: self.vote_requested.emit(1))
+        self._btn_vote_down = QPushButton()
+        self._btn_vote_down.setObjectName("puzzleVoteButton")
+        self._btn_vote_down.clicked.connect(lambda: self.vote_requested.emit(-1))
+        votes = QHBoxLayout()
+        votes.setSpacing(4)
+        votes.addWidget(self._btn_vote_up)
+        votes.addWidget(self._btn_vote_down)
+        votes.addStretch(1)
+        self.set_vote_visible(False)
+
+        side = QFrame()
+        side.setObjectName("puzzleTrainSide")
+        side.setMinimumWidth(300)
+        side.setMaximumWidth(370)
+        side_layout = QVBoxLayout(side)
+        side_layout.setContentsMargins(14, 12, 14, 12)
+        side_layout.setSpacing(8)
+        side_layout.addWidget(self._meta)
+        side_layout.addWidget(self._game_link)
+        side_layout.addWidget(self._feedback)
+        side_layout.addWidget(self._move_label)
+        side_layout.addWidget(self._move_box, 1)
+        side_layout.addLayout(actions)
+        side_layout.addLayout(analysis_row)
+        side_layout.addLayout(votes)
+
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.setChildrenCollapsible(False)
+        splitter.setHandleWidth(10)
+        splitter.addWidget(self.board)
+        splitter.addWidget(side)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        splitter.setSizes([560, 330])
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(24, 16, 24, 18)
         layout.setSpacing(10)
         layout.addLayout(top)
-        layout.addWidget(self._prompt)
-        layout.addWidget(self._game_link)
         layout.addWidget(self._notice)
-        layout.addLayout(board_row, 1)
-        layout.addWidget(self._result_panel)
-        layout.addLayout(bottom)
+        layout.addWidget(splitter, 1)
+        self.set_line("")
+        self.hide_result()
 
     def set_rating(self, rating):
         self._rating = rating
@@ -578,6 +786,7 @@ class _TrainView(QWidget):
         self._mode_label.setText(mode)
         self._counter_label.clear()
         self.set_rating(rating)
+        self.set_vote_visible(True)
 
     def set_session_info(self, mode, index, total, human_color):
         self._mode_label.setText(mode)
@@ -594,10 +803,49 @@ class _TrainView(QWidget):
             "puzzle_side_white" if human_color == chess.WHITE else "puzzle_side_black",
             self._language,
         )
-        self._prompt.setText(t("puzzle_train_your_turn", self._language, color=color))
+        self.set_prompt(t("puzzle_train_your_turn", self._language, color=color))
+        self.set_vote_visible(False)
 
     def set_prompt(self, text):
-        self._prompt.setText(text)
+        self._turn_text = text or ""
+        if not self._feedback.property("state") or self._feedback.property("state") == "playing":
+            self._result_title.setText(self._turn_text)
+
+    def set_meta(self, text):
+        self._meta.setText(text or "")
+        self._meta.setVisible(bool(text))
+
+    def set_puzzle_info(self, rating, themes):
+        self._puzzle_rating = rating
+        self._puzzle_themes = list(themes or [])
+        parts = []
+        if rating:
+            parts.append(t("puzzle_rating", self._language, rating=rating))
+        if self._puzzle_themes:
+            names = "、".join(_theme_name(name, self._language) for name in self._puzzle_themes[:4])
+            parts.append(t("puzzle_themes", self._language, themes=names))
+        self.set_meta(" · ".join(parts))
+
+    def set_line(self, pgn):
+        self._move_list.setVisible(bool(pgn))
+        self._moves_empty.setVisible(not pgn)
+        if not pgn:
+            self._move_list.clear()
+            return
+        if self._move_list.set_moves(pgn):
+            self._move_list.set_current_ply(self.board.index)
+        else:
+            self._move_list.clear()
+            self._move_list.setVisible(False)
+            self._moves_empty.setVisible(True)
+        self._update_analyze_state()
+
+    def _update_analyze_state(self):
+        enabled = self.board.index > 0
+        self._btn_analyze.setEnabled(enabled)
+        self._btn_analyze.setToolTip(
+            "" if enabled else t("puzzle_train_analyze_tip", self._language)
+        )
 
     def set_counter(self, text):
         self._counter_label.setText(text or "")
@@ -606,10 +854,20 @@ class _TrainView(QWidget):
         self._notice.setText(text or "")
         self._notice.setVisible(bool(text))
 
+    def set_vote_visible(self, visible):
+        self._btn_vote_up.setVisible(bool(visible))
+        self._btn_vote_down.setVisible(bool(visible))
+
     def set_solving(self, solving):
         self._btn_hint.setEnabled(solving)
         self._btn_reveal.setEnabled(solving)
         self._btn_favorite.setEnabled(True)
+        self._update_analyze_state()
+
+    def _set_feedback_state(self, state):
+        self._feedback.setProperty("state", state)
+        self._feedback.style().unpolish(self._feedback)
+        self._feedback.style().polish(self._feedback)
 
     def show_result(self, state, title, detail, solution="", meta=""):
         self._result_title.setText(title)
@@ -617,12 +875,22 @@ class _TrainView(QWidget):
         self.set_result_meta(meta)
         self._result_solution.setText(solution)
         self._result_solution.setVisible(bool(solution))
-        self._result_panel.setProperty("state", state)
-        self._result_panel.style().unpolish(self._result_panel)
-        self._result_panel.style().polish(self._result_panel)
-        self._result_panel.setVisible(True)
+        self._set_feedback_state(state)
+        self._feedback.setVisible(True)
         self._btn_hint.setEnabled(False)
-        self._btn_reveal.setEnabled(False)
+        self._btn_reveal.setEnabled(state == "failed")
+        is_challenge = state == "challenge"
+        self._btn_result_retry.setVisible(state in ("failed", "revealed"))
+        self._btn_result_retry.setObjectName(
+            "puzzlePrimaryButton" if state in ("failed", "revealed") else "puzzleSecondaryButton"
+        )
+        self._btn_result_retry.style().unpolish(self._btn_result_retry)
+        self._btn_result_retry.style().polish(self._btn_result_retry)
+        self._btn_replay.setVisible(
+            not is_challenge and state in ("solved", "revealed") and bool(solution)
+        )
+        self._btn_next.setVisible(state in ("solved", "challenge"))
+        self._update_analyze_state()
 
     def set_result_meta(self, text):
         self._result_meta.setText(text or "")
@@ -658,15 +926,25 @@ class _TrainView(QWidget):
             return
         safe = html.escape(self._game_url, quote=True)
         self._game_link.setText(
-            t("puzzle_game_from", self._language) + f': <a href="{safe}">{safe}</a>'
+            t("puzzle_game_from", self._language)
+            + f': <a href="{safe}">{t("puzzle_game_open", self._language)}</a>'
         )
         self._game_link.setVisible(True)
 
+    def _request_analysis(self):
+        if self.board.index <= 0:
+            return
+        self.analysis_requested.emit(self.board.line_pgn(self.board.index))
+
     def hide_result(self):
-        self._result_panel.setVisible(False)
-        self._result_panel.setProperty("state", "")
+        self._set_feedback_state("playing")
+        self._result_title.setText(self._turn_text)
+        self._result_detail.clear()
         self._result_solution.clear()
         self.set_result_meta("")
+        self._btn_result_retry.setVisible(False)
+        self._btn_replay.setVisible(False)
+        self._btn_next.setVisible(False)
         self.set_solving(True)
 
     def set_next_enabled(self, enabled):
@@ -677,10 +955,8 @@ class _TrainView(QWidget):
         self._btn_favorite.setText(
             t("puzzle_unfavorite" if favorited else "puzzle_favorite", self._language)
         )
-        self._btn_result_favorite.setText(self._btn_favorite.text())
         icon = "star_filled" if favorited else "star"
         self._btn_favorite.setIcon(action_icon(self._theme, icon))
-        self._btn_result_favorite.setIcon(action_icon(self._theme, icon))
 
     def apply_icons(self, theme):
         self._theme = theme
@@ -689,6 +965,9 @@ class _TrainView(QWidget):
             (self._btn_hint, "hint"),
             (self._btn_reveal, "review_best"),
             (self._btn_result_retry, "reset"),
+            (self._btn_analyze, "analyze"),
+            (self._btn_replay, "resume"),
+            (self._btn_next, "nav_next"),
         ):
             button.setIcon(action_icon(theme, name))
             button.setIconSize(QSize(16, 16))
@@ -700,19 +979,23 @@ class _TrainView(QWidget):
         self._btn_hint.setText(t("puzzle_train_hint", language))
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_result_retry.setText(t("puzzle_train_retry", language))
-        self._btn_result_profile.setText(t("puzzle_home_profile", language))
         self._btn_next.setText(t("puzzle_train_next", language))
         self._btn_replay.setText(t("puzzle_train_replay", language))
+        self._btn_analyze.setText(t("puzzle_train_analyze", language))
         self._btn_vote_up.setText(t("puzzle_vote_up", language))
         self._btn_vote_down.setText(t("puzzle_vote_down", language))
         self._btn_favorite.setText(t("puzzle_favorite", language))
-        self._btn_result_favorite.setText(t("puzzle_favorite", language))
+        self._move_label.setText(t("puzzle_train_moves", language))
+        self._moves_empty.setText(t("puzzle_train_no_moves", language))
         self.set_favorite(self._favorited)
         self.set_rating(self._rating)
         self.set_game_link(self._game_url)
+        if hasattr(self, "_puzzle_themes"):
+            self.set_puzzle_info(getattr(self, "_puzzle_rating", None), self._puzzle_themes)
 
     def set_theme(self, theme):
         self.board.set_theme(theme)
+        self._move_list.set_theme(theme)
         self.apply_icons(theme)
 
     def set_piece_set(self, name):
@@ -930,6 +1213,7 @@ class _ProfileView(QWidget):
         super().__init__(parent)
         self._language = "zh-CN"
         self._summary = {}
+        self._range_days = 30
 
         scroll = QScrollArea()
         scroll.setObjectName("puzzleScroll")
@@ -939,7 +1223,7 @@ class _ProfileView(QWidget):
         inner.setObjectName("puzzleProfile")
         layout = QVBoxLayout(inner)
         layout.setContentsMargins(32, 24, 32, 32)
-        layout.setSpacing(16)
+        layout.setSpacing(14)
 
         self._btn_back = QPushButton()
         self._btn_back.setObjectName("puzzleGhostButton")
@@ -951,9 +1235,7 @@ class _ProfileView(QWidget):
         for days in (7, 30, 90, 0):
             self._range.addItem("", days)
         self._range.setCurrentIndex(1)
-        self._range.currentIndexChanged.connect(
-            lambda _index: self.range_changed.emit(int(self._range.currentData()))
-        )
+        self._range.currentIndexChanged.connect(self._on_range_changed)
         header = QHBoxLayout()
         header.setSpacing(8)
         header.addWidget(self._btn_back)
@@ -972,41 +1254,72 @@ class _ProfileView(QWidget):
         self._notice.setVisible(False)
         layout.addWidget(self._notice)
 
-        first = QHBoxLayout()
-        first.setSpacing(10)
-        self._rating = _StatCard("puzzle_profile_rating")
-        self._attempted = _StatCard("puzzle_profile_attempts")
-        self._solved = _StatCard("puzzle_profile_solved")
-        self._accuracy = _StatCard("puzzle_profile_accuracy")
-        self._streak = _StatCard("puzzle_profile_streak")
-        for card in (
-            self._rating,
-            self._attempted,
-            self._solved,
-            self._accuracy,
-            self._streak,
-        ):
-            first.addWidget(card, 1)
-        layout.addLayout(first)
+        self._rating_hero = QFrame()
+        self._rating_hero.setObjectName("puzzleRatingHero")
+        hero_layout = QHBoxLayout(self._rating_hero)
+        hero_layout.setContentsMargins(20, 16, 20, 16)
+        hero_layout.setSpacing(18)
+        hero_text = QVBoxLayout()
+        hero_text.setSpacing(2)
+        self._rating_caption = QLabel()
+        self._rating_caption.setObjectName("puzzleRatingCaption")
+        self._rating_value = QLabel("—")
+        self._rating_value.setObjectName("puzzleRatingValue")
+        self._rating_sub = QLabel()
+        self._rating_sub.setObjectName("puzzleRatingSub")
+        self._rating_sub.setWordWrap(True)
+        hero_text.addWidget(self._rating_caption)
+        hero_text.addWidget(self._rating_value)
+        hero_text.addWidget(self._rating_sub)
+        hero_layout.addLayout(hero_text, 1)
+        layout.addWidget(self._rating_hero)
 
-        second = QHBoxLayout()
-        second.setSpacing(10)
-        self._solved_avg = _StatCard("puzzle_profile_solved_avg")
-        self._failed_avg = _StatCard("puzzle_profile_failed_avg")
-        self._retryable = _StatCard("puzzle_profile_retryable")
+        metrics = QHBoxLayout()
+        metrics.setSpacing(10)
+        self._attempted = _StatCard("puzzle_profile_attempts")
+        self._accuracy = _StatCard("puzzle_profile_accuracy")
+        self._avg_time = _StatCard("puzzle_profile_avg_time")
         self._active_days = _StatCard("puzzle_profile_active_days")
-        for card in (self._solved_avg, self._failed_avg, self._retryable, self._active_days):
-            second.addWidget(card, 1)
-        layout.addLayout(second)
+        for card in (self._attempted, self._accuracy, self._avg_time, self._active_days):
+            metrics.addWidget(card, 1)
+        layout.addLayout(metrics)
+
+        self._details = QFrame()
+        self._details.setObjectName("puzzleProfileDetails")
+        details_layout = QGridLayout(self._details)
+        details_layout.setContentsMargins(16, 12, 16, 12)
+        details_layout.setHorizontalSpacing(18)
+        details_layout.setVerticalSpacing(2)
+        self._detail_values = {}
+        for index, key in enumerate(
+            (
+                "puzzle_profile_best_streak",
+                "puzzle_profile_retryable",
+                "puzzle_profile_solved_avg",
+                "puzzle_profile_failed_avg",
+            )
+        ):
+            caption = QLabel()
+            caption.setObjectName("puzzleDetailCaption")
+            value = QLabel("—")
+            value.setObjectName("puzzleDetailValue")
+            details_layout.addWidget(caption, 0, index)
+            details_layout.addWidget(value, 1, index)
+            details_layout.setColumnStretch(index, 1)
+            self._detail_values[key] = (caption, value)
+        layout.addWidget(self._details)
 
         self._themes_label = QLabel()
         self._themes_label.setObjectName("puzzleSectionLabel")
         layout.addWidget(self._themes_label)
         self._themes_box = QFrame()
         self._themes_box.setObjectName("puzzleThemeBox")
-        self._themes_layout = QVBoxLayout(self._themes_box)
-        self._themes_layout.setContentsMargins(14, 12, 14, 12)
-        self._themes_layout.setSpacing(8)
+        self._themes_layout = QGridLayout(self._themes_box)
+        self._themes_layout.setContentsMargins(16, 12, 16, 12)
+        self._themes_layout.setHorizontalSpacing(14)
+        self._themes_layout.setVerticalSpacing(9)
+        self._themes_layout.setColumnStretch(0, 1)
+        self._themes_layout.setColumnStretch(3, 1)
         layout.addWidget(self._themes_box)
         self._empty_themes = QLabel()
         self._empty_themes.setObjectName("puzzleEmptyLabel")
@@ -1015,10 +1328,12 @@ class _ProfileView(QWidget):
         self._recent_label = QLabel()
         self._recent_label.setObjectName("puzzleSectionLabel")
         layout.addWidget(self._recent_label)
-        self._recent = QListWidget()
-        self._recent.setObjectName("puzzleRecentList")
-        self._recent.setMinimumHeight(180)
-        layout.addWidget(self._recent)
+        self._recent_box = QFrame()
+        self._recent_box.setObjectName("puzzleRecentBox")
+        self._recent_layout = QVBoxLayout(self._recent_box)
+        self._recent_layout.setContentsMargins(10, 8, 10, 8)
+        self._recent_layout.setSpacing(2)
+        layout.addWidget(self._recent_box)
         self._empty = QLabel()
         self._empty.setObjectName("puzzleEmptyLabel")
         self._empty.setWordWrap(True)
@@ -1032,13 +1347,24 @@ class _ProfileView(QWidget):
         self.retranslate(self._language)
         self.refresh({}, self._language)
 
+    def _on_range_changed(self, _index):
+        self._range_days = int(self._range.currentData())
+        self._update_scope()
+        self.range_changed.emit(self._range_days)
+
     def set_range(self, days):
         for index in range(self._range.count()):
             if int(self._range.itemData(index)) == days:
                 self._range.blockSignals(True)
                 self._range.setCurrentIndex(index)
                 self._range.blockSignals(False)
+                self._range_days = days
+                self._update_scope()
                 return
+
+    def _update_scope(self):
+        key = "puzzle_profile_scope_days" if self._range_days else "puzzle_profile_scope_all"
+        self._scope_note.setText(t(key, self._language, days=self._range_days))
 
     def set_notice(self, text=""):
         self._notice.setText(text or "")
@@ -1046,107 +1372,159 @@ class _ProfileView(QWidget):
 
     def refresh(self, summary, language):
         self._language = language
-        self._summary = summary
-        self._rating.set_value(summary.get("rating"))
-        self._attempted.set_value(summary.get("attempts", 0))
-        self._solved.set_value(summary.get("unique_solved", 0))
-        self._accuracy.set_value(f"{summary.get('accuracy', 0)}%")
-        self._streak.set_value(summary.get("streak", 0))
-        self._solved_avg.set_value(summary.get("solved_avg_rating"))
-        self._failed_avg.set_value(summary.get("failed_avg_rating"))
-        self._retryable.set_value(summary.get("retryable", 0))
-        self._active_days.set_value(summary.get("active_days", 0))
-        self._rebuild_themes(summary.get("themes") or [])
-        self._rebuild_recent(summary.get("recent") or [])
-        has_data = bool(summary.get("attempts"))
-        self._empty.setVisible(not has_data)
-        self._themes_box.setVisible(bool(summary.get("themes")))
-        self._empty_themes.setVisible(has_data and not summary.get("themes"))
+        self._summary = summary or {}
+        rating = self._summary.get("rating")
+        self._rating_hero.setVisible(rating is not None)
+        if rating is not None:
+            self._rating_value.setText(f"{float(rating):.1f}")
+            parts = []
+            rd = self._summary.get("rd")
+            if rd is not None:
+                parts.append(t("puzzle_profile_rd", language, rd=round(float(rd))))
+            rated = self._summary.get("rating_attempts")
+            if rated:
+                parts.append(t("puzzle_profile_rated_count", language, count=rated))
+            parts.append(
+                t(
+                    "puzzle_profile_streak_value",
+                    language,
+                    count=self._summary.get("streak", 0),
+                )
+            )
+            parts.append(
+                t(
+                    "puzzle_profile_best_streak_value",
+                    language,
+                    count=self._summary.get("best_streak", 0),
+                )
+            )
+            self._rating_sub.setText(" · ".join(parts))
 
-    def _clear_theme_rows(self):
-        while self._themes_layout.count():
-            item = self._themes_layout.takeAt(0)
+        self._attempted.set_value(self._summary.get("attempts", 0))
+        self._accuracy.set_value(f"{self._summary.get('accuracy', 0)}%")
+        self._avg_time.set_value(_format_duration(self._summary.get("avg_duration_ms")))
+        self._active_days.set_value(self._summary.get("active_days", 0))
+        for key, (caption, value) in self._detail_values.items():
+            caption.setText(t(key, language))
+            if key == "puzzle_profile_best_streak":
+                value.setText(str(self._summary.get("best_streak", 0)))
+            elif key == "puzzle_profile_retryable":
+                value.setText(str(self._summary.get("retryable", 0)))
+            elif key == "puzzle_profile_solved_avg":
+                value.setText(str(self._summary.get("solved_avg_rating") or "—"))
+            else:
+                value.setText(str(self._summary.get("failed_avg_rating") or "—"))
+
+        themes = self._summary.get("themes") or []
+        self._rebuild_themes(themes)
+        self._rebuild_recent(self._summary.get("recent") or [])
+        has_data = bool(self._summary.get("attempts"))
+        self._empty.setVisible(not has_data)
+        self._themes_box.setVisible(bool(themes))
+        self._recent_box.setVisible(has_data and bool(self._summary.get("recent")))
+        self._themes_label.setVisible(bool(themes))
+        self._recent_label.setVisible(has_data and bool(self._summary.get("recent")))
+        self._empty_themes.setVisible(has_data and not themes)
+
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
             widget = item.widget()
             if widget is not None:
                 widget.deleteLater()
 
     def _rebuild_themes(self, themes):
-        self._clear_theme_rows()
-        for row in themes:
-            widget = QWidget()
-            layout = QVBoxLayout(widget)
-            layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(3)
-            label = QLabel(
-                t(
-                    "puzzle_profile_theme_row",
-                    self._language,
-                    theme=row["theme"],
-                    attempts=row["attempts"],
-                    accuracy=row["accuracy"],
-                )
-            )
-            label.setObjectName("puzzleThemeLabel")
+        self._clear_layout(self._themes_layout)
+        if not themes:
+            return
+        headers = (
+            ("puzzle_profile_theme_name", 0),
+            ("puzzle_profile_theme_attempts", 1),
+            ("puzzle_profile_theme_accuracy", 2),
+        )
+        for key, column in headers:
+            label = QLabel(t(key, self._language))
+            label.setObjectName("puzzleThemeHeader")
+            self._themes_layout.addWidget(label, 0, column)
+        rows = sorted(
+            themes,
+            key=lambda row: (
+                0 if row.get("attempts", 0) >= 2 else 1,
+                row.get("accuracy", 0),
+                -row.get("attempts", 0),
+            ),
+        )
+        for index, row in enumerate(rows, start=1):
+            name = QLabel(_theme_name(row.get("theme"), self._language))
+            name.setObjectName("puzzleThemeName")
+            count = QLabel(str(row.get("attempts", 0)))
+            count.setObjectName("puzzleThemeMeta")
+            accuracy = QLabel(f"{row.get('accuracy', 0)}%")
+            accuracy.setObjectName("puzzleThemeMeta")
             bar = QProgressBar()
             bar.setObjectName("puzzleThemeBar")
             bar.setRange(0, 100)
-            bar.setValue(row["accuracy"])
+            bar.setValue(int(row.get("accuracy", 0)))
             bar.setTextVisible(False)
             bar.setFixedHeight(6)
-            layout.addWidget(label)
-            layout.addWidget(bar)
-            self._themes_layout.addWidget(widget)
+            bar.setMinimumWidth(120)
+            self._themes_layout.addWidget(name, index, 0)
+            self._themes_layout.addWidget(count, index, 1)
+            self._themes_layout.addWidget(accuracy, index, 2)
+            self._themes_layout.addWidget(bar, index, 3)
 
     def _rebuild_recent(self, recent):
-        self._recent.clear()
+        self._clear_layout(self._recent_layout)
         for entry in recent:
-            date = str(entry.get("created_at", ""))[:16].replace("T", " ")
+            row = QFrame()
+            row.setObjectName("puzzleRecentRow")
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(10, 7, 10, 7)
+            row_layout.setSpacing(10)
+            solved = entry.get("result") == "solved"
+            badge = QLabel("✓" if solved else "✗")
+            badge.setObjectName("puzzleRecentBadge")
+            badge.setProperty("result", "solved" if solved else "failed")
+            badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            badge.setFixedWidth(22)
+            themes = entry.get("themes") or []
+            theme_text = "、".join(_theme_name(name, self._language) for name in themes[:2]) or "—"
+            theme_label = QLabel(theme_text)
+            theme_label.setObjectName("puzzleRecentTheme")
             rating = entry.get("rating")
-            rating_text = str(rating) if rating else "—"
-            result = t(
-                "puzzle_profile_result_solved"
-                if entry.get("result") == "solved"
-                else "puzzle_profile_result_failed",
-                self._language,
+            rating_label = QLabel(
+                t("puzzle_profile_rating_short", self._language, rating=rating) if rating else "—"
             )
-            themes = ", ".join(entry.get("themes") or []) or "—"
-            text = t(
-                "puzzle_profile_recent_row",
-                self._language,
-                date=date,
-                rating=rating_text,
-                result=result,
-                themes=themes,
-            )
-            item = QListWidgetItem(text)
-            item.setFlags(Qt.ItemFlag.NoItemFlags)
-            self._recent.addItem(item)
+            rating_label.setObjectName("puzzleRecentMeta")
+            duration = QLabel(_format_duration(entry.get("duration_ms")))
+            duration.setObjectName("puzzleRecentMeta")
+            created = str(entry.get("created_at") or "")
+            date = f"{created[5:10]} {created[11:16]}".strip()
+            date_label = QLabel(date or "—")
+            date_label.setObjectName("puzzleRecentMeta")
+            row_layout.addWidget(badge)
+            row_layout.addWidget(theme_label, 1)
+            row_layout.addWidget(rating_label)
+            row_layout.addWidget(duration)
+            row_layout.addWidget(date_label)
+            self._recent_layout.addWidget(row)
 
     def retranslate(self, language):
         self._language = language
         self._btn_back.setText(t("puzzle_train_back", language))
         self._title.setText(t("puzzle_profile_title", language))
-        self._scope_note.setText(t("puzzle_profile_scope", language))
         self._range.setItemText(0, t("puzzle_profile_range_7", language))
         self._range.setItemText(1, t("puzzle_profile_range_30", language))
         self._range.setItemText(2, t("puzzle_profile_range_90", language))
         self._range.setItemText(3, t("puzzle_profile_range_all", language))
+        self._rating_caption.setText(t("puzzle_profile_rating", language))
         self._themes_label.setText(t("puzzle_profile_themes", language))
         self._recent_label.setText(t("puzzle_profile_recent", language))
         self._empty.setText(t("puzzle_profile_empty", language))
         self._empty_themes.setText(t("puzzle_profile_no_themes", language))
-        for card in (
-            self._rating,
-            self._attempted,
-            self._solved,
-            self._accuracy,
-            self._streak,
-            self._solved_avg,
-            self._failed_avg,
-            self._retryable,
-            self._active_days,
-        ):
+        for card in (self._attempted, self._accuracy, self._avg_time, self._active_days):
             card.retranslate(language)
+        self._update_scope()
         if self._summary:
             self.refresh(self._summary, language)
 
@@ -1157,6 +1535,7 @@ class _ProfileView(QWidget):
 
 class PuzzlePage(QWidget):
     sign_in_requested = Signal()
+    analysis_requested = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1244,6 +1623,7 @@ class PuzzlePage(QWidget):
         layout.addWidget(self._stack)
 
         self._train.board.move_requested.connect(self._on_move_requested)
+        self._train.analysis_requested.connect(self.analysis_requested.emit)
         self._hub.train_requested.connect(self._start_training)
         self._hub.mistakes_requested.connect(self._start_mistakes)
         self._hub.library_requested.connect(self.show_library)
@@ -1262,7 +1642,6 @@ class PuzzlePage(QWidget):
         self._train.favorite_requested.connect(self._toggle_favorite)
         self._train.reveal_requested.connect(self._reveal_solution)
         self._train.next_requested.connect(self._next)
-        self._train.profile_requested.connect(self.show_profile)
         self._train.replay_requested.connect(self._replay_solution)
         self._train.vote_requested.connect(self._vote_puzzle)
         self._library.back_requested.connect(self.show_hub)
@@ -1388,8 +1767,8 @@ class PuzzlePage(QWidget):
         self._review_index = -1
         self._refresh_account()
         self.refresh_collections()
-        self._hub.set_summary(self._hub_summary())
         self._hub.set_online(self._is_online(), self._online_rating)
+        self._hub.set_continue_info(self._hub_continue_text())
         self._hub.set_notice(
             t("puzzle_online_signin_required", self._language) if self._auth_expired else ""
         )
@@ -1398,13 +1777,52 @@ class PuzzlePage(QWidget):
         self._refresh_hub_stats()
         self._resume_attempts()
 
-    def _hub_summary(self):
-        # With an account the server is the source of truth, so the hub and the
-        # profile cannot disagree after switching machines. The server caps its
-        # window at 365 days, which is what "all" means here too.
-        if self._is_online() and self._hub_stats is not None:
-            return self._hub_stats
-        return attempt_summary()
+    def _preferred_collection(self):
+        preferred = None
+        for collection in self._collections:
+            if collection.favorite or collection.count == 0:
+                continue
+            if collection.builtin:
+                preferred = collection
+                break
+            if preferred is None:
+                preferred = collection
+        if preferred is None:
+            for collection in self._collections:
+                if collection.favorite and collection.count:
+                    preferred = collection
+                    break
+        return preferred
+
+    def _first_unsolved(self, collection):
+        if collection is None:
+            return 0
+        solved = solved_keys(collection)
+        for index in range(collection.count):
+            if puzzle_key(collection.get(index)) not in solved:
+                return index
+        return 0
+
+    def _hub_continue_text(self):
+        if self._is_online():
+            if self._online_rating is not None:
+                return t(
+                    "puzzle_home_continue_online",
+                    self._language,
+                    rating=round(float(self._online_rating)),
+                )
+            return t("puzzle_home_continue_online_plain", self._language)
+        collection = self._preferred_collection()
+        if collection is None:
+            return t("puzzle_home_continue_empty", self._language)
+        index = self._first_unsolved(collection)
+        return t(
+            "puzzle_home_continue_local",
+            self._language,
+            name=_collection_name(collection, self._language),
+            index=index + 1,
+            total=collection.count,
+        )
 
     def show_library(self):
         self.refresh_collections()
@@ -1453,20 +1871,7 @@ class PuzzlePage(QWidget):
         self._start_local_training()
 
     def _start_local_training(self):
-        preferred = None
-        for collection in self._collections:
-            if collection.favorite or collection.count == 0:
-                continue
-            if collection.builtin:
-                preferred = collection
-                break
-            if preferred is None:
-                preferred = collection
-        if preferred is None:
-            for collection in self._collections:
-                if collection.favorite and collection.count:
-                    preferred = collection
-                    break
+        preferred = self._preferred_collection()
         if preferred is None:
             self.show_library()
             self._library.set_status(t("puzzle_empty", self._language))
@@ -1771,8 +2176,8 @@ class PuzzlePage(QWidget):
     def _on_hub_stats_done(self, _action, result):
         self._hub_stats = result
         self._online_rating = result.get("rating", self._online_rating)
-        self._hub.set_summary(result)
         self._hub.set_online(True, self._online_rating)
+        self._hub.set_continue_info(self._hub_continue_text())
 
     def _on_hub_stats_failed(self, _action, _message, code):
         if code in ("missing_token", "unknown_token"):
@@ -1924,8 +2329,10 @@ class PuzzlePage(QWidget):
         board = self._train.board
         board.set_start_fen(puzzle.get("fen", ""))
         board.set_interactive(True, session.human_color)
+        self._train.set_puzzle_info(puzzle.get("rating"), puzzle.get("themes"))
         self._sync_board(animate=False)
         self._train.hide_result()
+        self._train.set_notice("")
         self._train.set_game_link(puzzle.get("game_url"))
         self._train.set_favorite(puzzle_key(puzzle) in self._favorite_keys)
         self._client_attempt_id = uuid.uuid4().hex
@@ -1940,8 +2347,10 @@ class PuzzlePage(QWidget):
     def _sync_board(self, animate=False):
         if self._session is None:
             self._train.board.clear()
+            self._train.set_line("")
             return
         self._train.board.set_moves(self._session.applied_moves, animate=animate)
+        self._train.set_line(self._train.board.line_pgn())
 
     def _record_attempt(self, result):
         if self._attempt_recorded or self._puzzle is None:
@@ -2083,6 +2492,10 @@ class PuzzlePage(QWidget):
         if session is None or session.solved or not session.is_human_turn or self._revealing:
             self._train.board.clear_selection()
             return
+        if self._train.board.index != len(session.applied_moves):
+            self._train.board.last()
+            self._train.board.clear_selection()
+            return
         if self._attempt_recorded:
             self._train.board.clear_selection()
             return
@@ -2117,7 +2530,6 @@ class PuzzlePage(QWidget):
                 "failed",
                 t("puzzle_train_failed_title", self._language),
                 t("puzzle_train_failed_detail", self._language),
-                self._solution_label(),
                 meta=self._result_meta_text(),
             )
             return
@@ -2135,6 +2547,19 @@ class PuzzlePage(QWidget):
         self._sync_board(animate=True)
         if session.solved:
             self._finish_solved()
+            return
+        self._train.set_prompt(
+            t(
+                "puzzle_train_your_turn",
+                self._language,
+                color=t(
+                    "puzzle_side_white"
+                    if self._session.human_color == chess.WHITE
+                    else "puzzle_side_black",
+                    self._language,
+                ),
+            )
+        )
 
     def _finish_solved(self):
         self._streak += 1
@@ -2192,7 +2617,13 @@ class PuzzlePage(QWidget):
             return
         self._hinted = True
         self._train.board.set_hint(uci)
-        self._train.set_prompt(t("puzzle_status_hint", self._language, move=uci))
+        try:
+            san = self._session.board.san(chess.Move.from_uci(uci))
+        except ValueError:
+            san = uci
+        self._train.set_prompt(t("puzzle_status_hint", self._language, move=san))
+        if self._online and self._online_rated:
+            self._train.set_notice(t("puzzle_hint_rated_note", self._language))
 
     def _reveal_solution(self):
         session = self._session
@@ -2215,10 +2646,12 @@ class PuzzlePage(QWidget):
             return
         if box.clickedButton() is not full_button:
             return
+        already_failed = self._attempt_recorded
         self._streak = 0
         self._revealing = True
-        self._record_attempt("failed")
-        if self._challenge_active and self._challenge_mode == "storm":
+        if not already_failed:
+            self._record_attempt("failed")
+        if self._challenge_active and self._challenge_mode == "storm" and not already_failed:
             self._challenge_mistakes += 1
             self._update_challenge_label()
             if self._challenge_mistakes >= 3:
@@ -2297,6 +2730,7 @@ class PuzzlePage(QWidget):
             return
         self._replay_index += 1
         self._train.board.set_moves(self._replay_moves[: self._replay_index], animate=True)
+        self._train.set_line(self._train.board.line_pgn())
         if self._replay_index >= len(self._replay_moves):
             self._replay_timer.stop()
 
@@ -2567,7 +3001,6 @@ class PuzzlePage(QWidget):
         self._session = None
         self._index = 0
         self._train.board.clear()
-        self._train.board.set_navigation_visible(False)
         self.show_hub()
 
     def shutdown(self):

@@ -293,6 +293,7 @@ class MainWindow(QMainWindow):
 
         self.puzzle_page = PuzzlePage()
         self.puzzle_page.sign_in_requested.connect(self._open_cloud_account)
+        self.puzzle_page.analysis_requested.connect(self._on_puzzle_import)
         self.learn_page = LearnPage()
 
         main_stack = QStackedWidget()
@@ -788,6 +789,11 @@ class MainWindow(QMainWindow):
         self._module = "analysis"
         self._show_module()
         self.tabs.setCurrentWidget(self.analysis_page)
+
+    def _on_puzzle_import(self, pgn):
+        self._on_play_import(pgn)
+        if self.board.index == 0 and self.board.line_pgn():
+            self.board.goto(len(self.board._moves))
 
     def _send_chat(self, text):
         if not self._messages:
