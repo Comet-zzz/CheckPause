@@ -429,6 +429,11 @@ class OnlineOutboxTests(unittest.TestCase):
         self.assertEqual(loaded[0]["account_id"], "42")
         self.assertEqual(puzzles.attach_outbox_account_id(42, "player_one", base_dir=self.base), 0)
 
+    def test_attach_without_a_username_does_not_guess(self):
+        puzzles.append_outbox(self._entry("a1", account="player_one"), base_dir=self.base)
+        self.assertEqual(puzzles.attach_outbox_account_id(42, "", base_dir=self.base), 0)
+        self.assertEqual(puzzles.load_outbox(self.base)[0]["account_id"], "")
+
 
 if __name__ == "__main__":
     unittest.main()

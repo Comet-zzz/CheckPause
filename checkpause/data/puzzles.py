@@ -416,7 +416,14 @@ def attach_outbox_account_id(account_id, username="", base_dir=None):
     entries = load_outbox(base)
     changed = 0
     for entry in entries:
-        if entry.get("account_id") or (username and entry.get("account") != username):
+        if entry.get("account_id"):
+            continue
+        entry_account = entry.get("account") or ""
+        if username:
+            if entry_account != username:
+                continue
+        elif entry_account:
+            # Without a username, only stamp entries that are not tied to one.
             continue
         entry["account_id"] = account_id
         changed += 1
