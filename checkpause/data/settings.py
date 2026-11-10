@@ -82,18 +82,30 @@ def get_account():
     revoked server-side, a password cannot be un-leaked.
     """
     settings = load_settings()
+    try:
+        account_id = int(settings.get("account_id"))
+    except (TypeError, ValueError):
+        account_id = None
     return {
+        "id": account_id,
         "username": (settings.get("account_username") or "").strip(),
         "token": (settings.get("account_token") or "").strip(),
         "balance": settings.get("account_balance"),
     }
 
 
-def save_account(username, token, balance=None):
+def save_account(username, token, balance=None, account_id=None):
     settings = load_settings()
     settings["account_username"] = (username or "").strip()
     settings["account_token"] = (token or "").strip()
     settings["account_balance"] = balance
+    if account_id is None:
+        settings.pop("account_id", None)
+    else:
+        try:
+            settings["account_id"] = int(account_id)
+        except (TypeError, ValueError):
+            settings.pop("account_id", None)
     return save_settings(settings)
 
 
@@ -105,7 +117,7 @@ def save_balance(balance):
 
 def clear_account():
     settings = load_settings()
-    for key in ("account_username", "account_token", "account_balance"):
+    for key in ("account_id", "account_username", "account_token", "account_balance"):
         settings.pop(key, None)
     return save_settings(settings)
 

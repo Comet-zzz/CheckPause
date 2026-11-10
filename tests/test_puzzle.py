@@ -422,6 +422,13 @@ class OnlineOutboxTests(unittest.TestCase):
         puzzles.clear_outbox(self.base)
         self.assertEqual(puzzles.load_outbox(self.base), [])
 
+    def test_attach_account_id_stamps_legacy_entries(self):
+        puzzles.append_outbox(self._entry("a1", account="player_one"), base_dir=self.base)
+        self.assertEqual(puzzles.attach_outbox_account_id(42, "player_one", base_dir=self.base), 1)
+        loaded = puzzles.load_outbox(self.base)
+        self.assertEqual(loaded[0]["account_id"], "42")
+        self.assertEqual(puzzles.attach_outbox_account_id(42, "player_one", base_dir=self.base), 0)
+
 
 if __name__ == "__main__":
     unittest.main()

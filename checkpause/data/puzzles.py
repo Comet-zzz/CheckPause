@@ -321,6 +321,7 @@ def _outbox_entry(item):
         "rated": bool(item.get("rated", True)),
         "client_attempt_id": attempt_id[:64],
         "account": str(item.get("account") or "").strip().lower(),
+        "account_id": str(item.get("account_id") or "").strip(),
         "server_url": str(item.get("server_url") or "").strip(),
         "created_at": str(item.get("created_at") or "").strip()
         or datetime.now(UTC).isoformat(timespec="seconds"),
@@ -397,6 +398,31 @@ def remove_outbox(client_attempt_id, base_dir=None):
 def clear_outbox(base_dir=None):
     _remove_quietly(outbox_path(base_dir))
     return True
+
+
+def attach_outbox_account_id(account_id, username="", base_dir=None):
+    """Stamp queued attempts with the stable account id.
+
+    Entries written before accounts carried an id only have the username, which
+    a rename would invalidate. Once the id is known, stamp the matching entries
+    so they still belong to the right account after a rename or on another
+    device.
+    """
+    account_id = str(account_id or "").strip()
+    if not account_id:
+        return 0
+    username = str(username or "").strip().lower()
+    base = base_dir or PUZZLE_DIR
+    entries = load_outbox(base)
+    changed = 0
+    for entry in entries:
+        if entry.get("account_id") or (username and entry.get("account") != username):
+            continue
+        entry["account_id"] = account_id
+        changed += 1
+    if changed:
+        _write_outbox(entries, base)
+    return changed
 
 
 def _average(values):

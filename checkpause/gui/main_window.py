@@ -532,6 +532,7 @@ class MainWindow(QMainWindow):
                 account.get("username", ""),
                 account["token"],
                 account.get("balance"),
+                account.get("id"),
             )
         self._account = get_account()
         self._refresh_account_menu()
@@ -937,6 +938,7 @@ class MainWindow(QMainWindow):
                 result.get("username", ""),
                 result["token"],
                 result.get("balance"),
+                result.get("id"),
             )
         else:
             clear_account()

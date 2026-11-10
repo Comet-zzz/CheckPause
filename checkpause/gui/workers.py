@@ -447,6 +447,8 @@ class PuzzleOnlineWorker(QThread):
             )
         if self.action == "retry":
             return cloud.retry_puzzle(self.server_url, self.token, self.language)
+        if self.action == "me":
+            return cloud.fetch_account(self.server_url, self.token, self.language)
         if self.action == "daily":
             return cloud.fetch_daily_puzzle(
                 self.server_url,

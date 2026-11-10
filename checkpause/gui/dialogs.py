@@ -340,6 +340,7 @@ def cloud_account_dialog(parent, language, config=None):
         changed["action"] = action
         account.update(
             {
+                "id": (result.get("account") or {}).get("id"),
                 "username": (result.get("account") or {}).get("username", ""),
                 "token": result.get("token", ""),
                 "balance": (result.get("account") or {}).get("balance"),

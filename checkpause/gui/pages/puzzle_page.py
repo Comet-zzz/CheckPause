@@ -31,6 +31,7 @@ from checkpause.data.puzzles import (
     PuzzleCollection,
     add_favorite,
     append_outbox,
+    attach_outbox_account_id,
     attempt_summary,
     delete_collection,
     favorite_keys,
@@ -43,7 +44,7 @@ from checkpause.data.puzzles import (
     solved_keys,
     toggle_favorite,
 )
-from checkpause.data.settings import get_account, get_server_url
+from checkpause.data.settings import get_account, get_server_url, save_account
 from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import LIGHT
 from checkpause.gui.widgets.board import BoardWidget
@@ -131,7 +132,7 @@ class _HubView(QWidget):
     difficulty_changed = Signal(str)
     theme_filter_changed = Signal(str)
     auto_next_changed = Signal(bool)
-    sprint_changed = Signal(bool)
+    challenge_changed = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -221,8 +222,11 @@ class _HubView(QWidget):
         )
         self._auto_next = QCheckBox()
         self._auto_next.toggled.connect(self.auto_next_changed.emit)
-        self._sprint = QCheckBox()
-        self._sprint.toggled.connect(self.sprint_changed.emit)
+        self._challenge = QComboBox()
+        self._challenge.setObjectName("puzzleRange")
+        self._challenge.currentIndexChanged.connect(
+            lambda _index: self.challenge_changed.emit(self._challenge.currentData() or "")
+        )
         self._btn_daily = QPushButton()
         self._btn_daily.setObjectName("puzzleSecondaryButton")
         self._btn_daily.clicked.connect(self.daily_requested.emit)
@@ -239,7 +243,7 @@ class _HubView(QWidget):
         filters.addWidget(self._theme_label)
         filters.addWidget(self._theme_filter)
         filters.addWidget(self._auto_next)
-        filters.addWidget(self._sprint)
+        filters.addWidget(self._challenge)
         filters.addStretch(1)
         filters.addWidget(self._btn_daily)
         filters.addWidget(self._btn_solved)
@@ -287,6 +291,10 @@ class _HubView(QWidget):
         self._empty_label.setObjectName("puzzleEmptyLabel")
         self._empty_label.setVisible(False)
         layout.addWidget(self._empty_label)
+        self._source_note = QLabel()
+        self._source_note.setObjectName("puzzleSourceNote")
+        self._source_note.setWordWrap(True)
+        layout.addWidget(self._source_note)
         layout.addStretch(1)
         scroll.setWidget(inner)
 
@@ -321,10 +329,13 @@ class _HubView(QWidget):
     def set_train_enabled(self, enabled):
         self._btn_train.setEnabled(bool(enabled))
 
-    def set_sprint(self, enabled):
-        self._sprint.blockSignals(True)
-        self._sprint.setChecked(bool(enabled))
-        self._sprint.blockSignals(False)
+    def set_challenge(self, mode):
+        index = self._challenge.findData(mode or "")
+        if index < 0:
+            return
+        self._challenge.blockSignals(True)
+        self._challenge.setCurrentIndex(index)
+        self._challenge.blockSignals(False)
 
     def set_collections(self, collections, language):
         self._language = language
@@ -365,7 +376,15 @@ class _HubView(QWidget):
         self._difficulty_label.setText(t("puzzle_home_difficulty", language))
         self._theme_label.setText(t("puzzle_home_theme", language))
         self._auto_next.setText(t("puzzle_home_auto_next", language))
-        self._sprint.setText(t("puzzle_home_sprint", language))
+        self._fill_combo(
+            self._challenge,
+            (
+                ("", "puzzle_challenge_none"),
+                ("storm", "puzzle_challenge_storm"),
+                ("racer", "puzzle_challenge_racer"),
+            ),
+            "",
+        )
         self._btn_daily.setText(t("puzzle_home_daily", language))
         self._btn_solved.setText(t("puzzle_home_review_solved", language))
         self._btn_signin.setText(t("puzzle_home_sign_in", language))
@@ -384,6 +403,7 @@ class _HubView(QWidget):
         self._btn_library.setText(t("puzzle_home_library", language))
         self._collections_label.setText(t("puzzle_home_collections", language))
         self._empty_label.setText(t("puzzle_home_no_collections", language))
+        self._source_note.setText(t("puzzle_source_note", language))
         self.set_online(self._online, self._rating)
         for card in self._cards:
             card.retranslate(language)
@@ -1181,6 +1201,10 @@ class PuzzlePage(QWidget):
         self._hub_stats = None
         self._hub_stats_worker = None
         self._account_username = ""
+        self._account_id = None
+        self._account_id_worker = None
+        self._account_id_attached = False
+        self._account_id_checked = False
         self._auth_expired = False
         self._theme_filter = ""
         self._difficulty = "normal"
@@ -1197,13 +1221,15 @@ class PuzzlePage(QWidget):
         self._auto_next_timer = QTimer(self)
         self._auto_next_timer.setSingleShot(True)
         self._auto_next_timer.timeout.connect(self._next)
-        self._sprint_mode = False
-        self._sprint_active = False
-        self._sprint_remaining = 0
-        self._sprint_solved = 0
-        self._sprint_timer = QTimer(self)
-        self._sprint_timer.setInterval(1000)
-        self._sprint_timer.timeout.connect(self._sprint_tick)
+        self._challenge_mode = ""
+        self._challenge_active = False
+        self._challenge_remaining = 0
+        self._challenge_solved = 0
+        self._challenge_mistakes = 0
+        self._challenge_target = 12
+        self._challenge_timer = QTimer(self)
+        self._challenge_timer.setInterval(1000)
+        self._challenge_timer.timeout.connect(self._challenge_tick)
 
         self._hub = _HubView(self)
         self._train = _TrainView(self)
@@ -1229,7 +1255,7 @@ class PuzzlePage(QWidget):
         self._hub.difficulty_changed.connect(self._set_difficulty)
         self._hub.theme_filter_changed.connect(self._set_theme_filter)
         self._hub.auto_next_changed.connect(self._set_auto_next)
-        self._hub.sprint_changed.connect(self._set_sprint)
+        self._hub.challenge_changed.connect(self._set_challenge)
         self._train.back_requested.connect(self._back_from_train)
         self._train.hint_requested.connect(self._show_hint)
         self._train.retry_requested.connect(self._retry)
@@ -1283,13 +1309,66 @@ class PuzzlePage(QWidget):
             self._online_stats_days = None
             self._hub_stats = None
             self._auth_expired = False
+            self._account_id_attached = False
+            self._account_id_checked = False
         self._token = token
         self._account_username = str(account.get("username") or "").strip().lower()
+        self._account_id = account.get("id")
         self._server_url = get_server_url()
         if not self._token:
             self._online = False
             self._online_rating = None
             self._online_rd = None
+        else:
+            self._ensure_account_id()
+
+    def _ensure_account_id(self):
+        """Backfill the stable id for accounts saved before it existed."""
+        if self._account_id is not None:
+            if not self._account_id_attached:
+                attach_outbox_account_id(self._account_id, self._account_username)
+                self._account_id_attached = True
+            return
+        if self._account_id_checked or not self._token or not self._server_url:
+            return
+        if self._account_id_worker is not None and self._account_id_worker.isRunning():
+            return
+        worker = PuzzleOnlineWorker(
+            "me",
+            self._server_url,
+            self._token,
+            self._language,
+            {},
+            self,
+        )
+        self._account_id_worker = worker
+        worker.done.connect(self._on_account_id_done)
+        worker.failed.connect(self._on_account_id_failed)
+        worker.finished.connect(lambda w=worker: self._clear_worker("me", w))
+        worker.start()
+
+    def _on_account_id_done(self, _action, result):
+        self._account_id_checked = True
+        account_id = result.get("id") if isinstance(result, dict) else None
+        if account_id is None:
+            return
+        try:
+            account_id = int(account_id)
+        except (TypeError, ValueError):
+            return
+        self._account_id = account_id
+        self._account_username = str(result.get("username") or self._account_username).lower()
+        save_account(
+            result.get("username", self._account_username),
+            self._token,
+            result.get("balance"),
+            account_id,
+        )
+        attach_outbox_account_id(account_id, self._account_username)
+        self._account_id_attached = True
+
+    def _on_account_id_failed(self, _action, _message, _code):
+        self._account_id_checked = True
 
     def _is_online(self):
         return bool(self._token and self._server_url and not self._auth_expired)
@@ -1303,7 +1382,7 @@ class PuzzlePage(QWidget):
     def show_hub(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
-        self._stop_sprint()
+        self._stop_challenge()
         self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
@@ -1438,54 +1517,101 @@ class PuzzlePage(QWidget):
     def _set_auto_next(self, enabled):
         self._auto_next = bool(enabled)
 
-    def _set_sprint(self, enabled):
-        self._sprint_mode = bool(enabled)
-        if not self._sprint_mode and self._sprint_active:
-            self._stop_sprint()
+    def _set_challenge(self, mode):
+        self._challenge_mode = mode if mode in ("storm", "racer") else ""
+        if self._challenge_active:
+            self._stop_challenge()
             self._train.set_counter("")
+        if (
+            self._challenge_mode
+            and self._stack.currentWidget() is self._train
+            and self._puzzle is not None
+        ):
+            self._start_challenge()
 
-    def _start_sprint(self):
-        if not self._sprint_mode or self._sprint_active:
+    def _start_challenge(self):
+        if not self._challenge_mode or self._challenge_active:
             return
-        self._sprint_active = True
-        self._sprint_remaining = 180
-        self._sprint_solved = 0
-        self._sprint_timer.start()
-        self._update_sprint_label()
+        self._challenge_active = True
+        self._challenge_remaining = 180 if self._challenge_mode == "storm" else 60
+        self._challenge_solved = 0
+        self._challenge_mistakes = 0
+        self._challenge_target = 12
+        self._challenge_timer.start()
+        self._update_challenge_label()
 
-    def _update_sprint_label(self):
-        minutes, seconds = divmod(max(0, self._sprint_remaining), 60)
-        self._train.set_counter(
-            t(
-                "puzzle_train_sprint_time",
+    def _challenge_time(self):
+        minutes, seconds = divmod(max(0, self._challenge_remaining), 60)
+        return f"{minutes}:{seconds:02d}"
+
+    def _update_challenge_label(self):
+        if self._challenge_mode == "storm":
+            text = t(
+                "puzzle_train_storm_time",
                 self._language,
-                time=f"{minutes}:{seconds:02d}",
+                time=self._challenge_time(),
+                mistakes=self._challenge_mistakes,
             )
-        )
+        else:
+            text = t(
+                "puzzle_train_racer_time",
+                self._language,
+                time=self._challenge_time(),
+                solved=self._challenge_solved,
+                target=self._challenge_target,
+            )
+        self._train.set_counter(text)
 
-    def _sprint_tick(self):
-        self._sprint_remaining -= 1
-        self._update_sprint_label()
-        if self._sprint_remaining > 0:
-            return
-        self._stop_sprint()
-        self._sprint_mode = False
-        self._hub.set_sprint(False)
+    def _challenge_tick(self):
+        self._challenge_remaining -= 1
+        self._update_challenge_label()
+        if self._challenge_remaining <= 0:
+            self._end_challenge()
+
+    def _end_challenge(self):
+        mode = self._challenge_mode
+        self._stop_challenge()
+        self._challenge_mode = ""
+        self._hub.set_challenge("")
         self._auto_next_timer.stop()
         self._train.set_counter("")
         self._train.set_solving(False)
         if self._session is not None:
             self._train.board.set_interactive(False, self._session.human_color)
-        self._train.show_result(
-            "sprint",
-            t("puzzle_train_sprint_title", self._language),
-            t("puzzle_train_sprint_detail", self._language, solved=self._sprint_solved),
-        )
+        if mode == "racer":
+            outcome = t(
+                "puzzle_train_racer_win"
+                if self._challenge_solved >= self._challenge_target
+                else "puzzle_train_racer_lose",
+                self._language,
+            )
+            self._train.show_result(
+                "challenge",
+                t("puzzle_train_racer_title", self._language),
+                t(
+                    "puzzle_train_racer_detail",
+                    self._language,
+                    solved=self._challenge_solved,
+                    target=self._challenge_target,
+                    result=outcome,
+                ),
+            )
+        else:
+            self._train.show_result(
+                "challenge",
+                t("puzzle_train_storm_title", self._language),
+                t(
+                    "puzzle_train_storm_detail",
+                    self._language,
+                    solved=self._challenge_solved,
+                    mistakes=self._challenge_mistakes,
+                ),
+            )
         self._train.set_next_enabled(True)
 
-    def _stop_sprint(self):
-        self._sprint_timer.stop()
-        self._sprint_active = False
+    def _stop_challenge(self):
+        self._challenge_timer.stop()
+        self._challenge_active = False
 
     def _start_daily(self):
         self._review_puzzles = []
@@ -1621,7 +1747,7 @@ class PuzzlePage(QWidget):
         self._train.set_next_enabled(True)
         self._hub.set_online(True, self._online_rating)
         self._stack.setCurrentWidget(self._train)
-        self._start_sprint()
+        self._start_challenge()
 
     def _refresh_hub_stats(self):
         if not self._is_online():
@@ -1718,6 +1844,8 @@ class PuzzlePage(QWidget):
             self._attempt_worker = None
         elif kind == "vote" and self._vote_worker is worker:
             self._vote_worker = None
+        elif kind == "me" and self._account_id_worker is worker:
+            self._account_id_worker = None
         worker.deleteLater()
 
     def _start_collection(self, collection_id, index=None):
@@ -1769,7 +1897,7 @@ class PuzzlePage(QWidget):
         )
         self._train.set_next_enabled(True)
         self._library.set_current(self._library_collection, self._library_index)
-        self._start_sprint()
+        self._start_challenge()
 
     def _activate_puzzle(self, puzzle):
         self._reset_attempt_state()
@@ -1845,6 +1973,7 @@ class PuzzlePage(QWidget):
             "rated": self._online_rated,
             "client_attempt_id": self._client_attempt_id,
             "account": self._account_username,
+            "account_id": self._account_id,
             "server_url": self._server_url,
         }
         # Written before the request, so closing the app or losing the network
@@ -1860,7 +1989,11 @@ class PuzzlePage(QWidget):
     def _next_pending_attempt(self):
         server_url = self._server_url.rstrip("/")
         for entry in self._pending_attempts:
-            if str(entry.get("account") or "").lower() != self._account_username:
+            entry_account_id = str(entry.get("account_id") or "").strip()
+            if self._account_id is not None and entry_account_id:
+                if entry_account_id != str(self._account_id):
+                    continue
+            elif str(entry.get("account") or "").lower() != self._account_username:
                 continue
             if str(entry.get("server_url") or "").strip().rstrip("/") != server_url:
                 continue
@@ -1973,6 +2106,12 @@ class PuzzlePage(QWidget):
         if status == "wrong":
             self._streak = 0
             self._record_attempt("failed")
+            if self._challenge_active and self._challenge_mode == "storm":
+                self._challenge_mistakes += 1
+                self._update_challenge_label()
+                if self._challenge_mistakes >= 3:
+                    self._end_challenge()
+                    return
             self._auto_favorite()
             self._train.show_result(
                 "failed",
@@ -1999,8 +2138,9 @@ class PuzzlePage(QWidget):
 
     def _finish_solved(self):
         self._streak += 1
-        if self._sprint_active:
-            self._sprint_solved += 1
+        if self._challenge_active:
+            self._challenge_solved += 1
+            self._update_challenge_label()
         self._record_attempt("solved")
         self._mark_current_solved()
         self._train.show_result(
@@ -2078,6 +2218,13 @@ class PuzzlePage(QWidget):
         self._streak = 0
         self._revealing = True
         self._record_attempt("failed")
+        if self._challenge_active and self._challenge_mode == "storm":
+            self._challenge_mistakes += 1
+            self._update_challenge_label()
+            if self._challenge_mistakes >= 3:
+                self._revealing = False
+                self._end_challenge()
+                return
         self._train.set_solving(False)
         self._auto_play_step(session)
 
@@ -2199,7 +2346,7 @@ class PuzzlePage(QWidget):
     def _back_from_train(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
-        self._stop_sprint()
+        self._stop_challenge()
         self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
