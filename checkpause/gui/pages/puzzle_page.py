@@ -316,7 +316,6 @@ class _HubView(QWidget):
         self._online = False
         self._rating = None
         self._cards = []
-        self._continue_text = ""
         self._topics = (
             ("", "puzzle_theme_all"),
             ("mate", "puzzle_theme_mate"),
@@ -340,16 +339,8 @@ class _HubView(QWidget):
         layout.setContentsMargins(32, 28, 32, 32)
         layout.setSpacing(16)
 
-        self._title = QLabel()
-        self._title.setObjectName("puzzleHeaderTitle")
         self._subtitle = QLabel()
         self._subtitle.setObjectName("puzzleHeaderSubtitle")
-        title_box = QVBoxLayout()
-        title_box.setSpacing(4)
-        title_box.addWidget(self._title)
-        title_box.addWidget(self._subtitle)
-        self._status = QLabel()
-        self._status.setObjectName("puzzleStatusPill")
         self._btn_signin = QPushButton()
         self._btn_signin.setObjectName("puzzleSecondaryButton")
         self._btn_signin.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -360,8 +351,7 @@ class _HubView(QWidget):
         self._btn_profile.clicked.connect(self.profile_requested.emit)
         header = QHBoxLayout()
         header.setSpacing(8)
-        header.addLayout(title_box, 1)
-        header.addWidget(self._status, 0, Qt.AlignmentFlag.AlignTop)
+        header.addWidget(self._subtitle, 1)
         header.addWidget(self._btn_signin, 0, Qt.AlignmentFlag.AlignTop)
         header.addWidget(self._btn_profile, 0, Qt.AlignmentFlag.AlignTop)
         layout.addLayout(header)
@@ -390,10 +380,6 @@ class _HubView(QWidget):
         hero_top.addStretch(1)
         hero_top.addWidget(self._btn_settings)
         hero_layout.addLayout(hero_top)
-        self._continue_label = QLabel()
-        self._continue_label.setObjectName("puzzleHeroLead")
-        self._continue_label.setWordWrap(True)
-        hero_layout.addWidget(self._continue_label)
         hero_actions = QHBoxLayout()
         hero_actions.setSpacing(8)
         self._btn_train = QPushButton()
@@ -480,10 +466,6 @@ class _HubView(QWidget):
         self._empty_label.setObjectName("puzzleEmptyLabel")
         self._empty_label.setVisible(False)
         layout.addWidget(self._empty_label)
-        self._source_note = QLabel()
-        self._source_note.setObjectName("puzzleSourceNote")
-        self._source_note.setWordWrap(True)
-        layout.addWidget(self._source_note)
         layout.addStretch(1)
         scroll.setWidget(inner)
 
@@ -495,21 +477,12 @@ class _HubView(QWidget):
     def _toggle_settings(self, visible):
         self._settings.setVisible(bool(visible))
 
-    def set_continue_info(self, text):
-        self._continue_text = text or ""
-        self._continue_label.setText(self._continue_text)
-
     def set_online(self, online, rating=None):
         self._online = bool(online)
         self._rating = rating
-        text = t("puzzle_home_online" if online else "puzzle_home_local", self._language)
-        self._status.setText(text)
-        self._status.setProperty("online", bool(online))
-        self._status.style().unpolish(self._status)
-        self._status.style().polish(self._status)
         self._hero_title.setText(
             t(
-                "puzzle_home_train_title" if self._online else "puzzle_home_local_title",
+                "puzzle_home_online" if self._online else "puzzle_home_local",
                 self._language,
             )
         )
@@ -569,13 +542,9 @@ class _HubView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._title.setText(t("nav_puzzle", language))
         self._subtitle.setText(t("puzzle_home_subtitle", language))
         self._btn_profile.setText(t("puzzle_home_profile", language))
         self._btn_signin.setText(t("puzzle_home_sign_in", language))
-        self._continue_label.setText(
-            self._continue_text or t("puzzle_home_train_subtitle", language)
-        )
         self._btn_library.setText(t("puzzle_home_library", language))
         self._btn_settings.setText(t("puzzle_home_settings", language))
         self._difficulty_label.setText(t("puzzle_home_difficulty", language))
@@ -606,7 +575,6 @@ class _HubView(QWidget):
         self._challenge_card.retranslate(language)
         self._collections_label.setText(t("puzzle_home_collections", language))
         self._empty_label.setText(t("puzzle_home_no_collections", language))
-        self._source_note.setText(t("puzzle_source_note", language))
         self.set_online(self._online, self._rating)
         for card in self._cards:
             card.retranslate(language)
@@ -1794,7 +1762,6 @@ class PuzzlePage(QWidget):
         self._refresh_account()
         self.refresh_collections()
         self._hub.set_online(self._is_online(), self._online_rating)
-        self._hub.set_continue_info(self._hub_continue_text())
         self._hub.set_notice(
             t("puzzle_online_signin_required", self._language) if self._auth_expired else ""
         )
@@ -1824,36 +1791,6 @@ class PuzzlePage(QWidget):
             if collection.favorite and collection.count:
                 return collection
         return None
-
-    def _first_unsolved(self, collection):
-        if collection is None:
-            return 0
-        solved = solved_keys(collection)
-        for index, puzzle in collection.iter_from():
-            if puzzle_key(puzzle) not in solved:
-                return index
-        return 0
-
-    def _hub_continue_text(self):
-        if self._is_online():
-            if self._online_rating is not None:
-                return t(
-                    "puzzle_home_continue_online",
-                    self._language,
-                    rating=round(float(self._online_rating)),
-                )
-            return t("puzzle_home_continue_online_plain", self._language)
-        collection = self._preferred_collection()
-        if collection is None:
-            return t("puzzle_home_continue_empty", self._language)
-        index = self._first_unsolved(collection)
-        return t(
-            "puzzle_home_continue_local",
-            self._language,
-            name=_collection_name(collection, self._language),
-            index=index + 1,
-            total=collection.count,
-        )
 
     def show_library(self):
         self.refresh_collections()
@@ -2260,7 +2197,6 @@ class PuzzlePage(QWidget):
         self._hub_stats = result
         self._online_rating = result.get("rating", self._online_rating)
         self._hub.set_online(True, self._online_rating)
-        self._hub.set_continue_info(self._hub_continue_text())
 
     def _on_hub_stats_failed(self, _action, _message, code):
         if code in ("missing_token", "unknown_token"):

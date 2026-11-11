@@ -1185,7 +1185,7 @@ QTableWidget#moveTable::item {
     font-size: 13px;
     padding: 6px 2px;
 }
-#puzzleStatusPill, #puzzleRatingPill {
+#puzzleRatingPill {
     background-color: $surface_alt;
     border: 1px solid $border;
     border-radius: 9px;
@@ -1193,11 +1193,6 @@ QTableWidget#moveTable::item {
     color: $text_muted;
     font-size: 11px;
     font-weight: 600;
-}
-#puzzleStatusPill[online="true"] {
-    background-color: $accent_soft;
-    border-color: $border_strong;
-    color: $text;
 }
 #puzzleNotice {
     color: $text_muted;
@@ -1347,10 +1342,6 @@ QWidget#puzzleMoveList QTableWidget {
 #puzzleModeText {
     color: $text_muted;
     font-size: 12px;
-}
-#puzzleHeroLead {
-    font-size: 15px;
-    font-weight: 600;
 }
 #puzzleSettings {
     background-color: $surface_alt;
