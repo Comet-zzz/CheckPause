@@ -562,10 +562,11 @@ class UpdateCheckWorker(QThread):
 class UpdateDownloadWorker(QThread):
     progress = Signal(int, int)
 
-    def __init__(self, url, version, parent=None):
+    def __init__(self, url, version, sha256="", parent=None):
         super().__init__(parent)
         self._url = url
         self._version = version
+        self._sha256 = sha256
         self.installer_path = None
         self.error = None
 
@@ -576,6 +577,7 @@ class UpdateDownloadWorker(QThread):
                 self._version,
                 progress=self.progress.emit,
                 should_cancel=self.isInterruptionRequested,
+                expected_sha256=self._sha256,
             )
         except UpdateDownloadCancelledError:
             return

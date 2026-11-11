@@ -3,6 +3,7 @@ import os
 import secrets
 
 from checkpause.data.paths import SETTINGS_FILE, ensure_data_dir
+from checkpause.data.secrets import load_secrets, save_secrets
 
 # No provider is baked in: the local tier is whatever the user configures. The
 # endpoint and the model have no default on purpose, so nothing here points at a
@@ -28,7 +29,10 @@ MODE_LOCAL = "local"  # bring your own API key, straight to the provider
 MODE_CLOUD = "cloud"  # through the CheckPause server
 
 
-def load_settings():
+_SECRET_KEYS = ("api_key", "account_token")
+
+
+def _read_settings():
     if os.path.exists(SETTINGS_FILE):
         try:
             with open(SETTINGS_FILE, encoding="utf-8") as handle:
@@ -40,15 +44,77 @@ def load_settings():
     return {}
 
 
-def save_settings(settings):
+def _write_settings(settings):
     ensure_data_dir()
-    with open(SETTINGS_FILE, "w", encoding="utf-8") as handle:
-        json.dump(settings, handle, ensure_ascii=False, indent=2)
+    temp_path = SETTINGS_FILE + ".tmp"
+    try:
+        with open(temp_path, "w", encoding="utf-8", newline="") as handle:
+            json.dump(settings, handle, ensure_ascii=False, indent=2)
+        os.replace(temp_path, SETTINGS_FILE)
+    finally:
+        try:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
+        except OSError:
+            # Best-effort cleanup; the replace already succeeded or failed.
+            pass
+
+
+def load_settings():
+    """Non-secret settings, migrating legacy plaintext keys on first read."""
+    settings = _read_settings()
+    secrets = load_secrets()
+    changed = False
+    for key in _SECRET_KEYS:
+        legacy = str(settings.pop(key, "") or "").strip()
+        if legacy:
+            secrets[key] = legacy
+            changed = True
+    if changed:
+        if save_secrets(secrets):
+            _write_settings(settings)
+        else:
+            # The secure store is unavailable; keep the values so the user
+            # does not lose them. A later save retries the migration.
+            for key in _SECRET_KEYS:
+                if secrets.get(key):
+                    settings[key] = secrets[key]
     return settings
 
 
+def save_settings(settings):
+    """Persist non-secret settings; extract secrets into the secret store."""
+    settings = dict(settings or {})
+    secrets = load_secrets()
+    secrets_changed = False
+    for key in _SECRET_KEYS:
+        if key not in settings:
+            continue
+        value = str(settings.pop(key) or "").strip()
+        if value != str(secrets.get(key) or "").strip():
+            if value:
+                secrets[key] = value
+            else:
+                secrets.pop(key, None)
+            secrets_changed = True
+    if secrets_changed and not save_secrets(secrets):
+        for key in _SECRET_KEYS:
+            if secrets.get(key):
+                settings[key] = secrets[key]
+    _write_settings(settings)
+    return settings
+
+
+def _secret_value(name):
+    load_settings()  # migrate legacy plaintext values before reading
+    value = load_secrets().get(name)
+    if value is None:
+        value = _read_settings().get(name)
+    return str(value or "").strip()
+
+
 def get_api_key():
-    return (load_settings().get("api_key") or "").strip()
+    return _secret_value("api_key")
 
 
 def get_base_url():
@@ -89,7 +155,7 @@ def get_account():
     return {
         "id": account_id,
         "username": (settings.get("account_username") or "").strip(),
-        "token": (settings.get("account_token") or "").strip(),
+        "token": _secret_value("account_token"),
         "balance": settings.get("account_balance"),
     }
 
@@ -117,8 +183,9 @@ def save_balance(balance):
 
 def clear_account():
     settings = load_settings()
-    for key in ("account_id", "account_username", "account_token", "account_balance"):
+    for key in ("account_id", "account_username", "account_balance"):
         settings.pop(key, None)
+    settings["account_token"] = ""
     return save_settings(settings)
 
 

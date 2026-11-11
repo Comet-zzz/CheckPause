@@ -758,7 +758,7 @@ class _UpdateDownloadDialog(QDialog):
         layout.addWidget(self._progress)
         layout.addWidget(buttons)
 
-        self._worker = UpdateDownloadWorker(info.url, info.version, self)
+        self._worker = UpdateDownloadWorker(info.url, info.version, info.sha256, self)
         self._worker.progress.connect(self._on_progress)
         self._worker.finished.connect(self._on_finished)
         self._worker.start()

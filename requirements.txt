@@ -4,3 +4,4 @@ python-dotenv
 PySide6
 numpy
 onnxruntime
+cryptography

@@ -1,3 +1,5 @@
+import base64
+import hashlib
 import io
 import json
 import tempfile
@@ -5,6 +7,10 @@ import unittest
 import zipfile
 from pathlib import Path
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from checkpause.core import updater as updater_module
 from checkpause.core.updater import (
     FALLBACK_MANIFEST_URLS,
     MANIFEST_URLS,
@@ -19,6 +25,18 @@ from checkpause.core.updater import (
     parse_version,
     platform_key,
 )
+
+_REAL_UPDATE_PUBLIC_KEY = updater_module.UPDATE_PUBLIC_KEY
+
+
+def setUpModule():
+    # The legacy tests use unsigned fixtures; signature tests opt back in with
+    # their own key.
+    updater_module.UPDATE_PUBLIC_KEY = ""
+
+
+def tearDownModule():
+    updater_module.UPDATE_PUBLIC_KEY = _REAL_UPDATE_PUBLIC_KEY
 
 
 def _is_url_map(value):
@@ -448,6 +466,125 @@ class PlatformDownloadTests(unittest.TestCase):
         )
         info = check_for_update(current="1.7.2", opener=opener, key="windows-x86_64")
         self.assertEqual(info.url, "https://example.com/setup.exe")
+
+
+class SignedManifestTests(unittest.TestCase):
+    def setUp(self):
+        self.private = Ed25519PrivateKey.generate()
+        public = self.private.public_key().public_bytes(
+            encoding=serialization.Encoding.Raw,
+            format=serialization.PublicFormat.Raw,
+        )
+        updater_module.UPDATE_PUBLIC_KEY = base64.b64encode(public).decode("ascii")
+        self.addCleanup(setattr, updater_module, "UPDATE_PUBLIC_KEY", "")
+        self.payload = _update_archive("2.0.0")
+        self.digest = hashlib.sha256(self.payload).hexdigest()
+
+    def _manifest(self):
+        return {
+            "latest": "2.0.0",
+            "urls": {"windows-x86_64": "https://example.com/update.zip"},
+            "sha256": {"windows-x86_64": self.digest},
+            "notes": "signed",
+        }
+
+    def _signed(self, manifest):
+        body = {key: value for key, value in manifest.items() if key != "sig"}
+        message = json.dumps(
+            body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8")
+        return dict(
+            manifest,
+            sig=base64.b64encode(self.private.sign(message)).decode("ascii"),
+        )
+
+    def test_a_signed_manifest_is_accepted_with_its_hash(self):
+        opener = FakeOpener(self._signed(self._manifest()))
+        info = check_for_update(current="1.0.0", opener=opener, key="windows-x86_64")
+        self.assertIsNotNone(info)
+        self.assertEqual(info.sha256, self.digest)
+
+    def test_a_tampered_manifest_is_rejected(self):
+        manifest = self._signed(self._manifest())
+        manifest["notes"] = "tampered"
+        self.assertIsNone(
+            check_for_update(
+                current="1.0.0",
+                opener=FakeOpener(manifest),
+                key="windows-x86_64",
+            )
+        )
+
+    def test_a_manifest_without_a_signature_is_rejected(self):
+        self.assertIsNone(
+            check_for_update(
+                current="1.0.0",
+                opener=FakeOpener(self._manifest()),
+                key="windows-x86_64",
+            )
+        )
+
+    def test_a_signed_windows_manifest_needs_an_archive_hash(self):
+        manifest = self._manifest()
+        manifest.pop("sha256")
+        self.assertIsNone(
+            check_for_update(
+                current="1.0.0",
+                opener=FakeOpener(self._signed(manifest)),
+                key="windows-x86_64",
+            )
+        )
+
+    def test_the_committed_manifest_verifies_with_the_shipped_key(self):
+        updater_module.UPDATE_PUBLIC_KEY = _REAL_UPDATE_PUBLIC_KEY
+        try:
+            manifest = json.loads(
+                Path(__file__)
+                .resolve()
+                .parents[1]
+                .joinpath("version.json")
+                .read_text(encoding="utf-8")
+            )
+            self.assertIsNotNone(updater_module._verify_manifest(manifest))
+        finally:
+            updater_module.UPDATE_PUBLIC_KEY = ""
+
+
+class DownloadHashTests(unittest.TestCase):
+    def test_a_matching_hash_is_accepted(self):
+        version = "2.0.5"
+        payload = _update_archive(version)
+        digest = hashlib.sha256(payload).hexdigest()
+        response = FakeDownloadResponse(payload)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer_path = download_update(
+                "https://example.com/update.zip",
+                version,
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+                expected_sha256=digest,
+            )
+            self.assertTrue(Path(installer_path).exists())
+
+    def test_a_mismatched_hash_is_rejected(self):
+        version = "2.0.5"
+        response = FakeDownloadResponse(_update_archive(version))
+        with tempfile.TemporaryDirectory() as temp_dir, self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                version,
+                download_dir=temp_dir,
+                opener=lambda *_args, **_kwargs: response,
+                expected_sha256="0" * 64,
+            )
+
+    def test_a_malformed_expected_hash_is_rejected(self):
+        with self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                "2.0.5",
+                expected_sha256="not-a-hash",
+            )
 
 
 if __name__ == "__main__":

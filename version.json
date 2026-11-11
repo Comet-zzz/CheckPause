@@ -1,10 +1,14 @@
 {
   "latest": "2.1.0",
+  "notes": "新增学习模块并优化界面与布局；图片识别功能持续优化中。",
+  "sha256": {
+    "windows-x86_64": "999016dfd0b72113a912c083338d3f13d79857451f0d4e9a3811846fadc37fbd"
+  },
+  "sig": "3G5DpuoRpA0c264S0CkoiV22RpAjsUcbAaQpnlUoSzVnyzDOgvUy02VegFRlfbDDlIQ8PbGG3hb1Jj5jOPS7Cw==",
   "url": "https://checkpause.com/download/CheckPause_Setup_2.1.0.zip",
   "urls": {
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.1.0.zip",
     "macos-arm64": "https://checkpause.com/download/CheckPause-2.1.0-macOS-M-series.dmg",
-    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.1.0-macOS-Intel.dmg"
-  },
-  "notes": "新增学习模块并优化界面与布局；图片识别功能持续优化中。"
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.1.0-macOS-Intel.dmg",
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.1.0.zip"
+  }
 }

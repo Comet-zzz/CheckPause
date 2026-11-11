@@ -16,6 +16,7 @@ def data_dir():
 DATA_DIR = data_dir()
 PROFILE_FILE = os.path.join(DATA_DIR, "profile.json")
 SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
+SECRETS_FILE = os.path.join(DATA_DIR, "secrets.dat")
 
 
 def ensure_data_dir():

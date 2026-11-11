@@ -8,6 +8,9 @@ Update checks must never disturb the user: every failure path here returns
 None instead of raising, so being offline simply means "no update found".
 """
 
+import base64
+import binascii
+import hashlib
 import json
 import platform
 import re
@@ -21,7 +24,11 @@ from pathlib import Path
 from urllib import error, request
 from urllib.parse import urlsplit
 
+from cryptography.exceptions import InvalidSignature
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 from checkpause import APP_VERSION, GITHUB_URL
+from checkpause.core.update_keys import UPDATE_PUBLIC_KEY
 from checkpause.data.settings import DEFAULT_SERVER_URL
 
 _REPO = GITHUB_URL.removeprefix("https://github.com/").strip("/")
@@ -73,6 +80,7 @@ class UpdateInfo:
     version: str
     url: str
     notes: str = ""
+    sha256: str = ""
 
 
 class UpdateCheckError(RuntimeError):
@@ -111,13 +119,54 @@ def _default_opener(url):
         return response.read()
 
 
-def _fetch_manifest(url, fetch):
-    """Return this mirror's manifest, or None when it cannot be used."""
+def _manifest_payload(manifest):
+    """The exact bytes the release tool signs: the manifest without ``sig``."""
+    body = {key: value for key, value in manifest.items() if key != "sig"}
+    return json.dumps(
+        body,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _verify_manifest(manifest):
+    """Return a manifest only after its Ed25519 signature checks out.
+
+    An empty ``UPDATE_PUBLIC_KEY`` means legacy/test mode. Production clients
+    always carry a key, so a stripped or forged signature is rejected.
+    """
+    if not UPDATE_PUBLIC_KEY:
+        return manifest
+    signature = str(manifest.get("sig") or "").strip()
+    if not signature:
+        return None
     try:
-        payload = json.loads(fetch(url).decode("utf-8"))
+        public_key = Ed25519PublicKey.from_public_bytes(
+            base64.b64decode(UPDATE_PUBLIC_KEY, validate=True)
+        )
+        public_key.verify(
+            base64.b64decode(signature, validate=True),
+            _manifest_payload(manifest),
+        )
+    except (ValueError, InvalidSignature, binascii.Error):
+        return None
+    return manifest
+
+
+def _fetch_manifest(url, fetch):
+    """Return this mirror's signed manifest, or None when it cannot be used."""
+    try:
+        payload = json.loads(fetch(url).decode("utf-8-sig"))
     except Exception:
         return None
-    return payload if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        return None
+    return _verify_manifest(payload)
+
+
+def _sha256_is_valid(value):
+    return isinstance(value, str) and re.fullmatch(r"[0-9a-f]{64}", value) is not None
 
 
 def fetch_manifests(opener=None, urls=MANIFEST_URLS):
@@ -155,10 +204,21 @@ def _manifest_to_info(manifest, current, key):
     url = _download_url(manifest, key)
     if not latest or not url or not is_newer(latest, current):
         return None
+    hashes = manifest.get("sha256")
+    digest = ""
+    if isinstance(hashes, dict):
+        digest = str(hashes.get(key) or "").strip().lower()
+    if digest and not _sha256_is_valid(digest):
+        return None
+    # Windows updates are downloaded and run in-app, so a signed manifest must
+    # pin the archive. macOS/Linux only open the release page in a browser.
+    if UPDATE_PUBLIC_KEY and key.startswith("windows") and not digest:
+        return None
     return UpdateInfo(
         version=latest,
         url=url,
         notes=str(manifest.get("notes") or "").strip(),
+        sha256=digest,
     )
 
 
@@ -226,6 +286,7 @@ def _download_archive(url, archive_part, progress, should_cancel, fetch):
             raise UpdateDownloadError("update archive size is invalid")
 
         downloaded = 0
+        digest = hashlib.sha256()
         if progress is not None:
             progress(downloaded, total)
         with archive_part.open("wb") as output:
@@ -237,11 +298,13 @@ def _download_archive(url, archive_part, progress, should_cancel, fetch):
                 downloaded += len(chunk)
                 if downloaded > MAX_UPDATE_SIZE:
                     raise UpdateDownloadError("update archive is too large")
+                digest.update(chunk)
                 output.write(chunk)
                 if progress is not None:
                     progress(downloaded, total)
         if total and downloaded != total:
             raise UpdateDownloadError("download size does not match")
+        return digest.hexdigest()
 
 
 def _extract_installer(archive_path, installer_part, installer_name, should_cancel):
@@ -275,12 +338,16 @@ def download_update(
     should_cancel=None,
     download_dir=None,
     opener=None,
+    expected_sha256="",
 ):
     """Download a Windows update archive and return its verified installer path."""
     if not isinstance(version, str) or not re.fullmatch(r"\d+(?:\.\d+)*", version):
         raise UpdateDownloadError("invalid version")
     if not _is_https_url(url):
         raise UpdateDownloadError("update URL must use HTTPS")
+    expected_sha256 = str(expected_sha256 or "").strip().lower()
+    if expected_sha256 and not _sha256_is_valid(expected_sha256):
+        raise UpdateDownloadError("expected archive hash is invalid")
 
     installer_name = f"CheckPause_Setup_{version}.exe"
     update_dir = Path(download_dir or tempfile.gettempdir()) / "CheckPause" / "updates"
@@ -293,7 +360,9 @@ def download_update(
     _check_download_cancelled(should_cancel)
     try:
         update_dir.mkdir(parents=True, exist_ok=True)
-        _download_archive(url, archive_part, progress, should_cancel, fetch)
+        actual_sha256 = _download_archive(url, archive_part, progress, should_cancel, fetch)
+        if expected_sha256 and actual_sha256 != expected_sha256:
+            raise UpdateDownloadError("update archive hash does not match")
         archive_part.replace(archive_path)
         _extract_installer(archive_path, installer_part, installer_name, should_cancel)
         with installer_part.open("rb") as installer:
