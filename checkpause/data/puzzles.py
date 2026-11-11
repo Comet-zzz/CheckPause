@@ -270,6 +270,7 @@ def record_attempt(
     source_id="",
     duration_ms=0,
     hinted=False,
+    rated=False,
     base_dir=None,
 ):
     """Append one practice attempt. A session is one row, not one wrong move."""
@@ -297,6 +298,7 @@ def record_attempt(
         "source_id": str(source_id or ""),
         "result": "solved" if result == "solved" else "failed",
         "hinted": bool(hinted),
+        "rated": bool(rated),
         "duration_ms": duration,
         "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
     }

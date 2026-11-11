@@ -1377,6 +1377,9 @@ class _ProfileView(QWidget):
                 return
 
     def _update_scope(self):
+        if self._summary.get("rating") is None:
+            self._scope_note.setText(t("puzzle_profile_scope_local", self._language))
+            return
         key = "puzzle_profile_scope_days" if self._range_days else "puzzle_profile_scope_all"
         self._scope_note.setText(t(key, self._language, days=self._range_days))
 
@@ -1439,6 +1442,7 @@ class _ProfileView(QWidget):
         self._themes_label.setVisible(bool(themes))
         self._recent_label.setVisible(has_data and bool(self._summary.get("recent")))
         self._empty_themes.setVisible(has_data and not themes)
+        self._update_scope()
 
     def _clear_layout(self, layout):
         while layout.count():
@@ -1489,6 +1493,7 @@ class _ProfileView(QWidget):
 
     def _rebuild_recent(self, recent):
         self._clear_layout(self._recent_layout)
+        local_profile = self._summary.get("rating") is None
         for entry in recent:
             row = QFrame()
             row.setObjectName("puzzleRecentRow")
@@ -1514,8 +1519,12 @@ class _ProfileView(QWidget):
             duration.setObjectName("puzzleRecentMeta")
             date_label = QLabel(_format_local_time(entry.get("created_at")) or "—")
             date_label.setObjectName("puzzleRecentMeta")
+            practice_label = QLabel(t("puzzle_profile_practice", self._language))
+            practice_label.setObjectName("puzzleRecentMeta")
+            practice_label.setVisible(local_profile or entry.get("rated") is False)
             row_layout.addWidget(badge)
             row_layout.addWidget(theme_label, 1)
+            row_layout.addWidget(practice_label)
             row_layout.addWidget(rating_label)
             row_layout.addWidget(duration)
             row_layout.addWidget(date_label)
@@ -1938,6 +1947,7 @@ class PuzzlePage(QWidget):
         )
 
     def _start_online_retry(self):
+        self._streak = 0
         self._start_online_request(
             "retry",
             {},
@@ -2078,6 +2088,7 @@ class PuzzlePage(QWidget):
         )
 
     def _start_solved(self):
+        self._streak = 0
         self._start_online_request(
             "solved",
             {},
@@ -2556,6 +2567,7 @@ class PuzzlePage(QWidget):
             source_id=source_id,
             duration_ms=self._last_duration_ms,
             hinted=self._hinted,
+            rated=bool(self._online and self._online_rated),
         )
         if self._online:
             self._queue_online_attempt(result)

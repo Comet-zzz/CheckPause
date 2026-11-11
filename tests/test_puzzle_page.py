@@ -263,6 +263,22 @@ class PuzzlePageTests(unittest.TestCase):
         preferred = self.page._preferred_collection()
         self.assertEqual(preferred.id, "test")
 
+    def test_profile_labels_local_and_rated_scope(self):
+        self.assertIn("本机", self.page._profile._scope_note.text())
+
+        self.page._profile.refresh(
+            {
+                "rating": 1500,
+                "rd": 80,
+                "attempts": 1,
+                "accuracy": 100,
+                "recent": [],
+                "themes": [],
+            },
+            "zh-CN",
+        )
+        self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
+
 
 if __name__ == "__main__":
     unittest.main()

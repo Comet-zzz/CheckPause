@@ -409,6 +409,17 @@ class PuzzleAttemptTests(unittest.TestCase):
         puzzles.clear_attempts(self.base)
         self.assertEqual(puzzles.attempt_summary(base_dir=self.base)["attempts"], 0)
 
+    def test_attempts_record_whether_they_were_rated(self):
+        entry = puzzles.record_attempt(
+            self._puzzle("p1"),
+            "solved",
+            rated=True,
+            base_dir=self.base,
+        )
+        self.assertTrue(entry["rated"])
+        summary = puzzles.attempt_summary(base_dir=self.base)
+        self.assertTrue(summary["recent"][0]["rated"])
+
     def test_mistakes_follow_the_latest_result(self):
         puzzles.record_attempt(self._puzzle("p1"), "failed", base_dir=self.base)
         puzzles.record_attempt(self._puzzle("p2"), "solved", base_dir=self.base)
