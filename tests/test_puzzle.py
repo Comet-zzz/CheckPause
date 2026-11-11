@@ -7,7 +7,7 @@ from unittest import mock
 
 import chess
 
-from checkpause.core.puzzle import PuzzleSession
+from checkpause.core.puzzle import PuzzleSession, validate_puzzle
 from checkpause.data import puzzles
 
 CSV_HEADER = (
@@ -57,6 +57,19 @@ class PuzzleSessionTests(unittest.TestCase):
         self.assertFalse(session.solved)
         self.assertIsNotNone(session.opponent_reply())
         self.assertTrue(session.solved)
+
+    def test_illegal_expected_move_is_rejected_instead_of_raising(self):
+        session = PuzzleSession(chess.STARTING_FEN, ["e2e5"], opponent_first=False)
+        self.assertEqual(session.play(chess.Move.from_uci("e2e5")), "wrong")
+
+    def test_illegal_setup_move_is_rejected(self):
+        with self.assertRaises(ValueError):
+            PuzzleSession(chess.STARTING_FEN, ["e2e5"], opponent_first=True)
+
+    def test_validate_rejects_a_broken_line(self):
+        self.assertTrue(validate_puzzle(_mate_in_one_fen(), ["d8h4"]))
+        self.assertFalse(validate_puzzle(chess.STARTING_FEN, ["e2e5"]))
+        self.assertFalse(validate_puzzle(chess.STARTING_FEN, []))
 
 
 class PuzzleParserTests(unittest.TestCase):
@@ -224,6 +237,38 @@ class PuzzleProgressTests(unittest.TestCase):
         puzzles.mark_solved_key("c1", "p2", base_dir=self.base)
         self.assertEqual(puzzles.solved_keys(collection, base_dir=self.base), {"p2"})
 
+    def test_corrupt_progress_is_backed_up_before_being_replaced(self):
+        path = puzzles._progress_path(self.base)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("{broken")
+
+        puzzles.mark_solved_key("c1", "p1", base_dir=self.base)
+
+        self.assertEqual(puzzles.load_progress(self.base)["c1"], ["p1"])
+        backups = [name for name in os.listdir(self.base) if ".corrupt-" in name]
+        self.assertTrue(backups)
+
+    def test_corrupt_index_is_backed_up_before_being_replaced(self):
+        path = puzzles._index_path(self.base)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write("{broken")
+
+        self.assertEqual(puzzles.load_index(self.base), [])
+        puzzles.save_index([{"id": "c1"}], base_dir=self.base)
+
+        self.assertEqual(puzzles.load_index(self.base), [{"id": "c1"}])
+        backups = [name for name in os.listdir(self.base) if ".corrupt-" in name]
+        self.assertTrue(backups)
+
+    def test_collection_iterates_with_one_file_open(self):
+        collection = self._collection("a.jsonl", ["p1", "p2", "p3"])
+        self.assertEqual(
+            [index for index, _puzzle in collection.iter_from(1)],
+            [1, 2],
+        )
+        _index, puzzle = next(collection.iter_from(1))
+        self.assertEqual(puzzle["id"], "p2")
+
 
 class PuzzleFavoritesTests(unittest.TestCase):
     def setUp(self):
@@ -282,6 +327,18 @@ class PuzzleFavoritesTests(unittest.TestCase):
         refreshed = puzzles.PuzzleCollection(puzzles.favorites_collection(self.base))
         self.assertEqual(refreshed.count, 2)
         self.assertEqual(refreshed.get(0)["id"], "a")
+
+    def test_unreadable_favorites_are_backed_up(self):
+        path = puzzles.favorites_path(self.base)
+        with open(path, "wb") as handle:
+            handle.write(b"\xff\xfe\x00")
+
+        self.assertEqual(puzzles.load_favorites(self.base), [])
+        backups = [name for name in os.listdir(self.base) if ".corrupt-" in name]
+        self.assertTrue(backups)
+
+        puzzles.add_favorite(self._puzzle("a"), base_dir=self.base)
+        self.assertTrue(puzzles.is_favorite(self._puzzle("a"), self.base))
 
 
 class PuzzleAttemptTests(unittest.TestCase):
@@ -351,6 +408,27 @@ class PuzzleAttemptTests(unittest.TestCase):
         puzzles.record_attempt(self._puzzle("p1"), "solved", base_dir=self.base)
         puzzles.clear_attempts(self.base)
         self.assertEqual(puzzles.attempt_summary(base_dir=self.base)["attempts"], 0)
+
+    def test_mistakes_follow_the_latest_result(self):
+        puzzles.record_attempt(self._puzzle("p1"), "failed", base_dir=self.base)
+        puzzles.record_attempt(self._puzzle("p2"), "solved", base_dir=self.base)
+        puzzles.record_attempt(self._puzzle("p2"), "failed", base_dir=self.base)
+
+        mistakes = puzzles.mistake_puzzles(self.base)
+        self.assertEqual([item["id"] for item in mistakes], ["p2", "p1"])
+
+        puzzles.record_attempt(self._puzzle("p1"), "solved", base_dir=self.base)
+        mistakes = puzzles.mistake_puzzles(self.base)
+        self.assertEqual([item["id"] for item in mistakes], ["p2"])
+
+    def test_puzzle_list_collection_reads_in_memory(self):
+        collection = puzzles.PuzzleListCollection(
+            {"id": "mistakes", "count": 2},
+            [self._puzzle("p1"), self._puzzle("p2")],
+        )
+        self.assertEqual(collection.count, 2)
+        self.assertEqual(collection.get(1)["id"], "p2")
+        self.assertEqual([index for index, _ in collection.iter_from(1)], [1])
 
 
 class FavoritesListedTests(unittest.TestCase):

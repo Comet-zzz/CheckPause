@@ -242,10 +242,19 @@ class PuzzleImportWorker(QThread):
         super().__init__(parent)
         self.path = path
         self.name = name
+        self._cancelled = False
+
+    def cancel(self):
+        self._cancelled = True
 
     def run(self):
         try:
-            meta = import_collection(self.path, self.name, self._emit_progress)
+            meta = import_collection(
+                self.path,
+                self.name,
+                self._emit_progress,
+                should_stop=lambda: self._cancelled,
+            )
         except PuzzleImportError as exc:
             self.failed.emit(exc.code, exc.detail)
             return
@@ -474,7 +483,12 @@ class PuzzleOnlineWorker(QThread):
         if self.action == "retry":
             return cloud.retry_puzzle(self.server_url, self.token, self.language)
         if self.action == "me":
-            return cloud.fetch_account(self.server_url, self.token, self.language)
+            return cloud.fetch_account(
+                self.server_url,
+                self.token,
+                self.language,
+                timeout=cloud.PUZZLE_TIMEOUT,
+            )
         if self.action == "daily":
             return cloud.fetch_daily_puzzle(
                 self.server_url,
@@ -507,6 +521,7 @@ class PuzzleOnlineWorker(QThread):
                 hinted=self.payload.get("hinted", False),
                 rated=self.payload.get("rated", True),
                 client_attempt_id=self.payload.get("client_attempt_id", ""),
+                created_at=self.payload.get("created_at", ""),
                 language=self.language,
             )
         if self.action == "stats":

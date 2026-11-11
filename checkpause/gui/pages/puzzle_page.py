@@ -1,5 +1,6 @@
 import time
 import uuid
+from datetime import UTC, datetime
 
 import chess
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
@@ -25,11 +26,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from checkpause.core.puzzle import PuzzleSession
+from checkpause.core.puzzle import PuzzleSession, validate_puzzle
 from checkpause.data.puzzles import (
     FAVORITES_ID,
+    MISTAKES_ID,
     PuzzleCollection,
-    add_favorite,
+    PuzzleListCollection,
     append_outbox,
     attach_outbox_account_id,
     attempt_summary,
@@ -38,6 +40,7 @@ from checkpause.data.puzzles import (
     list_collections,
     load_outbox,
     mark_solved_key,
+    mistake_puzzles,
     puzzle_key,
     record_attempt,
     remove_outbox,
@@ -52,8 +55,14 @@ from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import PuzzleGameWorker, PuzzleImportWorker, PuzzleOnlineWorker
 from checkpause.i18n import t
 
+# A worker that outlives a closing window must stay referenced, otherwise Qt
+# destroys a running QThread and aborts the process.
+_LINGERING_WORKERS = set()
+
 
 def _collection_name(collection, language):
+    if getattr(collection, "id", "") == MISTAKES_ID:
+        return t("puzzle_home_mistakes", language)
     if collection.favorite:
         return t("puzzle_favorites_name", language)
     if collection.builtin:
@@ -61,11 +70,25 @@ def _collection_name(collection, language):
     return collection.name
 
 
-def _solution_text(fen, moves):
-    """The movable line as SAN, so the result panel reads like a game."""
+def _solution_text(fen, moves, opponent_first=False):
+    """The movable line as SAN, so the result panel reads like a game.
+
+    With ``opponent_first`` the first move is the opponent's setup, not part of
+    what the solver had to find; apply it but leave it out of the label.
+    """
     board = chess.Board(fen)
+    move_list = list(moves or [])
+    start = 0
+    if opponent_first and move_list:
+        try:
+            setup = chess.Move.from_uci(str(move_list[0]))
+        except ValueError:
+            setup = None
+        if setup is not None and setup in board.legal_moves:
+            board.push(setup)
+            start = 1
     parts = []
-    for uci in moves or []:
+    for uci in move_list[start:]:
         try:
             move = chess.Move.from_uci(str(uci))
         except ValueError:
@@ -79,6 +102,21 @@ def _solution_text(fen, moves):
             parts.append(san)
         board.push(move)
     return " ".join(parts)
+
+
+def _format_local_time(value):
+    try:
+        parsed = datetime.fromisoformat(str(value))
+    except (TypeError, ValueError):
+        return ""
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone().strftime("%m-%d %H:%M")
+
+
+def _join_theme_names(names, language):
+    separator = "、" if language.startswith("zh") else ", "
+    return separator.join(_theme_name(name, language) for name in names)
 
 
 _THEME_NAMES = {
@@ -875,7 +913,7 @@ class _TrainView(QWidget):
         self._btn_replay.setVisible(
             not is_challenge and state in ("solved", "revealed") and bool(solution)
         )
-        self._btn_next.setVisible(state in ("solved", "challenge"))
+        self._btn_next.setVisible(state in ("solved", "challenge", "failed", "revealed"))
         self._update_analyze_state()
 
     def set_result_meta(self, text):
@@ -899,6 +937,8 @@ class _TrainView(QWidget):
                 after=round(float(after)),
                 delta=f"{float(delta):+g}",
             )
+        else:
+            text = t("puzzle_result_practice", self._language)
         if streak:
             label = t("puzzle_result_streak", self._language, streak=streak)
             text = f"{text} · {label}" if text else label
@@ -1462,7 +1502,7 @@ class _ProfileView(QWidget):
             badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
             badge.setFixedWidth(22)
             themes = entry.get("themes") or []
-            theme_text = "、".join(_theme_name(name, self._language) for name in themes[:2]) or "—"
+            theme_text = _join_theme_names(themes[:2], self._language) or "—"
             theme_label = QLabel(theme_text)
             theme_label.setObjectName("puzzleRecentTheme")
             rating = entry.get("rating")
@@ -1472,9 +1512,7 @@ class _ProfileView(QWidget):
             rating_label.setObjectName("puzzleRecentMeta")
             duration = QLabel(_format_duration(entry.get("duration_ms")))
             duration.setObjectName("puzzleRecentMeta")
-            created = str(entry.get("created_at") or "")
-            date = f"{created[5:10]} {created[11:16]}".strip()
-            date_label = QLabel(date or "—")
+            date_label = QLabel(_format_local_time(entry.get("created_at")) or "—")
             date_label.setObjectName("puzzleRecentMeta")
             row_layout.addWidget(badge)
             row_layout.addWidget(theme_label, 1)
@@ -1542,6 +1580,7 @@ class PuzzlePage(QWidget):
         self._online_rated = True
         self._client_attempt_id = ""
         self._next_worker = None
+        self._next_request_id = 0
         self._stats_worker = None
         self._stats_requested_days = None
         self._stats_refresh_pending = False
@@ -1579,6 +1618,7 @@ class PuzzlePage(QWidget):
         self._auto_next_timer.timeout.connect(self._next)
         self._challenge_mode = ""
         self._challenge_active = False
+        self._challenge_paused = False
         self._challenge_remaining = 0
         self._challenge_solved = 0
         self._challenge_mistakes = 0
@@ -1738,6 +1778,7 @@ class PuzzlePage(QWidget):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
         self._stop_challenge()
+        self._train_origin = "hub"
         self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
@@ -1754,28 +1795,33 @@ class PuzzlePage(QWidget):
         self._resume_attempts()
 
     def _preferred_collection(self):
+        """User imports first, then the bundled sample, then favorites."""
         preferred = None
+        builtin = None
         for collection in self._collections:
             if collection.favorite or collection.count == 0:
                 continue
             if collection.builtin:
-                preferred = collection
-                break
+                if builtin is None:
+                    builtin = collection
+                continue
             if preferred is None:
                 preferred = collection
-        if preferred is None:
-            for collection in self._collections:
-                if collection.favorite and collection.count:
-                    preferred = collection
-                    break
-        return preferred
+        if preferred is not None:
+            return preferred
+        if builtin is not None:
+            return builtin
+        for collection in self._collections:
+            if collection.favorite and collection.count:
+                return collection
+        return None
 
     def _first_unsolved(self, collection):
         if collection is None:
             return 0
         solved = solved_keys(collection)
-        for index in range(collection.count):
-            if puzzle_key(collection.get(index)) not in solved:
+        for index, puzzle in collection.iter_from():
+            if puzzle_key(puzzle) not in solved:
                 return index
         return 0
 
@@ -1862,15 +1908,24 @@ class PuzzlePage(QWidget):
         self._start_local_mistakes()
 
     def _start_local_mistakes(self):
-        collection = self._find_collection(FAVORITES_ID)
-        if collection is None or collection.count == 0:
+        failed = mistake_puzzles()
+        if not failed:
             QMessageBox.information(
                 self,
                 t("puzzle_home_mistakes", self._language),
-                t("puzzle_favorites_empty", self._language),
+                t("puzzle_mistakes_empty", self._language),
             )
             return
-        self._start_collection(FAVORITES_ID)
+        collection = PuzzleListCollection(
+            {
+                "id": MISTAKES_ID,
+                "name": "",
+                "format": "memory",
+                "count": len(failed),
+            },
+            failed,
+        )
+        self._start_collection_object(collection, index=0, origin="hub")
 
     def _start_online_training(self):
         self._review_puzzles = []
@@ -1914,6 +1969,7 @@ class PuzzlePage(QWidget):
         if not self._challenge_mode or self._challenge_active:
             return
         self._challenge_active = True
+        self._challenge_paused = False
         self._challenge_remaining = 180 if self._challenge_mode == "storm" else 60
         self._challenge_solved = 0
         self._challenge_mistakes = 0
@@ -1993,6 +2049,23 @@ class PuzzlePage(QWidget):
     def _stop_challenge(self):
         self._challenge_timer.stop()
         self._challenge_active = False
+        self._challenge_paused = False
+
+    def hideEvent(self, event):
+        # Switching to another module must not let a timed challenge run down
+        # (or auto-advance puzzles) behind the user's back.
+        if self._challenge_active and self._challenge_timer.isActive():
+            self._challenge_timer.stop()
+            self._challenge_paused = True
+        self._auto_next_timer.stop()
+        self._replay_timer.stop()
+        super().hideEvent(event)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        if self._challenge_active and self._challenge_paused:
+            self._challenge_paused = False
+            self._challenge_timer.start()
 
     def _start_daily(self):
         self._review_puzzles = []
@@ -2028,15 +2101,30 @@ class PuzzlePage(QWidget):
             payload,
             self,
         )
+        self._next_request_id += 1
+        request_id = self._next_request_id
         self._next_worker = worker
-        worker.done.connect(self._on_online_next_done)
-        worker.failed.connect(self._on_online_next_failed)
+        worker.done.connect(
+            lambda action, result, rid=request_id: self._on_online_next_done(action, result, rid)
+        )
+        worker.failed.connect(
+            lambda action, message, code, rid=request_id: self._on_online_next_failed(
+                action, message, code, rid
+            )
+        )
         worker.finished.connect(lambda w=worker: self._clear_worker("next", w))
         worker.start()
 
-    def _on_online_next_done(self, action, result):
+    def _on_online_next_done(self, action, result, request_id):
+        if request_id != self._next_request_id:
+            return
         self._hub.set_train_enabled(True)
         self._hub.set_notice("")
+        if not self.isVisible() or self._stack.currentWidget() not in (
+            self._hub,
+            self._train,
+        ):
+            return
         if action == "solved":
             self._review_puzzles = result.get("puzzles") or []
             self._review_index = 0
@@ -2065,7 +2153,9 @@ class PuzzlePage(QWidget):
             rated=False,
         )
 
-    def _on_online_next_failed(self, action, message, code):
+    def _on_online_next_failed(self, action, message, code, request_id):
+        if request_id != self._next_request_id:
+            return
         self._hub.set_train_enabled(True)
         if code in ("missing_token", "unknown_token"):
             self._mark_online_expired()
@@ -2077,6 +2167,11 @@ class PuzzlePage(QWidget):
             return
         if action == "retry" and code == "no_mistakes":
             self._hub.set_notice(message)
+            return
+        if not self.isVisible() or self._stack.currentWidget() not in (
+            self._hub,
+            self._train,
+        ):
             return
         self.refresh_collections()
         if action == "retry":
@@ -2090,20 +2185,27 @@ class PuzzlePage(QWidget):
         puzzle = result.get("puzzle") if isinstance(result, dict) else None
         if not isinstance(puzzle, dict) or not puzzle.get("fen"):
             self._start_local_training()
+            if self._stack.currentWidget() is self._train:
+                self._train.set_notice(t("puzzle_online_fallback", self._language))
             return
         self._refresh_account()
         self._online = True
         self._online_rated = bool(rated)
+        self._train_origin = "hub"
         self._online_rating = result.get("rating")
         self._online_rd = result.get("rd")
         self._collection = None
         self._solved_keys = set()
         if not self._activate_puzzle(puzzle):
-            self._train.set_prompt(t("puzzle_status_bad_data", self._language))
-            self._stack.setCurrentWidget(self._train)
+            self._start_local_training()
+            if self._stack.currentWidget() is self._train:
+                self._train.set_notice(t("puzzle_online_fallback", self._language))
             return
         self._train.set_online_info(
-            t("puzzle_online_mode", self._language) if self._online_rated else "",
+            t(
+                "puzzle_online_mode" if self._online_rated else "puzzle_online_practice",
+                self._language,
+            ),
             self._online_rating,
         )
         self._train.set_prompt(
@@ -2225,11 +2327,18 @@ class PuzzlePage(QWidget):
         collection = self._find_collection(collection_id)
         if collection is None:
             return
-        if collection.count == 0:
+        self._start_collection_object(collection, index=index)
+
+    def _start_collection_object(self, collection, index=None, origin=None):
+        if collection is None or collection.count == 0:
             self.show_library()
             self._library.set_status(t("puzzle_status_bad_data", self._language))
             return
-        from_library = self._stack.currentWidget() is self._library
+        if origin is None:
+            from_library = self._stack.currentWidget() is self._library
+            origin = "library" if from_library else "hub"
+        # A local session supersedes any online puzzle still being fetched.
+        self._next_request_id += 1
         self._online = False
         self._online_rated = True
         self._review_puzzles = []
@@ -2237,40 +2346,78 @@ class PuzzlePage(QWidget):
         self._streak = 0
         self._collection = collection
         self._solved_keys = solved_keys(collection)
-        self._train_origin = "library" if from_library else "hub"
+        self._train_origin = origin
         if index is None:
-            target = self._library_index if from_library else self._start_index()
+            target = self._library_index if origin == "library" else self._start_index()
         else:
             target = index
-        self._load_puzzle(max(0, min(int(target), collection.count - 1)))
+        target = max(0, min(int(target), collection.count - 1))
+        if not self._load_puzzle(target):
+            if origin == "library":
+                self.show_library()
+                self._library.set_status(t("puzzle_status_bad_data", self._language))
+            else:
+                self.show_hub()
+                self._hub.set_notice(t("puzzle_status_bad_data", self._language))
+            return
         self._stack.setCurrentWidget(self._train)
 
     def _start_index(self):
         if self._collection is None:
             return 0
-        for index in range(self._collection.count):
-            if puzzle_key(self._collection.get(index)) not in self._solved_keys:
+        for index, puzzle in self._collection.iter_from():
+            if puzzle_key(puzzle) not in self._solved_keys:
                 return index
         return 0
 
     def _load_puzzle(self, index):
         if self._collection is None:
-            return
+            return False
         self._online = False
-        puzzle = self._collection.get(index)
-        if not self._activate_puzzle(puzzle):
-            self._train.set_prompt(t("puzzle_status_bad_data", self._language))
-            return
-        self._index = index
+        count = self._collection.count
+        if count <= 0:
+            self._show_bad_puzzle()
+            return False
+        start = max(0, min(int(index), count - 1))
+        target = start
+        while target < count:
+            puzzle = self._collection.get(target)
+            if self._activate_puzzle(puzzle):
+                break
+            target += 1
+        else:
+            self._show_bad_puzzle()
+            return False
+        self._index = target
         self._train.set_session_info(
             _collection_name(self._collection, self._language),
-            index,
-            self._collection.count,
+            target,
+            count,
             self._session.human_color,
         )
+        if target != start:
+            self._train.set_notice(
+                t(
+                    "puzzle_status_skipped",
+                    self._language,
+                    count=target - start,
+                )
+            )
         self._train.set_next_enabled(True)
         self._library.set_current(self._library_collection, self._library_index)
         self._start_challenge()
+        return True
+
+    def _show_bad_puzzle(self):
+        self._clear_board()
+        self._puzzle = None
+        self._session = None
+        self._train.hide_result()
+        self._train.set_prompt(t("puzzle_status_bad_data", self._language))
+
+    def _clear_board(self):
+        self._train.board.clear()
+        self._train.set_line("")
 
     def _activate_puzzle(self, puzzle):
         self._reset_attempt_state()
@@ -2280,15 +2427,20 @@ class PuzzlePage(QWidget):
         self._puzzle = None
         self._session = None
         if not isinstance(puzzle, dict) or not puzzle.get("fen"):
+            self._clear_board()
+            self._train.hide_result()
+            return False
+        fen = puzzle.get("fen", "")
+        moves = puzzle.get("moves", [])
+        opponent_first = bool(puzzle.get("opponent_first"))
+        if not validate_puzzle(fen, moves, opponent_first):
+            self._clear_board()
             self._train.hide_result()
             return False
         try:
-            session = PuzzleSession(
-                puzzle.get("fen", ""),
-                puzzle.get("moves", []),
-                bool(puzzle.get("opponent_first")),
-            )
+            session = PuzzleSession(fen, moves, opponent_first)
         except (ValueError, TypeError):
+            self._clear_board()
             self._train.hide_result()
             return False
         self._puzzle = puzzle
@@ -2298,7 +2450,7 @@ class PuzzlePage(QWidget):
         self._replay_timer.stop()
         self._replay_moves = []
         board = self._train.board
-        board.set_start_fen(puzzle.get("fen", ""))
+        board.set_start_fen(fen)
         board.set_interactive(True, session.human_color)
         self._train.set_puzzle_info(puzzle.get("rating"))
         self._sync_board(animate=False)
@@ -2306,7 +2458,8 @@ class PuzzlePage(QWidget):
         self._train.set_notice("")
         self._train.set_favorite(puzzle_key(puzzle) in self._favorite_keys)
         self._client_attempt_id = uuid.uuid4().hex
-        self._load_game_history(puzzle)
+        if self._online:
+            self._load_game_history(puzzle)
         return True
 
     def _reset_attempt_state(self):
@@ -2327,6 +2480,12 @@ class PuzzlePage(QWidget):
         self._train.set_line(self._train.board.line_pgn())
 
     def _load_game_history(self, puzzle):
+        # Only puzzles served by our own catalogue are online. Local files hold
+        # just the puzzle line, so fetching their source game from Lichess would
+        # make "local" collections depend on the network (and leak which
+        # puzzles were opened). Offline training must stay fully offline.
+        if not self._online:
+            return
         puzzle_id = str(puzzle.get("id") or "").strip()
         if not puzzle_id:
             return
@@ -2338,8 +2497,12 @@ class PuzzlePage(QWidget):
         )
         self._game_workers.add(worker)
         worker.done.connect(self._on_game_history)
-        worker.finished.connect(lambda w=worker: self._game_workers.discard(w))
+        worker.finished.connect(lambda w=worker: self._finish_game_worker(w))
         worker.start()
+
+    def _finish_game_worker(self, worker):
+        self._game_workers.discard(worker)
+        worker.deleteLater()
 
     def _on_game_history(self, puzzle_id, moves, start_fen):
         if self._puzzle is None:
@@ -2350,11 +2513,36 @@ class PuzzlePage(QWidget):
             return
         if self._puzzle.get("opponent_first") and moves:
             moves = moves[:-1]
+        if not self._history_is_legal(start_fen, moves):
+            return
         self._history_moves = list(moves)
         self._history_start_fen = start_fen or None
         self._history_applied = True
         self._train.board.set_start_fen(self._history_start_fen)
         self._sync_board(animate=False)
+
+    def _history_is_legal(self, start_fen, moves):
+        if self._session is None or self._puzzle is None:
+            return False
+        try:
+            board = chess.Board(start_fen) if start_fen else chess.Board()
+            for move in moves:
+                if move not in board.legal_moves:
+                    return False
+                board.push(move)
+            solution = [chess.Move.from_uci(str(uci)) for uci in (self._puzzle.get("moves") or [])]
+        except (TypeError, ValueError):
+            return False
+        if self._puzzle.get("opponent_first"):
+            if not solution or solution[0] not in board.legal_moves:
+                return False
+            board.push(solution[0])
+            solution = solution[1:]
+        for move in solution:
+            if move not in board.legal_moves:
+                return False
+            board.push(move)
+        return True
 
     def _record_attempt(self, result):
         if self._attempt_recorded or self._puzzle is None:
@@ -2373,7 +2561,9 @@ class PuzzlePage(QWidget):
             self._queue_online_attempt(result)
 
     def _queue_online_attempt(self, result):
-        if not self._is_online() or not self._client_attempt_id:
+        # A dead session must not throw away the attempt: the outbox is scoped
+        # to this account, and a later sign-in can still upload it.
+        if not self._client_attempt_id or not self._token or not self._server_url:
             return
         puzzle_id = str(self._puzzle.get("id") or "").strip()
         if not puzzle_id:
@@ -2388,6 +2578,7 @@ class PuzzlePage(QWidget):
             "account": self._account_username,
             "account_id": self._account_id,
             "server_url": self._server_url,
+            "created_at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
         # Written before the request, so closing the app or losing the network
         # cannot turn a recorded session into a silent gap in the rating.
@@ -2532,7 +2723,6 @@ class PuzzlePage(QWidget):
                 if self._challenge_mistakes >= 3:
                     self._end_challenge()
                     return
-            self._auto_favorite()
             self._train.show_result(
                 "failed",
                 t("puzzle_train_failed_title", self._language),
@@ -2547,6 +2737,8 @@ class PuzzlePage(QWidget):
             QTimer.singleShot(220, lambda s=session: self._play_reply(s))
 
     def _play_reply(self, session):
+        if self._stack.currentWidget() is not self._train:
+            return
         if session is not self._session or session.solved or self._revealing:
             return
         if session.opponent_reply() is None:
@@ -2587,9 +2779,11 @@ class PuzzlePage(QWidget):
             self._auto_next_timer.start(1500)
 
     def _result_meta_text(self):
-        text = ""
-        if self._online and self._online_rated:
-            text = t("puzzle_result_pending_rating", self._language)
+        if self._online:
+            key = "puzzle_result_pending_rating" if self._online_rated else "puzzle_result_practice"
+        else:
+            key = "puzzle_result_local_practice"
+        text = t(key, self._language)
         if self._streak:
             streak = t("puzzle_result_streak", self._language, streak=self._streak)
             text = f"{text} · {streak}" if text else streak
@@ -2610,13 +2804,17 @@ class PuzzlePage(QWidget):
     def _solution_label(self):
         if not self._puzzle:
             return ""
-        text = _solution_text(self._puzzle.get("fen", ""), self._puzzle.get("moves", []))
+        text = _solution_text(
+            self._puzzle.get("fen", ""),
+            self._puzzle.get("moves", []),
+            bool(self._puzzle.get("opponent_first")),
+        )
         if not text:
             return ""
         return t("puzzle_train_solution", self._language, moves=text)
 
     def _show_hint(self):
-        if self._session is None or self._session.solved:
+        if self._session is None or self._session.solved or not self._session.is_human_turn:
             return
         uci = self._session.expected_move
         if not uci:
@@ -2632,6 +2830,8 @@ class PuzzlePage(QWidget):
     def _reveal_solution(self):
         session = self._session
         if session is None or session.solved or self._revealing:
+            return
+        if not session.is_human_turn:
             return
         already_failed = self._attempt_recorded
         self._streak = 0
@@ -2649,6 +2849,8 @@ class PuzzlePage(QWidget):
         self._auto_play_step(session)
 
     def _auto_play_step(self, session):
+        if self._stack.currentWidget() is not self._train:
+            return
         if session is not self._session or self._revealing is False:
             return
         if session.solved:
@@ -2740,8 +2942,7 @@ class PuzzlePage(QWidget):
         if self._collection is None:
             self.show_hub()
             return
-        if self._index + 1 < self._collection.count:
-            self._load_puzzle(self._index + 1)
+        if self._index + 1 < self._collection.count and self._load_puzzle(self._index + 1):
             return
         if self._train_origin == "library":
             self.show_library()
@@ -2778,15 +2979,6 @@ class PuzzlePage(QWidget):
             else:
                 self.show_hub()
 
-    def _auto_favorite(self):
-        if self._puzzle is None:
-            return
-        source_id = self._collection.id if self._collection is not None else ""
-        if add_favorite(self._puzzle, source_id=source_id):
-            self._favorite_keys = favorite_keys()
-            self.refresh_collections()
-            self._train.set_favorite(True)
-
     def _mark_current_solved(self):
         if self._collection is None or self._puzzle is None:
             return
@@ -2804,8 +2996,8 @@ class PuzzlePage(QWidget):
         else:
             solved = solved_keys(collection)
             self._library_index = 0
-            for index in range(collection.count):
-                if puzzle_key(collection.get(index)) not in solved:
+            for index, puzzle in collection.iter_from():
+                if puzzle_key(puzzle) not in solved:
                     self._library_index = index
                     break
         self._refresh_library()
@@ -2919,7 +3111,10 @@ class PuzzlePage(QWidget):
         self._profile.retranslate(language)
         if self._session is not None and self._online:
             self._train.set_online_info(
-                t("puzzle_online_mode", language) if self._online_rated else "",
+                t(
+                    "puzzle_online_mode" if self._online_rated else "puzzle_online_practice",
+                    language,
+                ),
                 self._online_rating,
             )
             self._train.set_prompt(
@@ -2966,26 +3161,41 @@ class PuzzlePage(QWidget):
     def set_sound_set(self, name):
         self._train.set_sound_set(name)
 
-    def reset(self):
-        self._collection = None
-        self._puzzle = None
-        self._session = None
-        self._index = 0
-        self._train.board.clear()
-        self.show_hub()
-
     def shutdown(self):
+        for timer in (
+            self._challenge_timer,
+            self._attempt_retry_timer,
+            self._auto_next_timer,
+            self._replay_timer,
+        ):
+            timer.stop()
         for name in (
             "_import_worker",
             "_next_worker",
             "_stats_worker",
+            "_hub_stats_worker",
             "_attempt_worker",
+            "_account_id_worker",
         ):
             worker = getattr(self, name)
             setattr(self, name, None)
-            if worker is not None and worker.isRunning():
-                worker.wait(5000)
+            if worker is None or not worker.isRunning():
+                continue
+            if name == "_import_worker" and hasattr(worker, "cancel"):
+                worker.cancel()
+            # Online requests use PUZZLE_TIMEOUT (10 s); wait a little longer.
+            worker.wait(13000 if name != "_import_worker" else 8000)
+            if worker.isRunning():
+                _keep_worker_alive(worker)
         for worker in list(self._game_workers):
             if worker.isRunning():
                 worker.wait(8000)
+            if worker.isRunning():
+                _keep_worker_alive(worker)
         self._game_workers.clear()
+
+
+def _keep_worker_alive(worker):
+    worker.setParent(None)
+    _LINGERING_WORKERS.add(worker)
+    worker.finished.connect(lambda: _LINGERING_WORKERS.discard(worker))

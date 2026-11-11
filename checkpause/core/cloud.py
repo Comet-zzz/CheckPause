@@ -35,6 +35,9 @@ PUZZLE_PROFILE_ENDPOINT = "/v1/puzzles/profile"
 
 REQUEST_TIMEOUT = 180.0
 ACCOUNT_TIMEOUT = 30.0
+# Puzzle calls are small reads/writes; a shorter cap keeps a dead network from
+# blocking app shutdown for half a minute.
+PUZZLE_TIMEOUT = 10.0
 
 # Server codes that have something better to say than "HTTP 400".
 ERROR_KEYS = {
@@ -123,13 +126,13 @@ def _error(response, language):
     return CloudRequestError(t("cloud_server_error", language, code=response.status_code), code)
 
 
-def _post(server_url, path, payload, language, token=""):
+def _post(server_url, path, payload, language, token="", timeout=ACCOUNT_TIMEOUT):
     try:
         response = httpx.post(
             _url(server_url, path),
             json=payload,
             headers=headers(token),
-            timeout=ACCOUNT_TIMEOUT,
+            timeout=timeout,
         )
     except httpx.TimeoutException as exc:
         raise CloudRequestError(t("cloud_timeout", language)) from exc
@@ -140,12 +143,12 @@ def _post(server_url, path, payload, language, token=""):
     return response.json()
 
 
-def _get(server_url, path, token="", language="zh-CN"):
+def _get(server_url, path, token="", language="zh-CN", timeout=ACCOUNT_TIMEOUT):
     try:
         response = httpx.get(
             _url(server_url, path),
             headers=headers(token),
-            timeout=ACCOUNT_TIMEOUT,
+            timeout=timeout,
         )
     except httpx.TimeoutException as exc:
         raise CloudRequestError(t("cloud_timeout", language)) from exc
@@ -187,9 +190,9 @@ def sign_out(server_url, token, language="zh-CN"):
         return
 
 
-def fetch_account(server_url, token, language="zh-CN"):
+def fetch_account(server_url, token, language="zh-CN", timeout=ACCOUNT_TIMEOUT):
     """Ask the server for the balance instead of trusting a cached number."""
-    return _get(server_url, ME_ENDPOINT, token, language)
+    return _get(server_url, ME_ENDPOINT, token, language, timeout=timeout)
 
 
 def close_account(server_url, token, language="zh-CN"):
@@ -271,30 +274,50 @@ def stream_reply(server_url, token, pgn, analysis, history=None, language="zh-CN
 def next_puzzle(server_url, token, theme="", difficulty="normal", language="zh-CN"):
     """One puzzle near the account's rating."""
     query = urlencode({"theme": theme, "difficulty": difficulty})
-    return _get(server_url, PUZZLE_NEXT_ENDPOINT + "?" + query, token, language)
+    return _get(
+        server_url,
+        PUZZLE_NEXT_ENDPOINT + "?" + query,
+        token,
+        language,
+        timeout=PUZZLE_TIMEOUT,
+    )
 
 
 def retry_puzzle(server_url, token, language="zh-CN"):
     """A failed puzzle that has not been solved since."""
-    return _get(server_url, PUZZLE_RETRY_ENDPOINT, token, language)
+    return _get(server_url, PUZZLE_RETRY_ENDPOINT, token, language, timeout=PUZZLE_TIMEOUT)
 
 
 def fetch_daily_puzzle(server_url, token, difficulty="normal", language="zh-CN"):
     """The same puzzle for this account for the whole UTC day."""
     query = urlencode({"difficulty": difficulty})
-    return _get(server_url, PUZZLE_DAILY_ENDPOINT + "?" + query, token, language)
+    return _get(
+        server_url,
+        PUZZLE_DAILY_ENDPOINT + "?" + query,
+        token,
+        language,
+        timeout=PUZZLE_TIMEOUT,
+    )
 
 
 def fetch_solved_puzzles(server_url, token, limit=30, language="zh-CN"):
     """Recently solved puzzles, newest first, for review practice."""
     query = urlencode({"limit": int(limit)})
-    return _get(server_url, PUZZLE_SOLVED_ENDPOINT + "?" + query, token, language)
+    return _get(
+        server_url,
+        PUZZLE_SOLVED_ENDPOINT + "?" + query,
+        token,
+        language,
+        timeout=PUZZLE_TIMEOUT,
+    )
 
 
 def vote_puzzle(server_url, token, puzzle_id, vote, language="zh-CN"):
     """Mark a puzzle as helpful or broken; a down vote also hides it."""
     path = "/v1/puzzles/" + quote(str(puzzle_id), safe="") + "/vote"
-    return _post(server_url, path, {"vote": int(vote)}, language, token=token)
+    return _post(
+        server_url, path, {"vote": int(vote)}, language, token=token, timeout=PUZZLE_TIMEOUT
+    )
 
 
 def submit_puzzle_attempt(
@@ -306,29 +329,40 @@ def submit_puzzle_attempt(
     hinted=False,
     rated=True,
     client_attempt_id="",
+    created_at="",
     language="zh-CN",
 ):
     """Record a session. The reply carries the rating after it."""
+    payload = {
+        "puzzle_id": puzzle_id,
+        "result": result,
+        "duration_ms": int(duration_ms),
+        "hinted": bool(hinted),
+        "rated": bool(rated),
+        "client_attempt_id": client_attempt_id,
+    }
+    if created_at:
+        payload["created_at"] = str(created_at)
     return _post(
         server_url,
         PUZZLE_ATTEMPT_ENDPOINT,
-        {
-            "puzzle_id": puzzle_id,
-            "result": result,
-            "duration_ms": int(duration_ms),
-            "hinted": bool(hinted),
-            "rated": bool(rated),
-            "client_attempt_id": client_attempt_id,
-        },
+        payload,
         language,
         token=token,
+        timeout=PUZZLE_TIMEOUT,
     )
 
 
 def fetch_puzzle_stats(server_url, token, days=30, language="zh-CN"):
     query = urlencode({"days": int(days)})
-    return _get(server_url, PUZZLE_STATS_ENDPOINT + "?" + query, token, language)
+    return _get(
+        server_url,
+        PUZZLE_STATS_ENDPOINT + "?" + query,
+        token,
+        language,
+        timeout=PUZZLE_TIMEOUT,
+    )
 
 
 def fetch_puzzle_profile(server_url, token, language="zh-CN"):
-    return _get(server_url, PUZZLE_PROFILE_ENDPOINT, token, language)
+    return _get(server_url, PUZZLE_PROFILE_ENDPOINT, token, language, timeout=PUZZLE_TIMEOUT)

@@ -13,6 +13,9 @@ _HISTORY_CACHE = {}
 
 
 def _same_position(left, right):
+    # The en passant square is deliberately ignored: puzzle FENs and PGN game
+    # records do not reliably agree on recording it, while the board, side and
+    # castling rights are enough to identify the position.
     return (
         left.board_fen(),
         left.turn,

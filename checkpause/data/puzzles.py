@@ -1,4 +1,5 @@
 import array
+import contextlib
 import csv
 import io
 import json
@@ -24,6 +25,7 @@ BUILTIN_ID = "builtin-lichess-sample"
 BUILTIN_SOURCE = "https://database.lichess.org/#puzzles"
 
 FAVORITES_ID = "favorites"
+MISTAKES_ID = "mistakes"
 
 CSV_EXTENSIONS = {".csv"}
 PGN_EXTENSIONS = {".pgn", ".txt"}
@@ -45,23 +47,52 @@ def _index_path(base_dir):
     return os.path.join(base_dir, INDEX_NAME)
 
 
-def load_index(base_dir=None):
-    base = base_dir or PUZZLE_DIR
-    path = _index_path(base)
+def _backup_corrupt(path):
+    """Keep a broken JSON file instead of letting the next save erase it."""
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+    # If the backup cannot be moved aside, leave the original in place.
+    with contextlib.suppress(OSError):
+        os.replace(path, f"{path}.corrupt-{stamp}")
+
+
+def _load_json_file(path, default):
     if not os.path.isfile(path):
-        return []
+        return default
     try:
         with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
-        return []
+            return json.load(handle)
+    except ValueError:
+        _backup_corrupt(path)
+        return default
+    except OSError:
+        # Unreadable now; the next save will surface the same error.
+        return default
+
+
+def _atomic_write(path, text):
+    """Write beside the target and replace it, so a crash never truncates it."""
+    temp = path + ".tmp"
+    try:
+        with open(temp, "w", encoding="utf-8", newline="") as handle:
+            handle.write(text)
+        os.replace(temp, path)
+    except OSError:
+        _remove_quietly(temp)
+        raise
+
+
+def load_index(base_dir=None):
+    base = base_dir or PUZZLE_DIR
+    data = _load_json_file(_index_path(base), [])
     return data if isinstance(data, list) else []
 
 
 def save_index(entries, base_dir=None):
     base = base_dir or puzzle_dir()
-    with open(_index_path(base), "w", encoding="utf-8") as handle:
-        json.dump(entries, handle, ensure_ascii=False, indent=2)
+    _atomic_write(
+        _index_path(base),
+        json.dumps(entries, ensure_ascii=False, indent=2),
+    )
 
 
 def _progress_path(base_dir):
@@ -70,21 +101,16 @@ def _progress_path(base_dir):
 
 def load_progress(base_dir=None):
     base = base_dir or PUZZLE_DIR
-    path = _progress_path(base)
-    if not os.path.isfile(path):
-        return {}
-    try:
-        with open(path, encoding="utf-8") as handle:
-            data = json.load(handle)
-    except (OSError, ValueError):
-        return {}
+    data = _load_json_file(_progress_path(base), {})
     return data if isinstance(data, dict) else {}
 
 
 def save_progress(progress, base_dir=None):
     base = base_dir or puzzle_dir()
-    with open(_progress_path(base), "w", encoding="utf-8") as handle:
-        json.dump(progress, handle, ensure_ascii=False, indent=2)
+    _atomic_write(
+        _progress_path(base),
+        json.dumps(progress, ensure_ascii=False, indent=2),
+    )
 
 
 def solved_indices(collection_id, base_dir=None):
@@ -541,6 +567,41 @@ def attempt_summary(base_dir=None, days=None, now=None):
     }
 
 
+def mistake_puzzles(base_dir=None):
+    """Failed puzzles whose latest attempt has not been solved since.
+
+    Derived from attempts instead of the favorites file: starring a puzzle and
+    failing it are different things, and a solved mistake must disappear here
+    without touching the user's own stars.
+    """
+    latest = {}
+    for entry in load_attempts(base_dir):
+        key = str(entry.get("key") or entry.get("puzzle_id") or "").strip()
+        if not key:
+            continue
+        latest.pop(key, None)
+        latest[key] = entry
+    result = []
+    for entry in reversed(list(latest.values())):
+        if entry.get("result") != "failed":
+            continue
+        fen = str(entry.get("fen") or "").strip()
+        moves = [str(move) for move in (entry.get("moves") or [])]
+        if not fen or not moves:
+            continue
+        result.append(
+            {
+                "id": str(entry.get("puzzle_id") or ""),
+                "fen": fen,
+                "moves": moves,
+                "rating": entry.get("rating"),
+                "themes": [str(theme) for theme in (entry.get("themes") or [])],
+                "opponent_first": bool(entry.get("opponent_first")),
+            }
+        )
+    return result
+
+
 def favorites_path(base_dir=None):
     base = base_dir or PUZZLE_DIR
     return os.path.join(base, FAVORITES_NAME)
@@ -586,7 +647,12 @@ def load_favorites(base_dir=None):
                     continue
                 if isinstance(item, dict):
                     result.append(item)
+    except UnicodeDecodeError:
+        # One unreadable byte should not make the next save drop every star.
+        _backup_corrupt(path)
+        return result
     except OSError:
+        # Unreadable now; adding a favorite will surface the write error.
         return []
     return result
 
@@ -594,10 +660,8 @@ def load_favorites(base_dir=None):
 def save_favorites(entries, base_dir=None):
     base = base_dir or puzzle_dir()
     os.makedirs(base, exist_ok=True)
-    with open(favorites_path(base), "w", encoding="utf-8") as handle:
-        for item in entries:
-            handle.write(json.dumps(item, ensure_ascii=False, separators=(",", ":")))
-            handle.write("\n")
+    lines = [json.dumps(item, ensure_ascii=False, separators=(",", ":")) for item in entries]
+    _atomic_write(favorites_path(base), "".join(line + "\n" for line in lines))
 
 
 def favorite_keys(base_dir=None):
@@ -747,7 +811,7 @@ def _remove_quietly(path):
         pass
 
 
-def import_collection(path, name=None, progress=None, base_dir=None):
+def import_collection(path, name=None, progress=None, base_dir=None, should_stop=None):
     base = base_dir or puzzle_dir()
     os.makedirs(base, exist_ok=True)
     collection_id = uuid.uuid4().hex[:12]
@@ -756,6 +820,8 @@ def import_collection(path, name=None, progress=None, base_dir=None):
     try:
         with open(target, "w", encoding="utf-8") as out:
             for puzzle in iter_puzzles(path):
+                if should_stop is not None and should_stop():
+                    raise PuzzleImportError("cancelled")
                 out.write(json.dumps(puzzle, ensure_ascii=False, separators=(",", ":")))
                 out.write("\n")
                 count += 1
@@ -862,3 +928,42 @@ class PuzzleCollection:
         except (ValueError, UnicodeDecodeError):
             return None
         return puzzle if isinstance(puzzle, dict) else None
+
+    def iter_from(self, start=0):
+        """Walk entries with one open file handle instead of one per puzzle."""
+        if self._offsets is None:
+            self._build_offsets()
+        start = max(0, int(start))
+        if not self.file:
+            return
+        with open(self.file, "rb") as handle:
+            for index in range(start, len(self._offsets)):
+                handle.seek(self._offsets[index])
+                line = handle.readline()
+                try:
+                    puzzle = json.loads(line.decode("utf-8"))
+                except (ValueError, UnicodeDecodeError):
+                    continue
+                if isinstance(puzzle, dict):
+                    yield index, puzzle
+
+
+class PuzzleListCollection(PuzzleCollection):
+    """In-memory collection for puzzles derived from local attempts."""
+
+    def __init__(self, meta, puzzles):
+        super().__init__(meta)
+        self._puzzles = [item for item in puzzles if isinstance(item, dict)]
+
+    @property
+    def count(self):
+        return len(self._puzzles)
+
+    def get(self, index):
+        if 0 <= index < len(self._puzzles):
+            return self._puzzles[index]
+        return None
+
+    def iter_from(self, start=0):
+        for index in range(max(0, int(start)), len(self._puzzles)):
+            yield index, self._puzzles[index]

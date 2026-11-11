@@ -16,12 +16,13 @@ class PuzzleSession:
         if opponent_first and self._solution:
             try:
                 setup = chess.Move.from_uci(self._solution[0])
-            except ValueError:
-                setup = None
-            if setup is not None and setup in self.board.legal_moves:
-                self.board.push(setup)
-                self._played.append(setup)
-                self._solution = self._solution[1:]
+            except ValueError as exc:
+                raise ValueError("invalid setup move") from exc
+            if setup not in self.board.legal_moves:
+                raise ValueError("illegal setup move")
+            self.board.push(setup)
+            self._played.append(setup)
+            self._solution = self._solution[1:]
         self.human_color = self.board.turn
         self.progress = 0
         self.solved = False
@@ -60,6 +61,8 @@ class PuzzleSession:
         if self.progress >= len(self._solution):
             self.solved = True
             return "solved"
+        if move not in self.board.legal_moves:
+            return "wrong"
         expected = self._solution[self.progress]
         if move.uci() != expected and not self._is_alternative_mate(move):
             return "wrong"
@@ -96,3 +99,31 @@ class PuzzleSession:
         probe = self.board.copy()
         probe.push(move)
         return probe.is_checkmate()
+
+
+def validate_puzzle(fen, moves, opponent_first=False, max_plies=200):
+    """Whether a stored puzzle line can be played to its end."""
+    try:
+        session = PuzzleSession(fen, moves, opponent_first)
+    except (TypeError, ValueError):
+        return False
+    played = 0
+    while not session.solved:
+        played += 1
+        if played > max_plies:
+            return False
+        if session.is_human_turn:
+            uci = session.expected_move
+            if not uci:
+                return False
+            try:
+                move = chess.Move.from_uci(uci)
+            except ValueError:
+                return False
+            if move not in session.board.legal_moves:
+                return False
+            if session.play(move) == "wrong":
+                return False
+        elif session.opponent_reply() is None:
+            return False
+    return True
