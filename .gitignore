@@ -76,3 +76,9 @@ assets/recognition/
 # Scratch space: one-off scripts (some touch the production database) must
 # never be committed to the public repository.
 tmp/
+
+# Update-signing private key and the local encrypted secret store. The private
+# key belongs on the release machine only; secrets.dat belongs in APPDATA.
+update_ed25519.key
+*.key
+secrets.dat
