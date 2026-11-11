@@ -1066,10 +1066,6 @@ QTableWidget#moveTable::item {
     font-size: 24px;
     font-weight: 700;
 }
-#puzzleHeaderSubtitle {
-    color: $text_muted;
-    font-size: 13px;
-}
 #puzzleHero {
     background-color: $accent_soft;
     border: 1px solid $border_strong;
@@ -1266,6 +1262,27 @@ QTableWidget#moveTable::item {
     border-radius: 8px;
     padding: 5px 10px;
     color: $text;
+}
+#puzzleRangeGroup {
+    background-color: $surface_alt;
+    border: 1px solid $border;
+    border-radius: 8px;
+}
+#puzzleRangeButton {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 4px 9px;
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleRangeButton:hover {
+    color: $text;
+}
+#puzzleRangeButton:checked {
+    background-color: $accent_soft;
+    color: $text;
+    font-weight: 600;
 }
 #puzzleThemeBox {
     background-color: $surface_alt;

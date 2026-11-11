@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import chess
 from PySide6.QtCore import QSize, Qt, QTimer, Signal
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QFileDialog,
@@ -263,10 +264,11 @@ class _CollectionCard(QPushButton):
 class _ModeCard(QFrame):
     clicked = Signal()
 
-    def __init__(self, title_key, text_key, parent=None):
+    def __init__(self, title_key, text_key, action_key="puzzle_mode_start", parent=None):
         super().__init__(parent)
         self._title_key = title_key
         self._text_key = text_key
+        self._action_key = action_key
         self._description = ""
         self.setObjectName("puzzleModeCard")
         self.title = QLabel()
@@ -293,12 +295,11 @@ class _ModeCard(QFrame):
     def retranslate(self, language):
         self.title.setText(t(self._title_key, language))
         self.text.setText(self._description or t(self._text_key, language))
-        self.button.setText(t("puzzle_mode_start", language))
+        self.button.setText(t(self._action_key, language))
 
 
 class _HubView(QWidget):
     train_requested = Signal()
-    mistakes_requested = Signal()
     library_requested = Signal()
     profile_requested = Signal()
     collection_requested = Signal(str)
@@ -339,22 +340,10 @@ class _HubView(QWidget):
         layout.setContentsMargins(32, 28, 32, 32)
         layout.setSpacing(16)
 
-        self._subtitle = QLabel()
-        self._subtitle.setObjectName("puzzleHeaderSubtitle")
         self._btn_signin = QPushButton()
         self._btn_signin.setObjectName("puzzleSecondaryButton")
         self._btn_signin.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_signin.clicked.connect(self.sign_in_requested.emit)
-        self._btn_profile = QPushButton()
-        self._btn_profile.setObjectName("puzzleGhostButton")
-        self._btn_profile.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_profile.clicked.connect(self.profile_requested.emit)
-        header = QHBoxLayout()
-        header.setSpacing(8)
-        header.addWidget(self._subtitle, 1)
-        header.addWidget(self._btn_signin, 0, Qt.AlignmentFlag.AlignTop)
-        header.addWidget(self._btn_profile, 0, Qt.AlignmentFlag.AlignTop)
-        layout.addLayout(header)
 
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
@@ -392,6 +381,7 @@ class _HubView(QWidget):
         self._btn_solved.clicked.connect(self.solved_requested.emit)
         hero_actions.addWidget(self._btn_train)
         hero_actions.addWidget(self._btn_solved)
+        hero_actions.addWidget(self._btn_signin)
         hero_actions.addStretch(1)
         hero_layout.addLayout(hero_actions)
 
@@ -428,8 +418,10 @@ class _HubView(QWidget):
 
         modes = QHBoxLayout()
         modes.setSpacing(10)
-        self._mistakes_card = _ModeCard("puzzle_home_mistakes", "puzzle_mistakes_text")
-        self._mistakes_card.clicked.connect(self.mistakes_requested.emit)
+        self._records_card = _ModeCard(
+            "puzzle_home_records", "puzzle_records_text", "puzzle_mode_view"
+        )
+        self._records_card.clicked.connect(self.profile_requested.emit)
         self._daily_card = _ModeCard("puzzle_home_daily", "puzzle_daily_text")
         self._daily_card.clicked.connect(self.daily_requested.emit)
         self._challenge_card = _ModeCard("puzzle_home_challenge", "puzzle_challenge_text")
@@ -440,7 +432,7 @@ class _HubView(QWidget):
         )
         self._challenge_card.layout().insertWidget(3, self._challenge)
         self._challenge_card.clicked.connect(self.train_requested.emit)
-        modes.addWidget(self._mistakes_card, 1)
+        modes.addWidget(self._records_card, 1)
         modes.addWidget(self._daily_card, 1)
         modes.addWidget(self._challenge_card, 1)
         layout.addLayout(modes)
@@ -542,8 +534,6 @@ class _HubView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._subtitle.setText(t("puzzle_home_subtitle", language))
-        self._btn_profile.setText(t("puzzle_home_profile", language))
         self._btn_signin.setText(t("puzzle_home_sign_in", language))
         self._btn_library.setText(t("puzzle_home_library", language))
         self._btn_settings.setText(t("puzzle_home_settings", language))
@@ -570,7 +560,7 @@ class _HubView(QWidget):
             "normal",
         )
         self._fill_combo(self._theme_filter, self._topics, "")
-        self._mistakes_card.retranslate(language)
+        self._records_card.retranslate(language)
         self._daily_card.retranslate(language)
         self._challenge_card.retranslate(language)
         self._collections_label.setText(t("puzzle_home_collections", language))
@@ -1190,6 +1180,7 @@ class _LibraryView(QWidget):
 class _ProfileView(QWidget):
     back_requested = Signal()
     range_changed = Signal(int)
+    mistakes_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -1212,18 +1203,34 @@ class _ProfileView(QWidget):
         self._btn_back.clicked.connect(self.back_requested.emit)
         self._title = QLabel()
         self._title.setObjectName("puzzleHeaderTitle")
-        self._range = QComboBox()
-        self._range.setObjectName("puzzleRange")
+        self._btn_mistakes = QPushButton()
+        self._btn_mistakes.setObjectName("puzzlePrimaryButton")
+        self._btn_mistakes.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_mistakes.clicked.connect(self.mistakes_requested.emit)
+        self._range_box = QFrame()
+        self._range_box.setObjectName("puzzleRangeGroup")
+        range_layout = QHBoxLayout(self._range_box)
+        range_layout.setContentsMargins(2, 2, 2, 2)
+        range_layout.setSpacing(0)
+        self._range_group = QButtonGroup(self._range_box)
+        self._range_group.setExclusive(True)
+        self._range_buttons = []
         for days in (7, 30, 90, 0):
-            self._range.addItem("", days)
-        self._range.setCurrentIndex(1)
-        self._range.currentIndexChanged.connect(self._on_range_changed)
+            button = QPushButton()
+            button.setObjectName("puzzleRangeButton")
+            button.setCheckable(True)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.clicked.connect(lambda _checked=False, value=days: self._on_range_button(value))
+            self._range_group.addButton(button)
+            range_layout.addWidget(button)
+            self._range_buttons.append((days, button))
         header = QHBoxLayout()
         header.setSpacing(8)
         header.addWidget(self._btn_back)
         header.addWidget(self._title)
         header.addStretch(1)
-        header.addWidget(self._range)
+        header.addWidget(self._btn_mistakes)
+        header.addWidget(self._range_box)
         layout.addLayout(header)
         self._scope_note = QLabel()
         self._scope_note.setObjectName("puzzleProfileScope")
@@ -1328,18 +1335,17 @@ class _ProfileView(QWidget):
         outer.addWidget(scroll)
         self.retranslate(self._language)
         self.refresh({}, self._language)
+        self.set_range(self._range_days)
 
-    def _on_range_changed(self, _index):
-        self._range_days = int(self._range.currentData())
+    def _on_range_button(self, days):
+        self._range_days = int(days)
         self._update_scope()
         self.range_changed.emit(self._range_days)
 
     def set_range(self, days):
-        for index in range(self._range.count()):
-            if int(self._range.itemData(index)) == days:
-                self._range.blockSignals(True)
-                self._range.setCurrentIndex(index)
-                self._range.blockSignals(False)
+        for value, button in self._range_buttons:
+            if value == days:
+                button.setChecked(True)
                 self._range_days = days
                 self._update_scope()
                 return
@@ -1400,6 +1406,7 @@ class _ProfileView(QWidget):
             else:
                 value.setText(str(self._summary.get("failed_avg_rating") or "—"))
 
+        self._btn_mistakes.setVisible(int(self._summary.get("retryable") or 0) > 0)
         themes = self._summary.get("themes") or []
         self._rebuild_themes(themes)
         self._rebuild_recent(self._summary.get("recent") or [])
@@ -1489,10 +1496,10 @@ class _ProfileView(QWidget):
             date_label.setObjectName("puzzleRecentMeta")
             practice_label = QLabel(t("puzzle_profile_practice", self._language))
             practice_label.setObjectName("puzzleRecentMeta")
-            practice_label.setVisible(local_profile or entry.get("rated") is False)
             row_layout.addWidget(badge)
             row_layout.addWidget(theme_label, 1)
             row_layout.addWidget(practice_label)
+            practice_label.setVisible(local_profile or entry.get("rated") is False)
             row_layout.addWidget(rating_label)
             row_layout.addWidget(duration)
             row_layout.addWidget(date_label)
@@ -1502,10 +1509,15 @@ class _ProfileView(QWidget):
         self._language = language
         self._btn_back.setText(t("puzzle_train_back", language))
         self._title.setText(t("puzzle_profile_title", language))
-        self._range.setItemText(0, t("puzzle_profile_range_7", language))
-        self._range.setItemText(1, t("puzzle_profile_range_30", language))
-        self._range.setItemText(2, t("puzzle_profile_range_90", language))
-        self._range.setItemText(3, t("puzzle_profile_range_all", language))
+        self._btn_mistakes.setText(t("puzzle_home_mistakes", language))
+        range_keys = (
+            "puzzle_profile_range_7",
+            "puzzle_profile_range_30",
+            "puzzle_profile_range_90",
+            "puzzle_profile_range_all",
+        )
+        for (_days, button), key in zip(self._range_buttons, range_keys, strict=False):
+            button.setText(t(key, language))
         self._rating_caption.setText(t("puzzle_profile_rating", language))
         self._themes_label.setText(t("puzzle_profile_themes", language))
         self._recent_label.setText(t("puzzle_profile_recent", language))
@@ -1619,7 +1631,6 @@ class PuzzlePage(QWidget):
         self._train.board.move_requested.connect(self._on_move_requested)
         self._train.analysis_requested.connect(self.analysis_requested.emit)
         self._hub.train_requested.connect(self._start_training)
-        self._hub.mistakes_requested.connect(self._start_mistakes)
         self._hub.library_requested.connect(self.show_library)
         self._hub.profile_requested.connect(self.show_profile)
         self._hub.collection_requested.connect(self._start_collection)
@@ -1647,6 +1658,7 @@ class PuzzlePage(QWidget):
         self._library.selection_changed.connect(self._select_collection)
         self._profile.back_requested.connect(self.show_hub)
         self._profile.range_changed.connect(self._set_profile_range)
+        self._profile.mistakes_requested.connect(self._start_mistakes)
 
         self._apply_icons()
         self.retranslate(self._language)

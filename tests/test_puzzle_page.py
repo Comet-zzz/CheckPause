@@ -10,7 +10,8 @@ import chess
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtCore import QEvent, QObject
+    from PySide6.QtWidgets import QApplication, QLabel
 
     from checkpause.data import puzzles
     from checkpause.gui.pages import puzzle_page as puzzle_page_module
@@ -278,6 +279,63 @@ class PuzzlePageTests(unittest.TestCase):
             "zh-CN",
         )
         self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
+
+    def test_records_card_merges_stats_and_mistake_practice(self):
+        self.assertEqual(self.page._hub._records_card.title.text(), "我的记录")
+        self.assertEqual(self.page._hub._records_card.button.text(), "查看")
+
+    def test_records_card_opens_the_profile(self):
+        self.page._hub._records_card.button.click()
+        self.assertIs(self.page._stack.currentWidget(), self.page._profile)
+
+    def test_recent_refresh_does_not_show_unparented_labels(self):
+        shown = []
+
+        class _Filter(QObject):
+            def eventFilter(self, obj, event):  # noqa: N802
+                if (
+                    event.type() == QEvent.Type.Show
+                    and isinstance(obj, QLabel)
+                    and obj.objectName() == "puzzleRecentMeta"
+                    and obj.isWindow()
+                ):
+                    shown.append(obj)
+                return False
+
+        filter_ = _Filter()
+        QApplication.instance().installEventFilter(filter_)
+        self.addCleanup(QApplication.instance().removeEventFilter, filter_)
+        self.page._profile.refresh(
+            {
+                "attempts": 1,
+                "accuracy": 100,
+                "recent": [
+                    {
+                        "result": "solved",
+                        "themes": ["pin"],
+                        "duration_ms": 12000,
+                        "created_at": "2026-11-11T10:00:00",
+                    }
+                ],
+                "themes": [],
+            },
+            "zh-CN",
+        )
+        QApplication.processEvents()
+        self.assertEqual(shown, [])
+
+    def test_profile_range_uses_segmented_buttons(self):
+        self.assertFalse(hasattr(self.page._profile, "_range"))
+        self.page._profile._range_buttons[2][1].click()
+        self.assertEqual(self.page._profile._range_days, 90)
+        self.assertEqual(self.page._profile_days, 90)
+
+    def test_retry_button_waits_for_retryable_mistakes(self):
+        self.page._profile.refresh({"attempts": 1, "retryable": 0}, "zh-CN")
+        self.assertTrue(self.page._profile._btn_mistakes.isHidden())
+
+        self.page._profile.refresh({"attempts": 1, "retryable": 2}, "zh-CN")
+        self.assertFalse(self.page._profile._btn_mistakes.isHidden())
 
 
 if __name__ == "__main__":
