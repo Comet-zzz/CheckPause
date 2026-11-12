@@ -398,6 +398,19 @@ class BoardWidget(QWidget):
     def set_undo_visible(self, visible):
         self._btn_undo.setVisible(visible)
 
+    def chrome_height(self):
+        """Height of the board widget outside its square canvas."""
+        layout = self.layout()
+        if layout is None:
+            return 0
+        margins = layout.contentsMargins()
+        spacing = max(0, layout.spacing())
+        height = self._nav.sizeHint().height() + spacing
+        height += margins.top() + margins.bottom()
+        if self._edit_bar.isVisible():
+            height += self._edit_bar.sizeHint().height() + spacing
+        return height
+
     def set_hint(self, uci):
         if uci:
             self._best_moves[self._index] = uci

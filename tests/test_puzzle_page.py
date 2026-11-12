@@ -11,6 +11,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
     from PySide6.QtCore import QEvent, QObject
+    from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication, QLabel
 
     from checkpause.data import puzzles
@@ -120,15 +121,20 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertEqual(self.page._train.board.index, 0)
         self.assertIn("无效", self.page._train._prompt.text())
 
-    def test_failed_and_revealed_results_offer_next(self):
+    def test_wrong_move_reverts_and_revealed_result_offers_next(self):
         self._standard_collection()
         self.page._start_collection("test")
         self.page._on_move_requested(chess.F8, chess.C5)
-        self.assertFalse(self.page._train._btn_next.isHidden())
+        self.assertEqual(self.page._train.board.index, 1)
+        self.assertEqual(self.page._train._play_card.property("state"), "wrong")
+        self.assertTrue(self.page._train._btn_next.isHidden())
+
+        QTest.qWait(900)
+        self.assertEqual(self.page._train.board.index, 0)
 
         self.page._start_collection("test", 0)
         self.page._reveal_solution()
-        self.assertEqual(self.page._train._feedback.property("state"), "revealed")
+        self.assertEqual(self.page._train._play_card.property("state"), "revealed")
         self.assertFalse(self.page._train._btn_next.isHidden())
 
     def test_back_after_online_puzzle_returns_to_the_hub(self):
@@ -250,14 +256,12 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertTrue(append.called)
         self.assertIn("created_at", append.call_args.args[0])
 
-    def test_practice_results_say_they_are_unrated(self):
-        self.page._online = False
-        self.page._streak = 0
-        self.assertIn("本地练习", self.page._result_meta_text())
+    def test_unrated_results_show_no_rating_text(self):
+        self.page._train.set_attempt_result({"rated": False})
+        self.assertEqual(self.page._train._status_meta.text(), "")
 
-        self.page._online = True
-        self.page._online_rated = False
-        self.assertIn("不计分", self.page._result_meta_text())
+        self.page._train.set_attempt_result({"rated": True, "rating_delta": 12})
+        self.assertEqual(self.page._train._status_meta.text(), "+12")
 
     def test_hub_offers_ladder_and_practice_when_online(self):
         self.page._hub.set_online(True, 1000)
@@ -317,7 +321,7 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
 
     def test_records_card_merges_stats_and_mistake_practice(self):
-        self.assertEqual(self.page._hub._records_card.title.text(), "我的记录")
+        self.assertEqual(self.page._hub._records_card.title.text(), "记录")
         self.assertEqual(self.page._hub._records_card.button.text(), "查看")
 
     def test_records_card_opens_the_profile(self):

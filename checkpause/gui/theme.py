@@ -37,7 +37,7 @@ CHAT_COLORS = {
 
 # Row tints for the move list: the current move gets a stronger neutral wash
 # than the row under the cursor. RGBA tuples so the tint sits lightly on the
-# panel surface without a second accent.
+# panel surface; the delegate adds a thin accent bar to the current row.
 MOVE_ROW_COLORS = {
     LIGHT: {"current": (16, 20, 26, 30), "hover": (16, 20, 26, 14)},
     DARK: {"current": (255, 255, 255, 38), "hover": (255, 255, 255, 18)},
@@ -113,6 +113,8 @@ _TOKENS = {
         "danger": "#b04a42",
         "danger_hover": "#973d36",
         "danger_soft": "rgba(176, 74, 66, 0.12)",
+        "success": "#2f7d4f",
+        "success_soft": "rgba(47, 125, 79, 0.10)",
         "menu_bg": "rgba(252, 253, 254, 0.97)",
         "menu_sel_bg": "rgba(16, 20, 26, 0.09)",
         "menu_sel_text": "#1b1e23",
@@ -161,6 +163,8 @@ _TOKENS = {
         "danger": "#e0776e",
         "danger_hover": "#ea8b83",
         "danger_soft": "rgba(224, 119, 110, 0.14)",
+        "success": "#7cc79a",
+        "success_soft": "rgba(124, 199, 154, 0.12)",
         "menu_bg": "rgba(34, 37, 43, 0.97)",
         "menu_sel_bg": "rgba(255, 255, 255, 0.12)",
         "menu_sel_text": "#f2f3f5",
@@ -1062,18 +1066,44 @@ QTableWidget#moveTable::item {
 #puzzleHub, #puzzleProfile, #puzzleLibrary, #puzzleTrain {
     background: transparent;
 }
+#puzzlePageTitle {
+    font-size: 26px;
+    font-weight: 700;
+}
+#puzzlePageSubtitle {
+    color: $text_muted;
+    font-size: 13px;
+}
 #puzzleHeaderTitle {
-    font-size: 24px;
+    font-size: 22px;
     font-weight: 700;
 }
 #puzzleHero {
-    background-color: $accent_soft;
-    border: 1px solid $border_strong;
-    border-radius: 16px;
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#puzzleHeroKicker {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
 }
 #puzzleHeroTitle {
-    font-size: 20px;
+    font-size: 22px;
     font-weight: 700;
+}
+#puzzleHeroSub {
+    color: $text_muted;
+    font-size: 13px;
+}
+#puzzleHeroRating {
+    font-size: 30px;
+    font-weight: 700;
+}
+#puzzleHeroRatingCaption {
+    color: $text_muted;
+    font-size: 11px;
+    font-weight: 600;
 }
 #puzzleHeroText {
     color: $text_muted;
@@ -1156,7 +1186,7 @@ QTableWidget#moveTable::item {
     border-radius: 12px;
 }
 #puzzleStatValue {
-    font-size: 22px;
+    font-size: 20px;
     font-weight: 600;
 }
 #puzzleStatCaption {
@@ -1166,15 +1196,32 @@ QTableWidget#moveTable::item {
 #puzzleCollectionCard {
     background-color: $surface;
     border: 1px solid $border;
-    border-radius: 14px;
-    padding: 12px 16px;
+    border-radius: 12px;
+    padding: 14px 16px;
     text-align: left;
-    font-size: 14px;
-    font-weight: 600;
 }
 #puzzleCollectionCard:hover {
     background-color: $surface_alt;
     border-color: $border_strong;
+}
+#puzzleCollectionName {
+    font-size: 14px;
+    font-weight: 600;
+}
+#puzzleCollectionMeta {
+    color: $text_muted;
+    font-size: 12px;
+}
+#puzzleCollectionBar {
+    background-color: $accent_soft;
+    border: none;
+    border-radius: 3px;
+    min-height: 6px;
+    max-height: 6px;
+}
+#puzzleCollectionBar::chunk {
+    background-color: $history_selected_text;
+    border-radius: 2px;
 }
 #puzzleEmptyLabel {
     color: $text_muted;
@@ -1187,7 +1234,7 @@ QTableWidget#moveTable::item {
     border-radius: 9px;
     padding: 3px 9px;
     color: $text_muted;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
 }
 #puzzleNotice {
@@ -1196,65 +1243,68 @@ QTableWidget#moveTable::item {
     padding: 2px 2px;
 }
 #puzzleModeLabel {
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 600;
 }
 #puzzleCounterLabel {
     color: $text_muted;
     font-size: 12px;
 }
-#puzzlePrompt {
-    font-size: 16px;
-    font-weight: 600;
-    padding: 4px 0;
-}
-#puzzleResultPanel {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 14px;
-}
-#puzzleResultPanel[state="solved"] {
-    border-color: $accent;
-}
-#puzzleResultPanel[state="failed"] {
-    border-color: $danger;
-}
-#puzzleResultPanel[state="revealed"] {
-    border-color: $border_strong;
-}
-#puzzleResultTitle {
+#puzzleStatusTitle {
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
+}
+#puzzleStatusSub {
+    color: $text_muted;
+    font-size: 13px;
 }
 #puzzleResultDetail {
     color: $text_muted;
     font-size: 13px;
 }
-#puzzleSolution {
-    color: $text_muted;
-    font-size: 12px;
+#puzzleLibraryCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
 }
 #puzzleLibraryInfo {
-    color: $text_muted;
-    font-size: 13px;
+    font-size: 16px;
+    font-weight: 600;
 }
 #puzzleLibraryStatus {
     color: $text_muted;
     font-size: 12px;
 }
+#puzzleProfileScope {
+    color: $text_muted;
+    font-size: 12px;
+}
 #puzzleLibraryList, #puzzleRecentList {
-    background-color: $surface_alt;
-    border: 1px solid $border;
-    border-radius: 12px;
-    padding: 4px;
+    background: transparent;
+    border: none;
+    padding: 2px;
 }
 #puzzleLibraryList::item, #puzzleRecentList::item {
     border-radius: 8px;
-    padding: 8px 10px;
+    padding: 10px 12px;
+}
+#puzzleLibraryList::item:hover {
+    background-color: $surface_alt;
 }
 #puzzleLibraryList::item:selected {
     background-color: $history_selected_bg;
     color: $history_selected_text;
+}
+#puzzleLibraryBar {
+    background-color: $accent_soft;
+    border: none;
+    border-radius: 3px;
+    min-height: 6px;
+    max-height: 6px;
+}
+#puzzleLibraryBar::chunk {
+    background-color: $history_selected_text;
+    border-radius: 3px;
 }
 #puzzleRange {
     background-color: $surface_alt;
@@ -1307,68 +1357,68 @@ QTableWidget#moveTable::item {
     border: none;
     border-radius: 0;
 }
-#puzzleTrainMeta {
-    color: $text_muted;
-    font-size: 12px;
-}
-#puzzleMoveBox {
-    background-color: $surface_alt;
+#puzzleMoveBox,
+#puzzleStatusCard {
+    background-color: $surface;
     border: 1px solid $border;
-    border-radius: 10px;
+    border-radius: 12px;
+}
+#puzzleMoveBox QLabel#puzzleEmptyLabel {
+    padding: 12px;
 }
 QWidget#puzzleMoveList QTableWidget {
     background: transparent;
     border: none;
+    font-size: 13px;
 }
-#puzzlePrompt {
-    font-size: 16px;
+#puzzleTrainMeta {
+    color: $history_selected_text;
+    background-color: $history_selected_bg;
+    border-radius: 7px;
+    padding: 3px 8px;
+    font-size: 12px;
     font-weight: 600;
-    padding: 0;
 }
-#puzzleResultPanel {
-    background-color: $surface_alt;
+#puzzleStatusCard[state="correct"] #puzzleStatusTitle,
+#puzzleStatusCard[state="solved"] #puzzleStatusTitle {
+    color: $success;
 }
-#puzzleResultPanel[state="playing"] {
-    background: transparent;
-    border-color: transparent;
-}
-#puzzleResultPanel[state="solved"] {
-    border-color: $accent;
-    background-color: $accent_soft;
-}
-#puzzleResultPanel[state="failed"] {
-    border-color: $danger;
-    background-color: $danger_soft;
-}
-#puzzleResultPanel[state="revealed"] {
-    border-color: $border_strong;
+#puzzleStatusCard[state="wrong"] #puzzleStatusTitle {
+    color: $danger;
 }
 #puzzleResultMeta {
     color: $text_muted;
     font-size: 12px;
+    font-weight: 600;
+}
+#puzzleStatusCard[state="solved"] #puzzleResultMeta {
+    color: $success;
 }
 #puzzleModeCard {
     background-color: $surface;
     border: 1px solid $border;
-    border-radius: 14px;
+    border-radius: 12px;
 }
 #puzzleModeTitle {
     font-size: 15px;
-    font-weight: 700;
+    font-weight: 600;
 }
 #puzzleModeText {
     color: $text_muted;
     font-size: 12px;
 }
+#puzzleModeCard QPushButton#puzzleSecondaryButton {
+    padding: 6px 14px;
+}
 #puzzleSettings {
     background-color: $surface_alt;
     border: 1px solid $border;
-    border-radius: 10px;
+    border-radius: 12px;
 }
 #puzzleRatingHero {
     background-color: $accent_soft;
     border: 1px solid $border_strong;
-    border-radius: 16px;
+    border-radius: 12px;
 }
 #puzzleRatingCaption {
     color: $text_muted;
@@ -1376,8 +1426,8 @@ QWidget#puzzleMoveList QTableWidget {
     font-weight: 600;
 }
 #puzzleRatingValue {
-    font-size: 34px;
-    font-weight: 700;
+    font-size: 32px;
+    font-weight: 600;
 }
 #puzzleRatingSub {
     color: $text_muted;
@@ -1393,7 +1443,7 @@ QWidget#puzzleMoveList QTableWidget {
     font-size: 11px;
 }
 #puzzleDetailValue {
-    font-size: 15px;
+    font-size: 14px;
     font-weight: 600;
 }
 #puzzleThemeHeader {
@@ -1458,6 +1508,10 @@ def _stylesheet(theme):
     return _TEMPLATE.substitute(tokens)
 
 
+def token_color(theme, name):
+    return _TOKENS.get(theme, _TOKENS[LIGHT])[name]
+
+
 def _palette(theme):
     tokens = _TOKENS[theme]
     palette = QPalette()
@@ -1505,3 +1559,8 @@ def danger_color(theme):
 def muted_color(theme):
     """The muted text tint, for de-emphasised list content."""
     return _TOKENS.get(theme, _TOKENS[LIGHT])["text_muted"]
+
+
+def accent_color(theme):
+    """The selected/accent tint used by lists and current-row marks."""
+    return _TOKENS.get(theme, _TOKENS[LIGHT])["history_selected_text"]

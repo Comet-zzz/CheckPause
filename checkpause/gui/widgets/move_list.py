@@ -3,7 +3,7 @@ import io
 import chess
 import chess.pgn
 from PySide6.QtCore import QRect, QSize, Qt, Signal
-from PySide6.QtGui import QColor, QFont, QFontMetrics, QPainter, QPalette
+from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QHeaderView,
@@ -21,6 +21,7 @@ from checkpause.gui.theme import (
     MOVE_LABEL_COLORS,
     MOVE_LABEL_ICONS,
     MOVE_ROW_COLORS,
+    accent_color,
     muted_color,
 )
 
@@ -28,16 +29,15 @@ _MARK_PIXELS = 16
 _MARK_GAP = 14
 _NUMBER_MARGIN = 6
 _MOVE_MARGIN = 12
-_PILL_PAD = 10
 _ROW_HEIGHT = 34
 
 
 class _MoveDelegate(QStyledItemDelegate):
     """Paints one cell of the move list.
 
-    The move numbers are de-emphasised, the current move gets a soft rounded
-    wash, the row under the cursor a lighter one, and the review mark is drawn
-    just after the move text so it reads as belonging to that move.
+    The move numbers are de-emphasised, the current row gets a soft wash and a
+    left accent bar, the cell under the cursor a lighter wash, and the review
+    mark is drawn just after the move text so it reads as belonging to it.
     """
 
     def __init__(self, owner):
@@ -54,9 +54,10 @@ class _MoveDelegate(QStyledItemDelegate):
         text = index.data(Qt.ItemDataRole.DisplayRole) or ""
         mark = index.data(Qt.ItemDataRole.UserRole) if column != 0 else None
         current = owner.is_current_cell(index.row(), column)
+        current_row = owner.is_current_row(index.row())
 
         tint = None
-        if current:
+        if current_row:
             tint = owner.row_color("current")
         elif option.state & QStyle.StateFlag.State_MouseOver:
             tint = owner.row_color("hover")
@@ -68,10 +69,12 @@ class _MoveDelegate(QStyledItemDelegate):
 
         painter.save()
         if tint is not None:
-            painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-            painter.setPen(Qt.PenStyle.NoPen)
-            painter.setBrush(tint)
-            painter.drawRoundedRect(self._pill_rect(rect, column, text, mark, metrics), 7, 7)
+            painter.fillRect(rect, tint)
+        if current_row and column == 0:
+            painter.fillRect(
+                QRect(rect.left(), rect.top() + 2, 2, rect.height() - 4),
+                owner.current_accent_color(),
+            )
 
         painter.setFont(font)
         if column == 0:
@@ -91,16 +94,6 @@ class _MoveDelegate(QStyledItemDelegate):
                 y = rect.center().y() - _MARK_PIXELS // 2
                 icon.paint(painter, QRect(x, y, _MARK_PIXELS, _MARK_PIXELS))
         painter.restore()
-
-    def _pill_rect(self, rect, column, text, mark, metrics):
-        """The rounded wash behind one row, sized to its content."""
-        if column == 0:
-            return rect.adjusted(3, 2, -3, -2)
-        width = metrics.horizontalAdvance(text)
-        if mark:
-            width += _MARK_GAP + _MARK_PIXELS
-        left = rect.left() + _MOVE_MARGIN - _PILL_PAD
-        return QRect(left, rect.top() + 2, width + _PILL_PAD * 2, rect.height() - 4)
 
 
 class MoveListWidget(QWidget):
@@ -213,10 +206,18 @@ class MoveListWidget(QWidget):
     def number_color(self):
         return QColor(muted_color(self._theme))
 
+    def current_accent_color(self):
+        return QColor(accent_color(self._theme))
+
     def is_current_cell(self, row, column):
         if column == 0:
             return False
         return self._ply_for_cell(row, column) == self._current
+
+    def is_current_row(self, row):
+        if self._current <= 0:
+            return False
+        return any(self._ply_for_cell(row, column) == self._current for column in (1, 2))
 
     def set_current_ply(self, ply):
         self._current = ply
