@@ -1,3 +1,34 @@
+# v2.2.0 – Creem Checkout
+
+> **Top-ups now use Creem's secure checkout, with USD packs and an updated payment flow.**
+
+---
+
+## 🎯 What's New
+
+### 💳 Creem checkout
+- 充值改用 Creem 安全收银台，支持国际银行卡；档位为 $5.99 / 690 CP、$9.99 / 1400 CP、$19.99 / 4000 CP。
+- Top-ups now use Creem's secure checkout with USD packs: $5.99 / 690 CP, $9.99 / 1400 CP, $19.99 / 4000 CP.
+- 旧的支付宝充值入口已下线；历史订单退款不受影响。
+- The legacy Alipay top-up entry is retired; historical refunds are unaffected.
+
+## 🛠️ Full Changelog
+- feat(cloud): buy CP credits through Creem
+- feat(site): show the support email in the hero meta
+
+---
+
+## ⚠️ Breaking Changes
+
+- 旧版客户端无法继续充值，请更新到 v2.2.0。
+- Older clients can no longer top up; update to v2.2.0.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.1.0...v2.2.0
+
+---
+
 # v2.1.0 – Learning Module & UI Polish
 
 > **A new learning module for beginners, a cleaner interface, and continued image-recognition work.**
