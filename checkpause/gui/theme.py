@@ -1383,13 +1383,24 @@ QWidget#puzzleMoveList QTableWidget {
     border: none;
     font-size: 13px;
 }
-#puzzleTrainMeta {
+#puzzleTrainMeta,
+#puzzleLadderValue {
     color: $history_selected_text;
     background-color: $history_selected_bg;
     border-radius: 7px;
     padding: 3px 8px;
     font-size: 12px;
     font-weight: 600;
+}
+#puzzleLadderDelta {
+    font-size: 12px;
+    font-weight: 600;
+}
+#puzzleLadderDelta[sign="up"] {
+    color: $success;
+}
+#puzzleLadderDelta[sign="down"] {
+    color: $danger;
 }
 #puzzleStatusCard[state="correct"] #puzzleStatusTitle,
 #puzzleStatusCard[state="solved"] #puzzleStatusTitle {

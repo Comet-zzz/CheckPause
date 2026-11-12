@@ -256,12 +256,17 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertTrue(append.called)
         self.assertIn("created_at", append.call_args.args[0])
 
-    def test_unrated_results_show_no_rating_text(self):
-        self.page._train.set_attempt_result({"rated": False})
-        self.assertEqual(self.page._train._status_meta.text(), "")
+    def test_rating_area_shows_the_ladder_delta(self):
+        self.page._train.set_rating(1046, 30.3)
+        self.assertEqual(self.page._train._rating_value.text(), "1046")
+        self.assertEqual(self.page._train._rating_delta.text(), "+30")
 
-        self.page._train.set_attempt_result({"rated": True, "rating_delta": 12})
-        self.assertEqual(self.page._train._status_meta.text(), "+12")
+        self.page._train.set_rating(1030, -22)
+        self.assertEqual(self.page._train._rating_value.text(), "1030")
+        self.assertEqual(self.page._train._rating_delta.text(), "-22")
+
+        self.page._train.set_rating(None)
+        self.assertTrue(self.page._train._rating_value.isHidden())
 
     def test_hub_offers_ladder_and_practice_when_online(self):
         self.page._hub.set_online(True, 1000)

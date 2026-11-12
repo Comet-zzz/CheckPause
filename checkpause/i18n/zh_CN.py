@@ -439,7 +439,7 @@ MESSAGES = {
     "puzzle_profile_result_solved": "已解",
     "puzzle_profile_result_failed": "未解",
     "puzzle_profile_rating": "在线评分",
-    "puzzle_online_mode": "天梯赛",
+    "puzzle_online_mode": "天梯模式",
     "puzzle_online_practice": "在线练习",
     "puzzle_online_rating": "评分 {rating}",
     "puzzle_online_loading": "加载中…",

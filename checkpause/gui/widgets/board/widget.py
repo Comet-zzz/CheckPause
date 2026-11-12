@@ -390,7 +390,7 @@ class BoardWidget(QWidget):
         self._btn_edit.setVisible(visible and self._edit_available)
         self._nav.setVisible(visible)
         self._step_label.setVisible(visible)
-        self._btn_flip.setMinimumWidth(0 if visible else 180)
+        self._btn_flip.setMinimumWidth(44 if visible else 180)
         policy = QSizePolicy.Policy.Fixed if visible else QSizePolicy.Policy.Expanding
         for spacer in self._nav_spacers:
             spacer.changeSize(0, 0, policy, QSizePolicy.Policy.Minimum)

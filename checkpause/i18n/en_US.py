@@ -441,7 +441,7 @@ MESSAGES = {
     "puzzle_profile_result_solved": "solved",
     "puzzle_profile_result_failed": "missed",
     "puzzle_profile_rating": "Online rating",
-    "puzzle_online_mode": "Ladder",
+    "puzzle_online_mode": "Ladder mode",
     "puzzle_online_practice": "Online practice",
     "puzzle_online_rating": "Rating {rating}",
     "puzzle_online_loading": "Loading…",

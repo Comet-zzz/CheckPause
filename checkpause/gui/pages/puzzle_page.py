@@ -790,13 +790,12 @@ class _TrainView(QWidget):
         self._status_icon = QLabel()
         self._status_icon.setObjectName("puzzleStatusIcon")
         self._status_icon.setFixedSize(28, 28)
-        self._difficulty = QLabel()
-        self._difficulty.setObjectName("puzzleTrainMeta")
-        self._difficulty.setSizePolicy(
-            QSizePolicy.Policy.Maximum,
-            QSizePolicy.Policy.Preferred,
-        )
-        self._difficulty.setVisible(False)
+        self._rating_value = QLabel()
+        self._rating_value.setObjectName("puzzleLadderValue")
+        self._rating_value.setVisible(False)
+        self._rating_delta = QLabel()
+        self._rating_delta.setObjectName("puzzleLadderDelta")
+        self._rating_delta.setVisible(False)
 
         self._btn_analyze = QPushButton()
         self._btn_analyze.setObjectName("puzzleIconButton")
@@ -809,9 +808,7 @@ class _TrainView(QWidget):
         top.setSpacing(10)
         top.addWidget(self._btn_back)
         top.addWidget(self._mode_label)
-        top.addWidget(self._difficulty)
         top.addStretch(1)
-        top.addWidget(self._btn_analyze)
         top.addWidget(self._counter_label)
 
         self._prompt = QLabel()
@@ -833,12 +830,19 @@ class _TrainView(QWidget):
             QSizePolicy.Policy.Expanding,
         )
 
+        self._rating_overlay = QWidget(self.board)
+        rating_overlay_layout = QHBoxLayout(self._rating_overlay)
+        rating_overlay_layout.setContentsMargins(0, 0, 0, 0)
+        rating_overlay_layout.setSpacing(6)
+        rating_overlay_layout.addWidget(self._rating_value)
+        rating_overlay_layout.addWidget(self._rating_delta)
+        self._rating_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._rating_overlay.move(14, 8)
+        self._rating_overlay.setVisible(False)
+
         self._status_title = QLabel()
         self._status_title.setObjectName("puzzleStatusTitle")
         self._status_title.setWordWrap(True)
-        self._status_meta = QLabel()
-        self._status_meta.setObjectName("puzzleResultMeta")
-        self._status_meta.setVisible(False)
         self._result_detail = QLabel()
         self._result_detail.setObjectName("puzzleResultDetail")
         self._result_detail.setWordWrap(True)
@@ -895,6 +899,7 @@ class _TrainView(QWidget):
         vote_layout.addWidget(self._btn_vote_up)
         vote_layout.addWidget(self._btn_vote_down)
         vote_layout.addStretch(1)
+        vote_layout.addWidget(self._btn_analyze)
         self._vote_row.setVisible(False)
 
         self._move_list = MoveListWidget()
@@ -926,7 +931,6 @@ class _TrainView(QWidget):
         title_row = QHBoxLayout()
         title_row.setSpacing(8)
         title_row.addWidget(self._status_title)
-        title_row.addWidget(self._status_meta, 0, Qt.AlignmentFlag.AlignVCenter)
         title_row.addStretch(1)
         status_text = QVBoxLayout()
         status_text.setSpacing(2)
@@ -959,7 +963,7 @@ class _TrainView(QWidget):
         side_layout.addWidget(self._move_box, 1)
 
         board_column = _BoardColumn(self.board)
-        board_column.setFixedWidth(560)
+        board_column.setFixedWidth(_BoardColumn.SIZE)
 
         content = QHBoxLayout()
         content.setSpacing(12)
@@ -990,8 +994,27 @@ class _TrainView(QWidget):
         if self._workspace.width() != width:
             self._workspace.setFixedWidth(width)
 
-    def set_rating(self, rating):
+    def set_rating(self, rating, delta=None):
         self._rating = rating
+        if rating is None:
+            self._rating_value.setVisible(False)
+            self._rating_delta.setVisible(False)
+            self._rating_overlay.setVisible(False)
+            return
+        self._rating_value.setText(str(round(float(rating))))
+        self._rating_value.setVisible(True)
+        if delta is None:
+            self._rating_delta.clear()
+            self._rating_delta.setVisible(False)
+        else:
+            self._rating_delta.setText(f"{round(float(delta)):+d}")
+            self._rating_delta.setProperty("sign", "up" if float(delta) >= 0 else "down")
+            self._rating_delta.style().unpolish(self._rating_delta)
+            self._rating_delta.style().polish(self._rating_delta)
+            self._rating_delta.setVisible(True)
+        self._rating_overlay.adjustSize()
+        self._rating_overlay.setVisible(True)
+        self._rating_overlay.raise_()
 
     def set_online_info(self, mode, rating):
         self._mode_label.setText(mode or "")
@@ -1041,7 +1064,6 @@ class _TrainView(QWidget):
         else:
             self._status_icon.clear()
             self._status_icon.setVisible(False)
-        self.set_result_meta("")
 
     def set_turn(self, human_color):
         self._turn_color = human_color
@@ -1101,19 +1123,9 @@ class _TrainView(QWidget):
         self._result_detail.setVisible(False)
         self._btn_next.setVisible(False)
         self._vote_row.setVisible(False)
-        self.set_result_meta("")
 
     def set_puzzle_info(self, rating):
         self._puzzle_rating = rating
-        if rating:
-            self._difficulty.setText(str(round(float(rating))))
-            self._difficulty.setAccessibleName(
-                t("puzzle_rating", self._language, rating=round(float(rating)))
-            )
-            self._difficulty.setVisible(True)
-        else:
-            self._difficulty.clear()
-            self._difficulty.setVisible(False)
 
     def set_line(self, pgn):
         if not pgn:
@@ -1154,23 +1166,11 @@ class _TrainView(QWidget):
         self._result_detail.setVisible(state == "challenge" and bool(detail))
         self._solve_actions.setVisible(False)
         self._btn_next.setVisible(True)
-        self._vote_row.setVisible(state == "solved" and self._vote_enabled)
+        show_tools = state == "solved"
+        self._vote_row.setVisible(show_tools)
+        self._btn_vote_up.setVisible(show_tools and self._vote_enabled)
+        self._btn_vote_down.setVisible(show_tools and self._vote_enabled)
         self.set_solving(False)
-
-    def set_result_meta(self, text):
-        self._status_meta.setText(text or "")
-        self._status_meta.setVisible(bool(text))
-
-    def set_attempt_result(self, data, streak=0):
-        if not isinstance(data, dict):
-            return
-        if not data.get("rated"):
-            self.set_result_meta("")
-            return
-        delta = data.get("rating_delta")
-        if delta is None:
-            return
-        self.set_result_meta(f"{float(delta):+g}")
 
     def _request_analysis(self):
         if self.board.index <= 0:
@@ -1197,8 +1197,8 @@ class _TrainView(QWidget):
 
     def set_vote_enabled(self, enabled):
         self._vote_enabled = bool(enabled)
-        if not self._vote_enabled:
-            self._vote_row.setVisible(False)
+        self._btn_vote_up.setVisible(self._vote_enabled)
+        self._btn_vote_down.setVisible(self._vote_enabled)
 
     def _on_vote(self, value):
         if not self._vote_enabled or self._vote_choice == value:
@@ -3054,7 +3054,6 @@ class PuzzlePage(QWidget):
 
     def _on_online_attempt_done(self, _action, result, entry):
         self._forget_attempt(entry)
-        self._train.set_attempt_result(result, self._streak)
         rating = result.get("rating")
         if rating is None:
             return
@@ -3063,7 +3062,7 @@ class PuzzlePage(QWidget):
         self._online_stats = None
         self._online_stats_days = None
         self._hub_stats = None
-        self._train.set_rating(rating)
+        self._train.set_rating(rating, result.get("rating_delta"))
         self._hub.set_online(True, rating)
 
     def _on_online_attempt_failed(self, _action, _message, code, entry):
