@@ -332,15 +332,26 @@ class TopUpTests(unittest.TestCase):
 
         def capture(url, **kwargs):
             seen["url"] = url
-            return FakeResponse(200, body=[{"yuan": 10, "credits": 1000}])
+            return FakeResponse(
+                200,
+                body=[
+                    {
+                        "product_id": "prod_690",
+                        "price_cents": 599,
+                        "currency": "USD",
+                        "credits": 690,
+                    }
+                ],
+            )
 
         with mock.patch.object(cloud.httpx, "get", capture):
             packs = cloud.fetch_packs("http://server")
 
-        self.assertEqual(seen["url"], "http://server/v1/pay/packs")
-        self.assertEqual(packs[0]["credits"], 1000)
+        self.assertEqual(seen["url"], "http://server/v1/pay/packs?provider=creem")
+        self.assertEqual(packs[0]["credits"], 690)
+        self.assertEqual(packs[0]["product_id"], "prod_690")
 
-    def test_opening_an_order_sends_the_amount_and_the_token(self):
+    def test_opening_an_order_sends_the_product_and_the_token(self):
         seen = {}
 
         def capture(url, **kwargs):
@@ -353,10 +364,10 @@ class TopUpTests(unittest.TestCase):
             )
 
         with mock.patch.object(cloud.httpx, "post", capture):
-            order = cloud.create_order("http://server", "tok", 30)
+            order = cloud.create_order("http://server", "tok", "prod_690")
 
         self.assertEqual(seen["url"], "http://server/v1/pay/orders")
-        self.assertEqual(seen["json"], {"yuan": 30})
+        self.assertEqual(seen["json"], {"product_id": "prod_690"})
         self.assertEqual(seen["headers"]["Authorization"], "Bearer tok")
         self.assertTrue(order["pay_url"].endswith("CP1"))
 
@@ -376,8 +387,8 @@ class TopUpTests(unittest.TestCase):
         self.assertEqual(status["status"], "paid")
 
     def test_a_top_up_only_the_server_can_price(self):
-        # The client never sends a credit amount, only which pack it wants, so
-        # it cannot decide what its own money is worth.
+        # The client never sends a credit amount, only which product it wants,
+        # so it cannot decide what its own money is worth.
         sent = {}
 
         def capture(url, **kwargs):
@@ -385,9 +396,9 @@ class TopUpTests(unittest.TestCase):
             return FakeResponse(200, body={"order_id": "CP1"})
 
         with mock.patch.object(cloud.httpx, "post", capture):
-            cloud.create_order("http://server", "tok", 10)
+            cloud.create_order("http://server", "tok", "prod_690")
 
-        self.assertEqual(sorted(sent), ["yuan"])
+        self.assertEqual(sorted(sent), ["product_id"])
 
 
 class PuzzleOnlineTests(unittest.TestCase):

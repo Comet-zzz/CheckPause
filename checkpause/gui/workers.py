@@ -380,7 +380,7 @@ class AccountWorker(QThread):
         username="",
         password="",
         token="",
-        yuan=0,
+        product_id="",
         order_id="",
         parent=None,
     ):
@@ -391,7 +391,7 @@ class AccountWorker(QThread):
         self.username = username
         self.password = password
         self.token = token
-        self.yuan = yuan
+        self.product_id = product_id
         self.order_id = order_id
 
     def run(self):
@@ -420,7 +420,7 @@ class AccountWorker(QThread):
             elif self.action == "open_order":
                 result = {
                     "order": cloud.create_order(
-                        self.server_url, self.token, self.yuan, self.language
+                        self.server_url, self.token, self.product_id, self.language
                     )
                 }
             elif self.action == "order_status":

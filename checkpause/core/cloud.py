@@ -49,6 +49,8 @@ ERROR_KEYS = {
     "missing_token": "cloud_signin_required",
     "unknown_token": "cloud_signin_required",
     "no_credits": "cloud_no_credit",
+    "payments_unavailable": "cloud_payments_unavailable",
+    "payment_gateway_error": "cloud_payment_gateway_error",
     "too_many_attempts": "cloud_too_many_attempts",
     "no_puzzles": "cloud_no_puzzles",
     "no_mistakes": "cloud_no_mistakes",
@@ -225,12 +227,18 @@ def rename(server_url, token, username, language="zh-CN"):
 
 def fetch_packs(server_url, language="zh-CN"):
     """What the server is willing to sell, and for how much."""
-    return _get(server_url, PACKS_ENDPOINT, "", language)
+    return _get(server_url, PACKS_ENDPOINT + "?provider=creem", "", language)
 
 
-def create_order(server_url, token, yuan, language="zh-CN"):
-    """Open an order; the reply carries the page the browser should open."""
-    return _post(server_url, ORDERS_ENDPOINT, {"yuan": int(yuan)}, language, token=token)
+def create_order(server_url, token, product_id, language="zh-CN"):
+    """Open an order; the reply carries the checkout the browser should open."""
+    return _post(
+        server_url,
+        ORDERS_ENDPOINT,
+        {"product_id": str(product_id)},
+        language,
+        token=token,
+    )
 
 
 def order_status(server_url, token, order_id, language="zh-CN"):

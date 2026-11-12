@@ -312,14 +312,15 @@ def cloud_account_dialog(parent, language, config=None):
         if action == "packs":
             pack_combo.clear()
             for pack in result.get("packs") or []:
+                price = pack.get("price_cents", 0) / 100
                 pack_combo.addItem(
                     t(
                         "cloud_topup_pack",
                         language,
-                        yuan=pack.get("yuan", 0),
+                        price=f"{price:.2f}",
                         credits=pack.get("credits", 0),
                     ),
-                    pack.get("yuan"),
+                    pack.get("product_id"),
                 )
             finish()
             return
@@ -328,9 +329,8 @@ def cloud_account_dialog(parent, language, config=None):
             order = result.get("order") or {}
             if order.get("pay_url"):
                 topup_status.setText(t("cloud_topup_waiting", language))
-                # The checkout belongs in a browser - Alipay's form is built to
-                # be submitted by one - so the desktop app opens a page rather
-                # than trying to become a web application.
+                # The hosted checkout belongs in a browser, so the desktop app
+                # opens a page rather than trying to become a web application.
                 QDesktopServices.openUrl(QUrl(order["pay_url"]))
                 start_polling(order.get("order_id", ""))
             finish()
@@ -501,12 +501,12 @@ def cloud_account_dialog(parent, language, config=None):
         run(
             "open_order",
             token=account.get("token", ""),
-            yuan=pack_combo.currentData(),
+            product_id=pack_combo.currentData(),
         )
 
     # Waiting for a payment. Polling is what makes the purchase arrive at all:
-    # the server either hears from Alipay or asks it, and nothing pushes the
-    # news to a desktop client.
+    # the server hears from Creem, and nothing pushes the news to a desktop
+    # client.
     poll = {"timer": None, "worker": None, "order_id": "", "tries": 0}
 
     def forget_poll_worker():
