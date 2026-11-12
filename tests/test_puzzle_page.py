@@ -259,6 +259,42 @@ class PuzzlePageTests(unittest.TestCase):
         self.page._online_rated = False
         self.assertIn("不计分", self.page._result_meta_text())
 
+    def test_hub_offers_ladder_and_practice_when_online(self):
+        self.page._hub.set_online(True, 1000)
+        self.assertEqual(self.page._hub._btn_train.text(), "天梯赛")
+        self.assertEqual(self.page._hub._btn_practice.text(), "练习模式")
+        self.assertFalse(self.page._hub._btn_practice.isHidden())
+
+        self.page._hub.set_online(False, None)
+        self.assertEqual(self.page._hub._btn_train.text(), "开始答题")
+        self.assertTrue(self.page._hub._btn_practice.isHidden())
+
+    def test_practice_mode_requests_unrated_puzzles(self):
+        self.page._token = "token"
+        self.page._server_url = "https://server"
+        self.page._auth_expired = False
+        with (
+            mock.patch.object(self.page, "_refresh_account"),
+            mock.patch.object(self.page, "_start_online_request") as request,
+        ):
+            self.page._start_practice()
+
+        self.assertTrue(self.page._practice_mode)
+        self.assertEqual(request.call_args.args[0], "practice")
+
+    def test_next_keeps_practice_mode(self):
+        self.page._online = True
+        self.page._practice_mode = True
+        self.page._review_puzzles = []
+        with (
+            mock.patch.object(self.page, "_start_practice") as practice,
+            mock.patch.object(self.page, "_start_online_training") as ladder,
+        ):
+            self.page._next()
+
+        practice.assert_called_once()
+        ladder.assert_not_called()
+
     def test_user_imports_beat_the_builtin_sample(self):
         self._write_collection("test", [_puzzle()])
         preferred = self.page._preferred_collection()

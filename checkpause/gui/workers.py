@@ -480,6 +480,14 @@ class PuzzleOnlineWorker(QThread):
                 self.payload.get("difficulty", "normal"),
                 self.language,
             )
+        if self.action == "practice":
+            return cloud.next_puzzle(
+                self.server_url,
+                self.token,
+                self.payload.get("theme", ""),
+                self.payload.get("difficulty", "normal"),
+                self.language,
+            )
         if self.action == "retry":
             return cloud.retry_puzzle(self.server_url, self.token, self.language)
         if self.action == "me":

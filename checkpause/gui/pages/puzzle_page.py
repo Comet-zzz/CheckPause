@@ -304,7 +304,7 @@ class _HubView(QWidget):
     profile_requested = Signal()
     collection_requested = Signal(str)
     daily_requested = Signal()
-    solved_requested = Signal()
+    practice_requested = Signal()
     sign_in_requested = Signal()
     difficulty_changed = Signal(str)
     theme_filter_changed = Signal(str)
@@ -375,12 +375,12 @@ class _HubView(QWidget):
         self._btn_train.setObjectName("puzzlePrimaryButton")
         self._btn_train.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_train.clicked.connect(self.train_requested.emit)
-        self._btn_solved = QPushButton()
-        self._btn_solved.setObjectName("puzzleGhostButton")
-        self._btn_solved.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_solved.clicked.connect(self.solved_requested.emit)
+        self._btn_practice = QPushButton()
+        self._btn_practice.setObjectName("puzzleGhostButton")
+        self._btn_practice.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_practice.clicked.connect(self.practice_requested.emit)
         hero_actions.addWidget(self._btn_train)
-        hero_actions.addWidget(self._btn_solved)
+        hero_actions.addWidget(self._btn_practice)
         hero_actions.addWidget(self._btn_signin)
         hero_actions.addStretch(1)
         hero_layout.addLayout(hero_actions)
@@ -478,9 +478,11 @@ class _HubView(QWidget):
                 self._language,
             )
         )
-        self._btn_train.setText(t("puzzle_home_train", self._language))
+        self._btn_train.setText(
+            t("puzzle_home_ladder" if self._online else "puzzle_home_train", self._language)
+        )
         self._btn_signin.setVisible(not self._online)
-        self._btn_solved.setVisible(self._online)
+        self._btn_practice.setVisible(self._online)
         self._daily_card.button.setEnabled(self._online)
         self._daily_card.button.setVisible(self._online)
         self._daily_card.set_description(
@@ -549,7 +551,7 @@ class _HubView(QWidget):
             ),
             "",
         )
-        self._btn_solved.setText(t("puzzle_home_review_solved", language))
+        self._btn_practice.setText(t("puzzle_home_practice", language))
         self._fill_combo(
             self._difficulty,
             (
@@ -1567,6 +1569,7 @@ class PuzzlePage(QWidget):
         self._online_stats = None
         self._online_stats_days = None
         self._online_rated = True
+        self._practice_mode = False
         self._client_attempt_id = ""
         self._next_worker = None
         self._next_request_id = 0
@@ -1635,7 +1638,7 @@ class PuzzlePage(QWidget):
         self._hub.profile_requested.connect(self.show_profile)
         self._hub.collection_requested.connect(self._start_collection)
         self._hub.daily_requested.connect(self._start_daily)
-        self._hub.solved_requested.connect(self._start_solved)
+        self._hub.practice_requested.connect(self._start_practice)
         self._hub.sign_in_requested.connect(self.sign_in_requested.emit)
         self._hub.difficulty_changed.connect(self._set_difficulty)
         self._hub.theme_filter_changed.connect(self._set_theme_filter)
@@ -1768,6 +1771,7 @@ class PuzzlePage(QWidget):
         self._replay_timer.stop()
         self._stop_challenge()
         self._train_origin = "hub"
+        self._practice_mode = False
         self._train.set_counter("")
         self._review_puzzles = []
         self._review_index = -1
@@ -1886,6 +1890,7 @@ class PuzzlePage(QWidget):
         self._start_collection_object(collection, index=0, origin="hub")
 
     def _start_online_training(self):
+        self._practice_mode = False
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -1896,6 +1901,7 @@ class PuzzlePage(QWidget):
         )
 
     def _start_online_retry(self):
+        self._practice_mode = False
         self._streak = 0
         self._start_online_request(
             "retry",
@@ -2027,6 +2033,7 @@ class PuzzlePage(QWidget):
             self._challenge_timer.start()
 
     def _start_daily(self):
+        self._practice_mode = False
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -2036,12 +2043,19 @@ class PuzzlePage(QWidget):
             t("puzzle_online_daily_loading", self._language),
         )
 
-    def _start_solved(self):
+    def _start_practice(self):
+        self._refresh_account()
+        if not self._is_online():
+            self._start_local_training()
+            return
+        self._practice_mode = True
+        self._review_puzzles = []
+        self._review_index = -1
         self._streak = 0
         self._start_online_request(
-            "solved",
-            {},
-            t("puzzle_online_solved_loading", self._language),
+            "practice",
+            {"theme": self._theme_filter, "difficulty": self._difficulty},
+            t("puzzle_online_practice_loading", self._language),
         )
 
     def _start_online_request(self, action, payload, notice):
@@ -2095,7 +2109,7 @@ class PuzzlePage(QWidget):
             return
         self._review_puzzles = []
         self._review_index = -1
-        self._load_online_puzzle(result, rated=action != "retry")
+        self._load_online_puzzle(result, rated=action not in ("retry", "practice"))
 
     def _load_review_puzzle(self):
         if not (0 <= self._review_index < len(self._review_puzzles)):
@@ -2220,6 +2234,7 @@ class PuzzlePage(QWidget):
     def _mark_online_expired(self):
         self._auth_expired = True
         self._online = False
+        self._practice_mode = False
         self._online_rating = None
         self._online_rd = None
         self._hub_stats = None
@@ -2300,6 +2315,7 @@ class PuzzlePage(QWidget):
         self._next_request_id += 1
         self._online = False
         self._online_rated = True
+        self._practice_mode = False
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -2897,7 +2913,10 @@ class PuzzlePage(QWidget):
             self._load_review_puzzle()
             return
         if self._online:
-            self._start_online_training()
+            if self._practice_mode:
+                self._start_practice()
+            else:
+                self._start_online_training()
             return
         if self._collection is None:
             self.show_hub()
