@@ -2,10 +2,11 @@ import math
 import time
 import uuid
 from datetime import UTC, datetime
+from xml.sax.saxutils import escape
 
 import chess
-from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QColor, QPainter, QPen, QPixmap, QPolygonF
+from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -228,6 +229,20 @@ _RADAR_STEP = 200
 _RADAR_PLACEHOLDER = 3 / _RADAR_RINGS
 
 
+def _svg_color(value):
+    text = str(value).strip()
+    if text.startswith("rgba(") and text.endswith(")"):
+        parts = [part.strip() for part in text[5:-1].split(",")]
+        if len(parts) == 4:
+            try:
+                red, green, blue = (max(0, min(255, int(part))) for part in parts[:3])
+                alpha = max(0.0, min(1.0, float(parts[3])))
+            except ValueError:
+                return "#000000", 1.0
+            return f"#{red:02x}{green:02x}{blue:02x}", alpha
+    return text, 1.0
+
+
 def _profile_axis_label(axis, language):
     key = _PROFILE_AXIS_KEYS.get(str(axis))
     if key is None:
@@ -243,14 +258,20 @@ class _ThemeRadar(QWidget):
         self._entries = []
         self._labels = []
         self._rating = None
+        self._svg_cache = None
         self.setObjectName("puzzleThemeRadar")
-        self.setMinimumWidth(400)
+        self.setMinimumWidth(420)
         self.setFixedHeight(430)
         self.setMaximumWidth(680)
         self.setMouseTracking(True)
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Fixed)
+
+    def sizeHint(self):
+        return QSize(640, 430)
 
     def set_theme(self, theme):
         self._theme = theme
+        self._svg_cache = None
         self.update()
 
     def set_entries(self, entries, labels, rating, language):
@@ -258,7 +279,12 @@ class _ThemeRadar(QWidget):
         self._labels = list(labels)
         self._rating = rating
         self._language = language
+        self._svg_cache = None
         self.update()
+
+    def resizeEvent(self, event):
+        self._svg_cache = None
+        super().resizeEvent(event)
 
     def is_placeholder(self):
         return not any(entry.get("rating") is not None for entry in self._entries)
@@ -275,122 +301,134 @@ class _ThemeRadar(QWidget):
         return max(400, int(self._base_rating()) // _RADAR_STEP * _RADAR_STEP - 3 * _RADAR_STEP)
 
     def _geometry(self):
-        center = QPointF(self.width() / 2, self.height() / 2)
-        radius = max(40.0, min(self.width(), self.height()) / 2 - 48)
+        width = self.width()
+        height = self.height()
+        center = (width / 2, height / 2)
+        radius = max(60.0, min(width / 2 - 105, height / 2 - 44))
         return center, radius
 
     @staticmethod
     def _vertex(center, radius, index, count, fraction=1.0):
         angle = -math.pi / 2 + 2 * math.pi * index / count
-        return QPointF(
-            center.x() + math.cos(angle) * radius * fraction,
-            center.y() + math.sin(angle) * radius * fraction,
+        return (
+            center[0] + math.cos(angle) * radius * fraction,
+            center[1] + math.sin(angle) * radius * fraction,
         )
 
-    def paintEvent(self, _event):
-        count = len(self._entries)
-        if count < 3 or self.width() < 80 or self.height() < 80:
-            return
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        center, radius = self._geometry()
-        accent = QColor(token_color(self._theme, "accent"))
-        border = QColor(token_color(self._theme, "border"))
-        muted = QColor(token_color(self._theme, "text_muted"))
-        text = QColor(token_color(self._theme, "text"))
-        grid_pen = QPen(border, 1.0)
-        painter.setPen(grid_pen)
-        for ring in range(1, _RADAR_RINGS + 1):
-            painter.drawPolygon(
-                QPolygonF(
-                    [
-                        self._vertex(center, radius, index, count, ring / _RADAR_RINGS)
-                        for index in range(count)
-                    ]
-                )
+    @staticmethod
+    def _points(center, radius, count, fractions):
+        return " ".join(
+            f"{x:.1f},{y:.1f}"
+            for x, y in (
+                _ThemeRadar._vertex(center, radius, index, count, fractions[index])
+                for index in range(count)
             )
-        for index in range(count):
-            painter.drawLine(center, self._vertex(center, radius, index, count))
+        )
 
+    def _text(self, x, y, value, color, size, anchor):
+        family = escape(self.font().family())
+        return (
+            f'<text x="{x:.1f}" y="{y:.1f}" fill="{color}" font-size="{size}"'
+            f' font-family="{family}" text-anchor="{anchor}">{escape(value)}</text>'
+        )
+
+    def _build_svg(self):
+        width = max(1, self.width())
+        height = max(1, self.height())
+        count = len(self._entries)
+        center, radius = self._geometry()
+        accent = token_color(self._theme, "accent")
+        border, border_alpha = _svg_color(token_color(self._theme, "border"))
+        muted = token_color(self._theme, "text_muted")
+        text = token_color(self._theme, "text")
+        surface, surface_alpha = _svg_color(token_color(self._theme, "surface"))
+        placeholder = self.is_placeholder()
         lower = self.lower_rating()
         span = _RADAR_RINGS * _RADAR_STEP
-        if self.is_placeholder():
-            fractions = [0.0] * count
-            painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.setPen(QPen(muted, 1.6))
-            painter.drawPolygon(
-                QPolygonF(
-                    [
-                        self._vertex(center, radius, index, count, _RADAR_PLACEHOLDER)
-                        for index in range(count)
-                    ]
-                )
+        fractions = [0.0] * count
+        parts = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}"',
+            f' viewBox="0 0 {width} {height}">',
+            "<defs>",
+            '<linearGradient id="area" x1="0" y1="0" x2="0" y2="1">',
+            f'<stop offset="0" stop-color="{accent}" stop-opacity="0.28"/>',
+            f'<stop offset="1" stop-color="{accent}" stop-opacity="0.05"/>',
+            "</linearGradient>",
+            "</defs>",
+            f'<g fill="none" stroke="{border}" stroke-opacity="{border_alpha:.2f}"'
+            ' stroke-width="1" stroke-linejoin="round">',
+        ]
+        for ring in range(1, _RADAR_RINGS + 1):
+            points = self._points(center, radius, count, [ring / _RADAR_RINGS] * count)
+            parts.append(f'<polygon points="{points}"/>')
+        for index in range(count):
+            x, y = self._vertex(center, radius, index, count)
+            parts.append(
+                f'<line x1="{center[0]:.1f}" y1="{center[1]:.1f}" x2="{x:.1f}" y2="{y:.1f}"/>'
             )
-            empty_font = painter.font()
-            empty_font.setPointSizeF(13.0)
-            painter.setFont(empty_font)
-            painter.setPen(muted)
-            painter.drawText(
-                QRectF(center.x() - 120, center.y() - 16, 240, 32),
-                int(Qt.AlignmentFlag.AlignCenter),
-                t("puzzle_profile_no_themes", self._language),
+        parts.append("</g>")
+        if placeholder:
+            points = self._points(center, radius, count, [_RADAR_PLACEHOLDER] * count)
+            parts.append(
+                f'<polygon points="{points}" fill="none" stroke="{muted}"'
+                ' stroke-width="1.6" stroke-linejoin="round"/>'
+            )
+            parts.append(
+                self._text(
+                    center[0],
+                    center[1] + 6,
+                    t("puzzle_profile_no_themes", self._language),
+                    muted,
+                    15,
+                    "middle",
+                )
             )
         else:
-            fractions = []
-            for entry in self._entries:
+            for index, entry in enumerate(self._entries):
                 rating = entry.get("rating")
-                if rating is None:
-                    fractions.append(0.0)
-                else:
-                    fractions.append(min(1.0, max(0.0, (float(rating) - lower) / span)))
-            polygon = QPolygonF(
-                [
-                    self._vertex(center, radius, index, count, fractions[index])
-                    for index in range(count)
-                ]
+                if rating is not None:
+                    fractions[index] = min(1.0, max(0.0, (float(rating) - lower) / span))
+            parts.append(
+                f'<polygon points="{self._points(center, radius, count, fractions)}"'
+                f' fill="url(#area)" stroke="{accent}" stroke-width="2" stroke-linejoin="round"/>'
             )
-            fill = QColor(accent)
-            fill.setAlpha(38)
-            painter.setBrush(fill)
-            painter.setPen(QPen(accent, 2.0))
-            painter.drawPolygon(polygon)
-            painter.setBrush(accent)
-            painter.setPen(Qt.PenStyle.NoPen)
             for index, fraction in enumerate(fractions):
-                if fraction > 0:
-                    painter.drawEllipse(
-                        self._vertex(center, radius, index, count, fraction),
-                        3.2,
-                        3.2,
-                    )
-
-            tick_font = painter.font()
-            tick_font.setPointSizeF(7.5)
-            painter.setFont(tick_font)
-            painter.setPen(muted)
-            for ring in range(1, _RADAR_RINGS + 1):
-                point = self._vertex(center, radius, 0, count, ring / _RADAR_RINGS)
-                painter.drawText(
-                    QPointF(point.x() + 5, point.y() + 3),
-                    str(lower + ring * _RADAR_STEP),
+                if fraction <= 0:
+                    continue
+                x, y = self._vertex(center, radius, index, count, fraction)
+                parts.append(
+                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.4" fill="{accent}"'
+                    f' stroke="{surface}" stroke-opacity="{surface_alpha:.2f}"'
+                    ' stroke-width="1.4"/>'
                 )
-
-        label_font = painter.font()
-        label_font.setPointSizeF(9.5)
-        painter.setFont(label_font)
+            for ring in range(1, _RADAR_RINGS + 1):
+                x, y = self._vertex(center, radius, 0, count, ring / _RADAR_RINGS)
+                parts.append(
+                    self._text(x + 6, y + 3, str(lower + ring * _RADAR_STEP), muted, 10, "start")
+                )
         for index, label in enumerate(self._labels):
-            point = self._vertex(center, radius + 20, index, count)
-            painter.setPen(text if fractions[index] > 0 else muted)
-            rect = QRectF(point.x() - 90, point.y() - 13, 180, 26)
-            if point.x() > center.x() + 6:
-                flags = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-                rect.moveLeft(point.x() + 2)
-            elif point.x() < center.x() - 6:
-                flags = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                rect.moveRight(point.x() - 2)
+            x, y = self._vertex(center, radius + 20, index, count)
+            cosine = math.cos(-math.pi / 2 + 2 * math.pi * index / count)
+            if cosine > 0.25:
+                anchor, x = "start", x + 6
+            elif cosine < -0.25:
+                anchor, x = "end", x - 6
             else:
-                flags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
-            painter.drawText(rect, int(flags), label)
+                anchor = "middle"
+            color = text if fractions[index] > 0 else muted
+            parts.append(self._text(x, y + 4.5, label, color, 13, anchor))
+        parts.append("</svg>")
+        return "".join(parts)
+
+    def paintEvent(self, _event):
+        if len(self._entries) < 3 or self.width() < 80 or self.height() < 80:
+            return
+        if self._svg_cache is None:
+            self._svg_cache = self._build_svg()
+        renderer = QSvgRenderer(QByteArray(self._svg_cache.encode("utf-8")))
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        renderer.render(painter)
         painter.end()
 
     def mouseMoveEvent(self, event):
@@ -398,8 +436,8 @@ class _ThemeRadar(QWidget):
         if count < 3:
             return
         center, _radius = self._geometry()
-        delta_x = event.position().x() - center.x()
-        delta_y = event.position().y() - center.y()
+        delta_x = event.position().x() - center[0]
+        delta_y = event.position().y() - center[1]
         if abs(delta_x) < 1 and abs(delta_y) < 1:
             return
         turn = 2 * math.pi / count
