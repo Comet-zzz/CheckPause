@@ -49,7 +49,7 @@ from checkpause.data.puzzles import (
 )
 from checkpause.data.settings import get_account, get_server_url, save_account
 from checkpause.gui.icons import action_icon
-from checkpause.gui.theme import LIGHT, token_color
+from checkpause.gui.theme import LIGHT, accent_color, token_color
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
 from checkpause.gui.workers import PuzzleGameWorker, PuzzleImportWorker, PuzzleOnlineWorker
@@ -386,7 +386,7 @@ def _piece_pixmap(piece_set, code, size):
 class _BoardColumn(QWidget):
     """Keeps the board at a stable square size under the nav row."""
 
-    SIZE = 530
+    SIZE = 580
 
     def __init__(self, board, parent=None):
         super().__init__(parent)
@@ -764,6 +764,7 @@ class _TrainView(QWidget):
     hint_requested = Signal()
     reveal_requested = Signal()
     next_requested = Signal()
+    vote_requested = Signal(int)
     analysis_requested = Signal(str)
 
     def __init__(self, parent=None):
@@ -871,6 +872,31 @@ class _TrainView(QWidget):
         self._btn_next.clicked.connect(self.next_requested.emit)
         self._btn_next.setVisible(False)
 
+        self._vote_enabled = False
+        self._vote_choice = 0
+        self._btn_vote_up = QPushButton()
+        self._btn_vote_up.setObjectName("puzzleVoteButton")
+        self._btn_vote_up.setCheckable(True)
+        self._btn_vote_up.setFixedSize(32, 30)
+        self._btn_vote_up.setIconSize(QSize(18, 18))
+        self._btn_vote_up.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_vote_up.clicked.connect(lambda: self._on_vote(1))
+        self._btn_vote_down = QPushButton()
+        self._btn_vote_down.setObjectName("puzzleVoteButton")
+        self._btn_vote_down.setCheckable(True)
+        self._btn_vote_down.setFixedSize(32, 30)
+        self._btn_vote_down.setIconSize(QSize(18, 18))
+        self._btn_vote_down.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_vote_down.clicked.connect(lambda: self._on_vote(-1))
+        self._vote_row = QWidget()
+        vote_layout = QHBoxLayout(self._vote_row)
+        vote_layout.setContentsMargins(0, 0, 0, 0)
+        vote_layout.setSpacing(6)
+        vote_layout.addWidget(self._btn_vote_up)
+        vote_layout.addWidget(self._btn_vote_down)
+        vote_layout.addStretch(1)
+        self._vote_row.setVisible(False)
+
         self._move_list = MoveListWidget()
         self._move_list.setObjectName("puzzleMoveList")
         self._move_list.setVisible(False)
@@ -921,6 +947,7 @@ class _TrainView(QWidget):
         play_layout.addWidget(self._notice)
         play_layout.addWidget(self._solve_actions)
         play_layout.addWidget(self._btn_next)
+        play_layout.addWidget(self._vote_row)
 
         side = QFrame()
         side.setObjectName("puzzleTrainSide")
@@ -1033,6 +1060,9 @@ class _TrainView(QWidget):
         self._notice.setVisible(False)
         self._solve_actions.setVisible(True)
         self._btn_next.setVisible(False)
+        self._vote_row.setVisible(False)
+        self._vote_choice = 0
+        self._sync_vote_icons()
         self.set_solving(True)
 
     def show_correct(self):
@@ -1045,6 +1075,7 @@ class _TrainView(QWidget):
         self._result_detail.setVisible(False)
         self._solve_actions.setVisible(True)
         self._btn_next.setVisible(False)
+        self._vote_row.setVisible(False)
 
     def show_wrong(self):
         self._set_status(
@@ -1056,6 +1087,7 @@ class _TrainView(QWidget):
         self._result_detail.setVisible(False)
         self._solve_actions.setVisible(True)
         self._btn_next.setVisible(False)
+        self._vote_row.setVisible(False)
 
     def set_prompt(self, text):
         self._turn_text = text or ""
@@ -1068,6 +1100,7 @@ class _TrainView(QWidget):
         self._solve_actions.setVisible(False)
         self._result_detail.setVisible(False)
         self._btn_next.setVisible(False)
+        self._vote_row.setVisible(False)
         self.set_result_meta("")
 
     def set_puzzle_info(self, rating):
@@ -1121,6 +1154,7 @@ class _TrainView(QWidget):
         self._result_detail.setVisible(state == "challenge" and bool(detail))
         self._solve_actions.setVisible(False)
         self._btn_next.setVisible(True)
+        self._vote_row.setVisible(state == "solved" and self._vote_enabled)
         self.set_solving(False)
 
     def set_result_meta(self, text):
@@ -1151,12 +1185,39 @@ class _TrainView(QWidget):
         self._notice.setVisible(False)
         self._solve_actions.setVisible(True)
         self._btn_next.setVisible(False)
+        self._vote_row.setVisible(False)
+        self._vote_choice = 0
+        self._sync_vote_icons()
         self.set_solving(True)
         if self._turn_color is not None:
             self.set_turn(self._turn_color)
 
     def set_next_enabled(self, enabled):
         self._btn_next.setEnabled(enabled)
+
+    def set_vote_enabled(self, enabled):
+        self._vote_enabled = bool(enabled)
+        if not self._vote_enabled:
+            self._vote_row.setVisible(False)
+
+    def _on_vote(self, value):
+        if not self._vote_enabled or self._vote_choice == value:
+            self._sync_vote_icons()
+            return
+        self._vote_choice = value
+        self._sync_vote_icons()
+        self.vote_requested.emit(value)
+
+    def _sync_vote_icons(self):
+        for button, value, name in (
+            (self._btn_vote_up, 1, "thumb_up"),
+            (self._btn_vote_down, -1, "thumb_down"),
+        ):
+            selected = self._vote_choice == value
+            button.setChecked(selected)
+            color = accent_color(self._theme) if selected else None
+            button.setIcon(action_icon(self._theme, name, color=color))
+            button.setIconSize(QSize(18, 18))
 
     def apply_icons(self, theme):
         self._theme = theme
@@ -1181,6 +1242,7 @@ class _TrainView(QWidget):
             pixmap = self._status_pixmap(kind)
             self._status_icon.setPixmap(pixmap)
             self._status_icon.setVisible(not pixmap.isNull())
+        self._sync_vote_icons()
 
     def retranslate(self, language):
         self._language = language
@@ -1189,6 +1251,13 @@ class _TrainView(QWidget):
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_next.setText(t("puzzle_train_continue", language))
         self._moves_empty.setText(t("puzzle_train_no_moves", language))
+        for button, key in (
+            (self._btn_vote_up, "puzzle_vote_up"),
+            (self._btn_vote_down, "puzzle_vote_down"),
+        ):
+            label = t(key, language)
+            button.setToolTip(label)
+            button.setAccessibleName(label)
         self._btn_analyze.setAccessibleName(t("puzzle_train_analyze", language))
         self.set_rating(self._rating)
         self.set_puzzle_info(self._puzzle_rating)
@@ -1907,6 +1976,7 @@ class PuzzlePage(QWidget):
         self._stats_requested_days = None
         self._stats_refresh_pending = False
         self._attempt_worker = None
+        self._vote_worker = None
         self._pending_attempts = load_outbox()
         self._attempts_paused = False
         self._attempt_retry_timer = QTimer(self)
@@ -1978,6 +2048,7 @@ class PuzzlePage(QWidget):
         self._train.hint_requested.connect(self._show_hint)
         self._train.reveal_requested.connect(self._reveal_solution)
         self._train.next_requested.connect(self._next)
+        self._train.vote_requested.connect(self._send_vote)
         self._library.back_requested.connect(self.show_hub)
         self._library.import_requested.connect(self._choose_file)
         self._library.delete_requested.connect(self._delete_collection)
@@ -2607,6 +2678,8 @@ class PuzzlePage(QWidget):
             self._hub_stats_worker = None
         elif kind == "attempt" and self._attempt_worker is worker:
             self._attempt_worker = None
+        elif kind == "vote" and self._vote_worker is worker:
+            self._vote_worker = None
         elif kind == "me" and self._account_id_worker is worker:
             self._account_id_worker = None
         worker.deleteLater()
@@ -2742,6 +2815,9 @@ class PuzzlePage(QWidget):
         board.set_start_fen(fen)
         board.set_interactive(True, session.human_color)
         self._train.set_puzzle_info(puzzle.get("rating"))
+        self._train.set_vote_enabled(
+            bool(self._online and self._token and str(puzzle.get("id") or "").strip())
+        )
         self._sync_board(animate=False)
         self._train.hide_result()
         self._train.set_notice("")
@@ -2870,6 +2946,30 @@ class PuzzlePage(QWidget):
         )
         if self._online:
             self._queue_online_attempt(result)
+
+    def _send_vote(self, value):
+        if not self._online or not self._token or not self._server_url or self._puzzle is None:
+            return
+        puzzle_id = str(self._puzzle.get("id") or "").strip()
+        if not puzzle_id:
+            return
+        if self._vote_worker is not None and self._vote_worker.isRunning():
+            return
+        worker = PuzzleOnlineWorker(
+            "vote",
+            self._server_url,
+            self._token,
+            self._language,
+            {"puzzle_id": puzzle_id, "vote": value},
+            self,
+        )
+        self._vote_worker = worker
+        worker.failed.connect(self._on_vote_failed)
+        worker.finished.connect(lambda w=worker: self._clear_worker("vote", w))
+        worker.start()
+
+    def _on_vote_failed(self, _action, _message, _code):
+        self._train.set_notice(t("puzzle_vote_failed", self._language))
 
     def _queue_online_attempt(self, result):
         # A dead session must not throw away the attempt: the outbox is scoped
@@ -3397,6 +3497,7 @@ class PuzzlePage(QWidget):
             "_stats_worker",
             "_hub_stats_worker",
             "_attempt_worker",
+            "_vote_worker",
             "_account_id_worker",
         ):
             worker = getattr(self, name)

@@ -1161,6 +1161,18 @@ QTableWidget#moveTable::item {
 #puzzleIconButton:disabled {
     background: transparent;
 }
+#puzzleVoteButton {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 5px;
+}
+#puzzleVoteButton:hover {
+    background-color: $hover;
+}
+#puzzleVoteButton:checked {
+    background-color: $history_selected_bg;
+}
 #puzzleLinkButton {
     background: transparent;
     border: none;
