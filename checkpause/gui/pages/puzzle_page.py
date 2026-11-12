@@ -6,7 +6,7 @@ from xml.sax.saxutils import escape
 
 import chess
 from PySide6.QtCore import QByteArray, QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtGui import QColor, QPainter, QPixmap
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
     QComboBox,
     QFileDialog,
     QFrame,
+    QGraphicsDropShadowEffect,
     QGridLayout,
     QHBoxLayout,
     QLabel,
@@ -325,11 +326,13 @@ class _ThemeRadar(QWidget):
             )
         )
 
-    def _text(self, x, y, value, color, size, anchor):
+    def _text(self, x, y, value, color, size, anchor, weight=None):
         family = escape(self.font().family())
+        weight_attr = f' font-weight="{weight}"' if weight else ""
         return (
             f'<text x="{x:.1f}" y="{y:.1f}" fill="{color}" font-size="{size}"'
-            f' font-family="{family}" text-anchor="{anchor}">{escape(value)}</text>'
+            f' font-family="{family}" text-anchor="{anchor}"{weight_attr}>'
+            f"{escape(value)}</text>"
         )
 
     def _build_svg(self):
@@ -351,16 +354,33 @@ class _ThemeRadar(QWidget):
             f' viewBox="0 0 {width} {height}">',
             "<defs>",
             '<linearGradient id="area" x1="0" y1="0" x2="0" y2="1">',
-            f'<stop offset="0" stop-color="{accent}" stop-opacity="0.28"/>',
-            f'<stop offset="1" stop-color="{accent}" stop-opacity="0.05"/>',
+            f'<stop offset="0" stop-color="{accent}" stop-opacity="0.42"/>',
+            f'<stop offset="1" stop-color="{accent}" stop-opacity="0.10"/>',
             "</linearGradient>",
+            '<radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">',
+            f'<stop offset="0" stop-color="{accent}" stop-opacity="0.06"/>',
+            f'<stop offset="0.7" stop-color="{accent}" stop-opacity="0.02"/>',
+            f'<stop offset="1" stop-color="{accent}" stop-opacity="0"/>',
+            "</radialGradient>",
             "</defs>",
-            f'<g fill="none" stroke="{border}" stroke-opacity="{border_alpha:.2f}"'
-            ' stroke-width="1" stroke-linejoin="round">',
+            f'<circle cx="{center[0]:.1f}" cy="{center[1]:.1f}" r="{radius:.1f}"'
+            ' fill="url(#glow)"/>',
         ]
+        for ring in range(_RADAR_RINGS, 0, -1):
+            points = self._points(center, radius, count, [ring / _RADAR_RINGS] * count)
+            parts.append(f'<polygon points="{points}" fill="{accent}" fill-opacity="0.012"/>')
         for ring in range(1, _RADAR_RINGS + 1):
             points = self._points(center, radius, count, [ring / _RADAR_RINGS] * count)
-            parts.append(f'<polygon points="{points}"/>')
+            ring_alpha = border_alpha * (2.0 if ring == _RADAR_RINGS else 1.5)
+            width = 1.4 if ring == _RADAR_RINGS else 1.0
+            parts.append(
+                f'<polygon points="{points}" fill="none" stroke="{border}"'
+                f' stroke-opacity="{min(1.0, ring_alpha):.2f}" stroke-width="{width}"/>'
+            )
+        parts.append(
+            f'<g stroke="{border}" stroke-opacity="{min(1.0, border_alpha * 1.2):.2f}"'
+            ' stroke-width="1">'
+        )
         for index in range(count):
             x, y = self._vertex(center, radius, index, count)
             parts.append(
@@ -370,8 +390,8 @@ class _ThemeRadar(QWidget):
         if placeholder:
             points = self._points(center, radius, count, [_RADAR_PLACEHOLDER] * count)
             parts.append(
-                f'<polygon points="{points}" fill="none" stroke="{muted}"'
-                ' stroke-width="1.6" stroke-linejoin="round"/>'
+                f'<polygon points="{points}" fill="{accent}" fill-opacity="0.02"'
+                f' stroke="{muted}" stroke-width="1.6" stroke-linejoin="round"/>'
             )
             parts.append(
                 self._text(
@@ -388,18 +408,29 @@ class _ThemeRadar(QWidget):
                 rating = entry.get("rating")
                 if rating is not None:
                     fractions[index] = min(1.0, max(0.0, (float(rating) - lower) / span))
+            points = self._points(center, radius, count, fractions)
             parts.append(
-                f'<polygon points="{self._points(center, radius, count, fractions)}"'
-                f' fill="url(#area)" stroke="{accent}" stroke-width="2" stroke-linejoin="round"/>'
+                f'<g transform="translate(0, 4)">'
+                f'<polygon points="{points}" fill="{accent}" fill-opacity="0.10"/></g>'
+            )
+            parts.append(
+                f'<polygon points="{points}" fill="none" stroke="{accent}"'
+                ' stroke-opacity="0.14" stroke-width="9" stroke-linejoin="round"/>'
+            )
+            parts.append(
+                f'<polygon points="{points}" fill="url(#area)" stroke="{accent}"'
+                ' stroke-width="2.4" stroke-linejoin="round"/>'
             )
             for index, fraction in enumerate(fractions):
                 if fraction <= 0:
                     continue
                 x, y = self._vertex(center, radius, index, count, fraction)
                 parts.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="3.4" fill="{accent}"'
+                    f'<circle cx="{x:.1f}" cy="{y + 1.4:.1f}" r="4.6"'
+                    f' fill="{accent}" fill-opacity="0.16"/>'
+                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="4" fill="{accent}"'
                     f' stroke="{surface}" stroke-opacity="{surface_alpha:.2f}"'
-                    ' stroke-width="1.4"/>'
+                    ' stroke-width="1.6"/>'
                 )
             for ring in range(1, _RADAR_RINGS + 1):
                 x, y = self._vertex(center, radius, 0, count, ring / _RADAR_RINGS)
@@ -416,7 +447,7 @@ class _ThemeRadar(QWidget):
             else:
                 anchor = "middle"
             color = text if fractions[index] > 0 else muted
-            parts.append(self._text(x, y + 4.5, label, color, 13, anchor))
+            parts.append(self._text(x, y + 4.5, label, color, 13, anchor, 500))
         parts.append("</svg>")
         return "".join(parts)
 
@@ -1918,6 +1949,11 @@ class _ProfileView(QWidget):
         self._themes_hint.setWordWrap(True)
         themes_layout.addWidget(self._themes_hint)
         layout.addWidget(self._themes_box)
+        self._themes_shadow = QGraphicsDropShadowEffect(self._themes_box)
+        self._themes_shadow.setBlurRadius(34)
+        self._themes_shadow.setOffset(0, 10)
+        self._themes_shadow.setColor(QColor(16, 20, 26, 36))
+        self._themes_box.setGraphicsEffect(self._themes_shadow)
 
         self._empty = QLabel()
         self._empty.setObjectName("puzzleEmptyLabel")
@@ -2052,6 +2088,8 @@ class _ProfileView(QWidget):
         self._btn_back.setIcon(action_icon(theme, "nav_prev"))
         self._btn_back.setIconSize(QSize(18, 18))
         self._radar.set_theme(theme)
+        tint = QColor(16, 20, 26, 36) if theme == LIGHT else QColor(0, 0, 0, 110)
+        self._themes_shadow.setColor(tint)
 
 
 class PuzzlePage(QWidget):
