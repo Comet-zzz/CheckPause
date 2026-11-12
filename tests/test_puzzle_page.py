@@ -2,7 +2,6 @@ import json
 import os
 import tempfile
 import unittest
-from datetime import datetime
 from unittest import mock
 
 import chess
@@ -10,18 +9,12 @@ import chess
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
-    from PySide6.QtCore import QEvent, QObject
     from PySide6.QtTest import QTest
-    from PySide6.QtWidgets import QApplication, QLabel
+    from PySide6.QtWidgets import QApplication
 
     from checkpause.data import puzzles
     from checkpause.gui.pages import puzzle_page as puzzle_page_module
-    from checkpause.gui.pages.puzzle_page import (
-        PuzzlePage,
-        _format_local_time,
-        _join_theme_names,
-        _solution_text,
-    )
+    from checkpause.gui.pages.puzzle_page import PuzzlePage, _solution_text
 
     _APP = QApplication.instance() or QApplication([])
 except Exception:
@@ -223,14 +216,6 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertNotIn("e4", text)
         self.assertIn("2.Nf3", text)
 
-    def test_local_time_uses_the_machine_timezone(self):
-        stamp = "2026-01-02T03:04:05+00:00"
-        expected = datetime.fromisoformat(stamp).astimezone().strftime("%m-%d %H:%M")
-        self.assertEqual(_format_local_time(stamp), expected)
-
-    def test_english_theme_names_use_english_separators(self):
-        self.assertEqual(_join_theme_names(["mate", "fork"], "en-US"), "Mate, Fork")
-
     def test_local_mistakes_are_derived_from_attempts(self):
         puzzles.record_attempt(_puzzle(), "failed", base_dir=self.base)
         self.page._start_local_mistakes()
@@ -332,42 +317,6 @@ class PuzzlePageTests(unittest.TestCase):
     def test_records_card_opens_the_profile(self):
         self.page._hub._records_card.button.click()
         self.assertIs(self.page._stack.currentWidget(), self.page._profile)
-
-    def test_recent_refresh_does_not_show_unparented_labels(self):
-        shown = []
-
-        class _Filter(QObject):
-            def eventFilter(self, obj, event):  # noqa: N802
-                if (
-                    event.type() == QEvent.Type.Show
-                    and isinstance(obj, QLabel)
-                    and obj.objectName() == "puzzleRecentMeta"
-                    and obj.isWindow()
-                ):
-                    shown.append(obj)
-                return False
-
-        filter_ = _Filter()
-        QApplication.instance().installEventFilter(filter_)
-        self.addCleanup(QApplication.instance().removeEventFilter, filter_)
-        self.page._profile.refresh(
-            {
-                "attempts": 1,
-                "accuracy": 100,
-                "recent": [
-                    {
-                        "result": "solved",
-                        "themes": ["pin"],
-                        "duration_ms": 12000,
-                        "created_at": "2026-11-11T10:00:00",
-                    }
-                ],
-                "themes": [],
-            },
-            "zh-CN",
-        )
-        QApplication.processEvents()
-        self.assertEqual(shown, [])
 
     def test_profile_range_uses_segmented_buttons(self):
         self.assertFalse(hasattr(self.page._profile, "_range"))

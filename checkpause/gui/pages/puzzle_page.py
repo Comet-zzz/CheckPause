@@ -103,21 +103,6 @@ def _solution_text(fen, moves, opponent_first=False):
     return " ".join(parts)
 
 
-def _format_local_time(value):
-    try:
-        parsed = datetime.fromisoformat(str(value))
-    except (TypeError, ValueError):
-        return ""
-    if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=UTC)
-    return parsed.astimezone().strftime("%m-%d %H:%M")
-
-
-def _join_theme_names(names, language):
-    separator = "、" if language.startswith("zh") else ", "
-    return separator.join(_theme_name(name, language) for name in names)
-
-
 _THEME_NAMES = {
     "advancedPawn": ("进阶兵", "Advanced pawn"),
     "advantage": ("占据优势", "Advantage"),
@@ -200,17 +185,6 @@ def _theme_name(theme, language):
         text = "".join(" " + char.lower() if char.isupper() else char for char in text).strip()
         return text or "—"
     return pair[0] if language.startswith("zh") else pair[1]
-
-
-def _format_duration(duration_ms):
-    try:
-        seconds = max(0, round(int(duration_ms or 0) / 1000))
-    except (TypeError, ValueError):
-        seconds = 0
-    if seconds <= 0:
-        return "—"
-    minutes, seconds = divmod(seconds, 60)
-    return f"{minutes}:{seconds:02d}"
 
 
 class _StatCard(QFrame):
@@ -1683,15 +1657,6 @@ class _ProfileView(QWidget):
         self._empty_themes.setObjectName("puzzleEmptyLabel")
         layout.addWidget(self._empty_themes)
 
-        self._recent_label = QLabel()
-        self._recent_label.setObjectName("puzzleSectionLabel")
-        layout.addWidget(self._recent_label)
-        self._recent_box = QFrame()
-        self._recent_box.setObjectName("puzzleRecentBox")
-        self._recent_layout = QVBoxLayout(self._recent_box)
-        self._recent_layout.setContentsMargins(10, 8, 10, 8)
-        self._recent_layout.setSpacing(2)
-        layout.addWidget(self._recent_box)
         self._empty = QLabel()
         self._empty.setObjectName("puzzleEmptyLabel")
         self._empty.setWordWrap(True)
@@ -1776,13 +1741,10 @@ class _ProfileView(QWidget):
         self._btn_mistakes.setVisible(int(self._summary.get("retryable") or 0) > 0)
         themes = self._summary.get("themes") or []
         self._rebuild_themes(themes)
-        self._rebuild_recent(self._summary.get("recent") or [])
         has_data = bool(self._summary.get("attempts"))
         self._empty.setVisible(not has_data)
         self._themes_box.setVisible(bool(themes))
-        self._recent_box.setVisible(has_data and bool(self._summary.get("recent")))
         self._themes_label.setVisible(bool(themes))
-        self._recent_label.setVisible(has_data and bool(self._summary.get("recent")))
         self._empty_themes.setVisible(has_data and not themes)
         self._update_scope()
 
@@ -1833,45 +1795,6 @@ class _ProfileView(QWidget):
             self._themes_layout.addWidget(accuracy, index, 2)
             self._themes_layout.addWidget(bar, index, 3)
 
-    def _rebuild_recent(self, recent):
-        self._clear_layout(self._recent_layout)
-        local_profile = self._summary.get("rating") is None
-        for entry in recent:
-            row = QFrame()
-            row.setObjectName("puzzleRecentRow")
-            row_layout = QHBoxLayout(row)
-            row_layout.setContentsMargins(10, 7, 10, 7)
-            row_layout.setSpacing(10)
-            solved = entry.get("result") == "solved"
-            badge = QLabel("✓" if solved else "✗")
-            badge.setObjectName("puzzleRecentBadge")
-            badge.setProperty("result", "solved" if solved else "failed")
-            badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            badge.setFixedWidth(22)
-            themes = entry.get("themes") or []
-            theme_text = _join_theme_names(themes[:2], self._language) or "—"
-            theme_label = QLabel(theme_text)
-            theme_label.setObjectName("puzzleRecentTheme")
-            rating = entry.get("rating")
-            rating_label = QLabel(
-                t("puzzle_profile_rating_short", self._language, rating=rating) if rating else "—"
-            )
-            rating_label.setObjectName("puzzleRecentMeta")
-            duration = QLabel(_format_duration(entry.get("duration_ms")))
-            duration.setObjectName("puzzleRecentMeta")
-            date_label = QLabel(_format_local_time(entry.get("created_at")) or "—")
-            date_label.setObjectName("puzzleRecentMeta")
-            practice_label = QLabel(t("puzzle_profile_practice", self._language))
-            practice_label.setObjectName("puzzleRecentMeta")
-            row_layout.addWidget(badge)
-            row_layout.addWidget(theme_label, 1)
-            row_layout.addWidget(practice_label)
-            practice_label.setVisible(local_profile or entry.get("rated") is False)
-            row_layout.addWidget(rating_label)
-            row_layout.addWidget(duration)
-            row_layout.addWidget(date_label)
-            self._recent_layout.addWidget(row)
-
     def retranslate(self, language):
         self._language = language
         self._btn_back.setText(t("puzzle_train_back", language))
@@ -1887,7 +1810,6 @@ class _ProfileView(QWidget):
             button.setText(t(key, language))
         self._rating_caption.setText(t("puzzle_profile_rating", language))
         self._themes_label.setText(t("puzzle_profile_themes", language))
-        self._recent_label.setText(t("puzzle_profile_recent", language))
         self._empty.setText(t("puzzle_profile_empty", language))
         self._empty_themes.setText(t("puzzle_profile_no_themes", language))
         for card in (self._attempted, self._active_days, self._best_streak, self._retryable):

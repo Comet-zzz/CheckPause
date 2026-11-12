@@ -1468,35 +1468,6 @@ QWidget#puzzleMoveList QTableWidget {
     color: $text_muted;
     font-size: 12px;
 }
-#puzzleRecentBox {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 12px;
-}
-#puzzleRecentRow {
-    border-radius: 8px;
-}
-#puzzleRecentRow:hover {
-    background-color: $surface_alt;
-}
-#puzzleRecentBadge {
-    color: $text_muted;
-    font-size: 13px;
-    font-weight: 700;
-}
-#puzzleRecentBadge[result="solved"] {
-    color: $accent;
-}
-#puzzleRecentBadge[result="failed"] {
-    color: $danger;
-}
-#puzzleRecentTheme {
-    font-size: 13px;
-}
-#puzzleRecentMeta {
-    color: $text_muted;
-    font-size: 12px;
-}
 """
 )
 
