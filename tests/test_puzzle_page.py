@@ -322,11 +322,22 @@ class PuzzlePageTests(unittest.TestCase):
         ]
         self.page._profile.refresh({"rating": 1500, "attempts": 3, "theme_axes": axes}, "zh-CN")
         self.assertFalse(self.page._profile._themes_box.isHidden())
+        self.assertFalse(self.page._profile._radar.is_placeholder())
         self.assertFalse(self.page._profile._radar.grab().isNull())
 
         self.page._profile.refresh({"attempts": 3, "theme_axes": axes}, "zh-CN")
         self.assertTrue(self.page._profile._themes_box.isHidden())
-        self.assertTrue(self.page._profile._empty_themes.isHidden())
+
+    def test_profile_radar_keeps_a_placeholder_for_short_samples(self):
+        axes = [
+            {"theme": axis, "attempts": 2, "solved": 1, "accuracy": 50, "rating": None}
+            for axis in puzzle_page_module._PROFILE_AXIS_KEYS
+        ]
+        self.page._profile.refresh({"rating": 1500, "attempts": 2, "theme_axes": axes}, "zh-CN")
+        self.assertFalse(self.page._profile._themes_box.isHidden())
+        self.assertTrue(self.page._profile._radar.is_placeholder())
+        self.assertFalse(self.page._profile._radar.grab().isNull())
+        self.assertIn("同一主题", self.page._profile._themes_hint.text())
 
     def test_profile_axis_labels_are_localised(self):
         self.assertEqual(_profile_axis_label("rookEndgame", "zh-CN"), "车残局")
