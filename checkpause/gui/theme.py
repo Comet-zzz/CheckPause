@@ -1456,15 +1456,12 @@ QWidget#puzzleMoveList QTableWidget {
     color: $text_muted;
     font-size: 12px;
 }
-#puzzleThemeHeader {
-    color: $text_muted;
-    font-size: 11px;
-    font-weight: 600;
+#puzzleThemesBox {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
 }
-#puzzleThemeName {
-    font-size: 13px;
-}
-#puzzleThemeMeta {
+#puzzleThemesHint {
     color: $text_muted;
     font-size: 12px;
 }

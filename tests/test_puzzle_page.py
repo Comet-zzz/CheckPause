@@ -14,7 +14,11 @@ try:
 
     from checkpause.data import puzzles
     from checkpause.gui.pages import puzzle_page as puzzle_page_module
-    from checkpause.gui.pages.puzzle_page import PuzzlePage, _solution_text
+    from checkpause.gui.pages.puzzle_page import (
+        PuzzlePage,
+        _profile_axis_label,
+        _solution_text,
+    )
 
     _APP = QApplication.instance() or QApplication([])
 except Exception:
@@ -309,6 +313,24 @@ class PuzzlePageTests(unittest.TestCase):
             "zh-CN",
         )
         self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
+
+    def test_profile_theme_radar_only_shows_for_rated_profiles(self):
+        axes = [
+            {"theme": "mate", "attempts": 6, "solved": 3, "accuracy": 50, "rating": 1520},
+            {"theme": "fork", "attempts": 5, "solved": 3, "accuracy": 60, "rating": 1480},
+            {"theme": "rookEndgame", "attempts": 1, "solved": 1, "accuracy": 100, "rating": None},
+        ]
+        self.page._profile.refresh({"rating": 1500, "attempts": 3, "theme_axes": axes}, "zh-CN")
+        self.assertFalse(self.page._profile._themes_box.isHidden())
+        self.assertFalse(self.page._profile._radar.grab().isNull())
+
+        self.page._profile.refresh({"attempts": 3, "theme_axes": axes}, "zh-CN")
+        self.assertTrue(self.page._profile._themes_box.isHidden())
+        self.assertTrue(self.page._profile._empty_themes.isHidden())
+
+    def test_profile_axis_labels_are_localised(self):
+        self.assertEqual(_profile_axis_label("rookEndgame", "zh-CN"), "车残局")
+        self.assertEqual(_profile_axis_label("defensiveMove", "en-US"), "Defensive move")
 
     def test_records_card_merges_stats_and_mistake_practice(self):
         self.assertEqual(self.page._hub._records_card.title.text(), "记录")

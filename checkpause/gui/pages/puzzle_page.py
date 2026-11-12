@@ -1,10 +1,11 @@
+import math
 import time
 import uuid
 from datetime import UTC, datetime
 
 import chess
-from PySide6.QtCore import QSize, Qt, QTimer, Signal
-from PySide6.QtGui import QPainter, QPixmap
+from PySide6.QtCore import QPointF, QRectF, QSize, Qt, QTimer, Signal
+from PySide6.QtGui import QColor, QPainter, QPen, QPixmap, QPolygonF
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -207,6 +208,200 @@ class _StatCard(QFrame):
 
     def retranslate(self, language):
         self.caption.setText(t(self._caption_key, language))
+
+
+_PROFILE_AXIS_KEYS = {
+    "mate": "puzzle_axis_mate",
+    "fork": "puzzle_axis_fork",
+    "deflection": "puzzle_axis_deflection",
+    "discoveredAttack": "puzzle_axis_discovered_attack",
+    "sacrifice": "puzzle_axis_sacrifice",
+    "middlegame": "puzzle_axis_middlegame",
+    "endgame": "puzzle_axis_endgame",
+    "rookEndgame": "puzzle_axis_rook_endgame",
+    "kingsideAttack": "puzzle_axis_kingside_attack",
+    "defensiveMove": "puzzle_axis_defensive_move",
+}
+
+_RADAR_RINGS = 6
+_RADAR_STEP = 200
+
+
+def _profile_axis_label(axis, language):
+    key = _PROFILE_AXIS_KEYS.get(str(axis))
+    if key is None:
+        return _theme_name(axis, language)
+    return t(key, language)
+
+
+class _ThemeRadar(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._theme = LIGHT
+        self._language = "zh-CN"
+        self._entries = []
+        self._labels = []
+        self._rating = None
+        self.setObjectName("puzzleThemeRadar")
+        self.setMinimumWidth(400)
+        self.setFixedHeight(430)
+        self.setMaximumWidth(680)
+        self.setMouseTracking(True)
+
+    def set_theme(self, theme):
+        self._theme = theme
+        self.update()
+
+    def set_entries(self, entries, labels, rating, language):
+        self._entries = list(entries)
+        self._labels = list(labels)
+        self._rating = rating
+        self._language = language
+        self.update()
+
+    def _base_rating(self):
+        ratings = [entry["rating"] for entry in self._entries if entry.get("rating") is not None]
+        if self._rating is not None:
+            return float(self._rating)
+        if ratings:
+            return sum(ratings) / len(ratings)
+        return 1200.0
+
+    def lower_rating(self):
+        return max(400, int(self._base_rating()) // _RADAR_STEP * _RADAR_STEP - 3 * _RADAR_STEP)
+
+    def _geometry(self):
+        center = QPointF(self.width() / 2, self.height() / 2)
+        radius = max(40.0, min(self.width(), self.height()) / 2 - 48)
+        return center, radius
+
+    @staticmethod
+    def _vertex(center, radius, index, count, fraction=1.0):
+        angle = -math.pi / 2 + 2 * math.pi * index / count
+        return QPointF(
+            center.x() + math.cos(angle) * radius * fraction,
+            center.y() + math.sin(angle) * radius * fraction,
+        )
+
+    def paintEvent(self, _event):
+        count = len(self._entries)
+        if count < 3 or self.width() < 80 or self.height() < 80:
+            return
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+        center, radius = self._geometry()
+        accent = QColor(token_color(self._theme, "accent"))
+        border = QColor(token_color(self._theme, "border"))
+        muted = QColor(token_color(self._theme, "text_muted"))
+        text = QColor(token_color(self._theme, "text"))
+        grid_pen = QPen(border, 1.0)
+        painter.setPen(grid_pen)
+        for ring in range(1, _RADAR_RINGS + 1):
+            painter.drawPolygon(
+                QPolygonF(
+                    [
+                        self._vertex(center, radius, index, count, ring / _RADAR_RINGS)
+                        for index in range(count)
+                    ]
+                )
+            )
+        for index in range(count):
+            painter.drawLine(center, self._vertex(center, radius, index, count))
+
+        lower = self.lower_rating()
+        span = _RADAR_RINGS * _RADAR_STEP
+        fractions = []
+        for entry in self._entries:
+            rating = entry.get("rating")
+            if rating is None:
+                fractions.append(0.0)
+            else:
+                fractions.append(min(1.0, max(0.0, (float(rating) - lower) / span)))
+        polygon = QPolygonF(
+            [self._vertex(center, radius, index, count, fractions[index]) for index in range(count)]
+        )
+        fill = QColor(accent)
+        fill.setAlpha(38)
+        painter.setBrush(fill)
+        painter.setPen(QPen(accent, 2.0))
+        painter.drawPolygon(polygon)
+        painter.setBrush(accent)
+        painter.setPen(Qt.PenStyle.NoPen)
+        for index, fraction in enumerate(fractions):
+            if fraction > 0:
+                painter.drawEllipse(
+                    self._vertex(center, radius, index, count, fraction),
+                    3.2,
+                    3.2,
+                )
+
+        tick_font = painter.font()
+        tick_font.setPointSizeF(7.5)
+        painter.setFont(tick_font)
+        painter.setPen(muted)
+        for ring in range(1, _RADAR_RINGS + 1):
+            point = self._vertex(center, radius, 0, count, ring / _RADAR_RINGS)
+            painter.drawText(
+                QPointF(point.x() + 5, point.y() + 3),
+                str(lower + ring * _RADAR_STEP),
+            )
+
+        label_font = painter.font()
+        label_font.setPointSizeF(9.5)
+        painter.setFont(label_font)
+        for index, label in enumerate(self._labels):
+            point = self._vertex(center, radius + 20, index, count)
+            painter.setPen(text if fractions[index] > 0 else muted)
+            rect = QRectF(point.x() - 90, point.y() - 13, 180, 26)
+            if point.x() > center.x() + 6:
+                flags = Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+                rect.moveLeft(point.x() + 2)
+            elif point.x() < center.x() - 6:
+                flags = Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                rect.moveRight(point.x() - 2)
+            else:
+                flags = Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter
+            painter.drawText(rect, int(flags), label)
+        painter.end()
+
+    def mouseMoveEvent(self, event):
+        count = len(self._entries)
+        if count < 3:
+            return
+        center, _radius = self._geometry()
+        delta_x = event.position().x() - center.x()
+        delta_y = event.position().y() - center.y()
+        if abs(delta_x) < 1 and abs(delta_y) < 1:
+            return
+        turn = 2 * math.pi / count
+        angle = (math.atan2(delta_y, delta_x) + math.pi / 2) % (2 * math.pi)
+        index = int(round(angle / turn)) % count
+        entry = self._entries[index]
+        label = self._labels[index]
+        if entry.get("rating") is None:
+            self.setToolTip(
+                t(
+                    "puzzle_profile_theme_tip_low",
+                    self._language,
+                    axis=label,
+                    attempts=entry.get("attempts", 0),
+                )
+            )
+        else:
+            self.setToolTip(
+                t(
+                    "puzzle_profile_theme_tip",
+                    self._language,
+                    axis=label,
+                    rating=entry.get("rating"),
+                    attempts=entry.get("attempts", 0),
+                    accuracy=entry.get("accuracy", 0),
+                )
+            )
+
+    def leaveEvent(self, event):
+        self.setToolTip("")
+        super().leaveEvent(event)
 
 
 class _CollectionCard(QPushButton):
@@ -1645,13 +1840,16 @@ class _ProfileView(QWidget):
         self._themes_label.setObjectName("puzzleSectionLabel")
         layout.addWidget(self._themes_label)
         self._themes_box = QFrame()
-        self._themes_box.setObjectName("puzzleThemeBox")
-        self._themes_layout = QGridLayout(self._themes_box)
-        self._themes_layout.setContentsMargins(16, 12, 16, 12)
-        self._themes_layout.setHorizontalSpacing(14)
-        self._themes_layout.setVerticalSpacing(9)
-        self._themes_layout.setColumnStretch(0, 1)
-        self._themes_layout.setColumnStretch(3, 1)
+        self._themes_box.setObjectName("puzzleThemesBox")
+        themes_layout = QVBoxLayout(self._themes_box)
+        themes_layout.setContentsMargins(16, 14, 16, 10)
+        themes_layout.setSpacing(8)
+        self._radar = _ThemeRadar()
+        themes_layout.addWidget(self._radar, 0, Qt.AlignmentFlag.AlignHCenter)
+        self._themes_hint = QLabel()
+        self._themes_hint.setObjectName("puzzleThemesHint")
+        self._themes_hint.setWordWrap(True)
+        themes_layout.addWidget(self._themes_hint)
         layout.addWidget(self._themes_box)
         self._empty_themes = QLabel()
         self._empty_themes.setObjectName("puzzleEmptyLabel")
@@ -1739,61 +1937,21 @@ class _ProfileView(QWidget):
         self._retryable.set_value(self._summary.get("retryable", 0))
 
         self._btn_mistakes.setVisible(int(self._summary.get("retryable") or 0) > 0)
-        themes = self._summary.get("themes") or []
-        self._rebuild_themes(themes)
         has_data = bool(self._summary.get("attempts"))
         self._empty.setVisible(not has_data)
-        self._themes_box.setVisible(bool(themes))
-        self._themes_label.setVisible(bool(themes))
-        self._empty_themes.setVisible(has_data and not themes)
+        self._refresh_themes(rating)
+
+    def _refresh_themes(self, rating):
+        axes = self._summary.get("theme_axes") or []
+        has_axes = any(int(entry.get("attempts") or 0) > 0 for entry in axes)
+        visible = rating is not None and has_axes
+        if axes:
+            labels = [_profile_axis_label(entry.get("theme"), self._language) for entry in axes]
+            self._radar.set_entries(axes, labels, rating, self._language)
+        self._themes_box.setVisible(visible)
+        self._themes_label.setVisible(visible)
+        self._empty_themes.setVisible(rating is not None and not has_axes)
         self._update_scope()
-
-    def _clear_layout(self, layout):
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget is not None:
-                widget.deleteLater()
-
-    def _rebuild_themes(self, themes):
-        self._clear_layout(self._themes_layout)
-        if not themes:
-            return
-        headers = (
-            ("puzzle_profile_theme_name", 0),
-            ("puzzle_profile_theme_attempts", 1),
-            ("puzzle_profile_theme_accuracy", 2),
-        )
-        for key, column in headers:
-            label = QLabel(t(key, self._language))
-            label.setObjectName("puzzleThemeHeader")
-            self._themes_layout.addWidget(label, 0, column)
-        rows = sorted(
-            themes,
-            key=lambda row: (
-                0 if row.get("attempts", 0) >= 2 else 1,
-                row.get("accuracy", 0),
-                -row.get("attempts", 0),
-            ),
-        )
-        for index, row in enumerate(rows, start=1):
-            name = QLabel(_theme_name(row.get("theme"), self._language))
-            name.setObjectName("puzzleThemeName")
-            count = QLabel(str(row.get("attempts", 0)))
-            count.setObjectName("puzzleThemeMeta")
-            accuracy = QLabel(f"{row.get('accuracy', 0)}%")
-            accuracy.setObjectName("puzzleThemeMeta")
-            bar = QProgressBar()
-            bar.setObjectName("puzzleThemeBar")
-            bar.setRange(0, 100)
-            bar.setValue(int(row.get("accuracy", 0)))
-            bar.setTextVisible(False)
-            bar.setFixedHeight(6)
-            bar.setMinimumWidth(120)
-            self._themes_layout.addWidget(name, index, 0)
-            self._themes_layout.addWidget(count, index, 1)
-            self._themes_layout.addWidget(accuracy, index, 2)
-            self._themes_layout.addWidget(bar, index, 3)
 
     def retranslate(self, language):
         self._language = language
@@ -1810,6 +1968,7 @@ class _ProfileView(QWidget):
             button.setText(t(key, language))
         self._rating_caption.setText(t("puzzle_profile_rating", language))
         self._themes_label.setText(t("puzzle_profile_themes", language))
+        self._themes_hint.setText(t("puzzle_profile_theme_hint", language))
         self._empty.setText(t("puzzle_profile_empty", language))
         self._empty_themes.setText(t("puzzle_profile_no_themes", language))
         for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
@@ -1821,6 +1980,7 @@ class _ProfileView(QWidget):
     def apply_icons(self, theme):
         self._btn_back.setIcon(action_icon(theme, "nav_prev"))
         self._btn_back.setIconSize(QSize(18, 18))
+        self._radar.set_theme(theme)
 
 
 class PuzzlePage(QWidget):
