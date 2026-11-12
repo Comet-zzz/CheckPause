@@ -270,7 +270,7 @@ class PuzzlePageTests(unittest.TestCase):
 
     def test_hub_offers_ladder_and_practice_when_online(self):
         self.page._hub.set_online(True, 1000)
-        self.assertEqual(self.page._hub._btn_train.text(), "天梯赛")
+        self.assertEqual(self.page._hub._btn_train.text(), "天梯模式")
         self.assertEqual(self.page._hub._btn_practice.text(), "练习模式")
         self.assertFalse(self.page._hub._btn_practice.isHidden())
 

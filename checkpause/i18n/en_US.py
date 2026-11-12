@@ -376,7 +376,7 @@ MESSAGES = {
     "puzzle_rating": "Difficulty {rating}",
     "puzzle_themes": "Themes: {themes}",
     "puzzle_home_train": "Start",
-    "puzzle_home_ladder": "Ladder",
+    "puzzle_home_ladder": "Ladder mode",
     "puzzle_home_practice": "Practice mode",
     "puzzle_home_tools": "Training tools",
     "puzzle_home_mistakes": "Retry mistakes",

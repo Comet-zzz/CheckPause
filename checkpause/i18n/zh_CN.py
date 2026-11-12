@@ -374,7 +374,7 @@ MESSAGES = {
     "puzzle_rating": "难度 {rating}",
     "puzzle_themes": "主题：{themes}",
     "puzzle_home_train": "开始答题",
-    "puzzle_home_ladder": "天梯赛",
+    "puzzle_home_ladder": "天梯模式",
     "puzzle_home_practice": "练习模式",
     "puzzle_home_tools": "训练工具",
     "puzzle_home_mistakes": "错题重练",

@@ -1389,8 +1389,8 @@ QWidget#puzzleMoveList QTableWidget {
     background-color: $history_selected_bg;
     border-radius: 7px;
     padding: 3px 8px;
-    font-size: 12px;
-    font-weight: 600;
+    font-size: 16px;
+    font-weight: 700;
 }
 #puzzleLadderDelta {
     font-size: 12px;
