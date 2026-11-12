@@ -1660,37 +1660,12 @@ class _ProfileView(QWidget):
         metrics = QHBoxLayout()
         metrics.setSpacing(10)
         self._attempted = _StatCard("puzzle_profile_attempts")
-        self._accuracy = _StatCard("puzzle_profile_accuracy")
-        self._avg_time = _StatCard("puzzle_profile_avg_time")
         self._active_days = _StatCard("puzzle_profile_active_days")
-        for card in (self._attempted, self._accuracy, self._avg_time, self._active_days):
+        self._best_streak = _StatCard("puzzle_profile_best_streak")
+        self._retryable = _StatCard("puzzle_profile_retryable")
+        for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
             metrics.addWidget(card, 1)
         layout.addLayout(metrics)
-
-        self._details = QFrame()
-        self._details.setObjectName("puzzleProfileDetails")
-        details_layout = QGridLayout(self._details)
-        details_layout.setContentsMargins(16, 12, 16, 12)
-        details_layout.setHorizontalSpacing(18)
-        details_layout.setVerticalSpacing(2)
-        self._detail_values = {}
-        for index, key in enumerate(
-            (
-                "puzzle_profile_best_streak",
-                "puzzle_profile_retryable",
-                "puzzle_profile_solved_avg",
-                "puzzle_profile_failed_avg",
-            )
-        ):
-            caption = QLabel()
-            caption.setObjectName("puzzleDetailCaption")
-            value = QLabel("—")
-            value.setObjectName("puzzleDetailValue")
-            details_layout.addWidget(caption, 0, index)
-            details_layout.addWidget(value, 1, index)
-            details_layout.setColumnStretch(index, 1)
-            self._detail_values[key] = (caption, value)
-        layout.addWidget(self._details)
 
         self._themes_label = QLabel()
         self._themes_label.setObjectName("puzzleSectionLabel")
@@ -1794,19 +1769,9 @@ class _ProfileView(QWidget):
             self._rating_sub.setText(" · ".join(parts))
 
         self._attempted.set_value(self._summary.get("attempts", 0))
-        self._accuracy.set_value(f"{self._summary.get('accuracy', 0)}%")
-        self._avg_time.set_value(_format_duration(self._summary.get("avg_duration_ms")))
         self._active_days.set_value(self._summary.get("active_days", 0))
-        for key, (caption, value) in self._detail_values.items():
-            caption.setText(t(key, language))
-            if key == "puzzle_profile_best_streak":
-                value.setText(str(self._summary.get("best_streak", 0)))
-            elif key == "puzzle_profile_retryable":
-                value.setText(str(self._summary.get("retryable", 0)))
-            elif key == "puzzle_profile_solved_avg":
-                value.setText(str(self._summary.get("solved_avg_rating") or "—"))
-            else:
-                value.setText(str(self._summary.get("failed_avg_rating") or "—"))
+        self._best_streak.set_value(self._summary.get("best_streak", 0))
+        self._retryable.set_value(self._summary.get("retryable", 0))
 
         self._btn_mistakes.setVisible(int(self._summary.get("retryable") or 0) > 0)
         themes = self._summary.get("themes") or []
@@ -1925,7 +1890,7 @@ class _ProfileView(QWidget):
         self._recent_label.setText(t("puzzle_profile_recent", language))
         self._empty.setText(t("puzzle_profile_empty", language))
         self._empty_themes.setText(t("puzzle_profile_no_themes", language))
-        for card in (self._attempted, self._accuracy, self._avg_time, self._active_days):
+        for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
             card.retranslate(language)
         self._update_scope()
         if self._summary:
