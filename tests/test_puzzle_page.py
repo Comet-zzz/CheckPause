@@ -14,11 +14,7 @@ try:
 
     from checkpause.data import puzzles
     from checkpause.gui.pages import puzzle_page as puzzle_page_module
-    from checkpause.gui.pages.puzzle_page import (
-        PuzzlePage,
-        _profile_axis_label,
-        _solution_text,
-    )
+    from checkpause.gui.pages.puzzle_page import PuzzlePage, _solution_text
 
     _APP = QApplication.instance() or QApplication([])
 except Exception:
@@ -315,33 +311,36 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
 
     def test_profile_theme_radar_only_shows_for_rated_profiles(self):
-        axes = [
-            {"theme": "mate", "attempts": 6, "solved": 3, "accuracy": 50, "rating": 1520},
-            {"theme": "fork", "attempts": 5, "solved": 3, "accuracy": 60, "rating": 1480},
-            {"theme": "rookEndgame", "attempts": 1, "solved": 1, "accuracy": 100, "rating": None},
+        entries = [
+            {"theme": "mate", "attempts": 6, "solved": 3, "accuracy": 50, "performance": 1520},
+            {"theme": "fork", "attempts": 5, "solved": 3, "accuracy": 60, "performance": 1480},
+            {
+                "theme": "rookEndgame",
+                "attempts": 2,
+                "solved": 1,
+                "accuracy": 50,
+                "performance": 1300,
+            },
         ]
-        self.page._profile.refresh({"rating": 1500, "attempts": 3, "theme_axes": axes}, "zh-CN")
+        self.page._profile.refresh({"rating": 1500, "attempts": 3, "theme_radar": entries}, "zh-CN")
         self.assertFalse(self.page._profile._themes_box.isHidden())
         self.assertFalse(self.page._profile._radar.is_placeholder())
+        self.assertEqual(self.page._profile._radar._labels, ["将杀", "捉双", "车残局"])
         self.assertFalse(self.page._profile._radar.grab().isNull())
 
-        self.page._profile.refresh({"attempts": 3, "theme_axes": axes}, "zh-CN")
+        self.page._profile.refresh({"attempts": 3, "theme_radar": entries}, "zh-CN")
         self.assertTrue(self.page._profile._themes_box.isHidden())
 
     def test_profile_radar_keeps_a_placeholder_for_short_samples(self):
-        axes = [
-            {"theme": axis, "attempts": 2, "solved": 1, "accuracy": 50, "rating": None}
-            for axis in puzzle_page_module._PROFILE_AXIS_KEYS
+        entries = [
+            {"theme": "mate", "attempts": 2, "solved": 1, "accuracy": 50, "performance": 1200},
+            {"theme": "fork", "attempts": 1, "solved": 0, "accuracy": 0, "performance": 900},
         ]
-        self.page._profile.refresh({"rating": 1500, "attempts": 2, "theme_axes": axes}, "zh-CN")
+        self.page._profile.refresh({"rating": 1500, "attempts": 3, "theme_radar": entries}, "zh-CN")
         self.assertFalse(self.page._profile._themes_box.isHidden())
         self.assertTrue(self.page._profile._radar.is_placeholder())
         self.assertFalse(self.page._profile._radar.grab().isNull())
-        self.assertIn("同一主题", self.page._profile._themes_hint.text())
-
-    def test_profile_axis_labels_are_localised(self):
-        self.assertEqual(_profile_axis_label("rookEndgame", "zh-CN"), "车残局")
-        self.assertEqual(_profile_axis_label("defensiveMove", "en-US"), "Defensive move")
+        self.assertIn("3 个", self.page._profile._themes_hint.text())
 
     def test_records_card_merges_stats_and_mistake_practice(self):
         self.assertEqual(self.page._hub._records_card.title.text(), "记录")

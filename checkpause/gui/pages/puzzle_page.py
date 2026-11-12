@@ -212,21 +212,8 @@ class _StatCard(QFrame):
         self.caption.setText(t(self._caption_key, language))
 
 
-_PROFILE_AXIS_KEYS = {
-    "mate": "puzzle_axis_mate",
-    "fork": "puzzle_axis_fork",
-    "deflection": "puzzle_axis_deflection",
-    "discoveredAttack": "puzzle_axis_discovered_attack",
-    "sacrifice": "puzzle_axis_sacrifice",
-    "middlegame": "puzzle_axis_middlegame",
-    "endgame": "puzzle_axis_endgame",
-    "rookEndgame": "puzzle_axis_rook_endgame",
-    "kingsideAttack": "puzzle_axis_kingside_attack",
-    "defensiveMove": "puzzle_axis_defensive_move",
-}
-
 _RADAR_RINGS = 6
-_RADAR_STEP = 200
+_RADAR_PLACEHOLDER_VERTICES = 9
 _RADAR_PLACEHOLDER = 3 / _RADAR_RINGS
 
 
@@ -244,13 +231,6 @@ def _svg_color(value):
     return text, 1.0
 
 
-def _profile_axis_label(axis, language):
-    key = _PROFILE_AXIS_KEYS.get(str(axis))
-    if key is None:
-        return _theme_name(axis, language)
-    return t(key, language)
-
-
 class _ThemeRadar(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -258,7 +238,6 @@ class _ThemeRadar(QWidget):
         self._language = "zh-CN"
         self._entries = []
         self._labels = []
-        self._rating = None
         self._svg_cache = None
         self.setObjectName("puzzleThemeRadar")
         self.setMinimumWidth(420)
@@ -275,10 +254,9 @@ class _ThemeRadar(QWidget):
         self._svg_cache = None
         self.update()
 
-    def set_entries(self, entries, labels, rating, language):
+    def set_entries(self, entries, labels, language):
         self._entries = list(entries)
         self._labels = list(labels)
-        self._rating = rating
         self._language = language
         self._svg_cache = None
         self.update()
@@ -288,18 +266,19 @@ class _ThemeRadar(QWidget):
         super().resizeEvent(event)
 
     def is_placeholder(self):
-        return not any(entry.get("rating") is not None for entry in self._entries)
+        return len(self._entries) < 3 or any(
+            entry.get("performance") is None for entry in self._entries
+        )
 
-    def _base_rating(self):
-        ratings = [entry["rating"] for entry in self._entries if entry.get("rating") is not None]
-        if self._rating is not None:
-            return float(self._rating)
-        if ratings:
-            return sum(ratings) / len(ratings)
-        return 1200.0
-
-    def lower_rating(self):
-        return max(400, int(self._base_rating()) // _RADAR_STEP * _RADAR_STEP - 3 * _RADAR_STEP)
+    def _scale(self):
+        values = [float(entry["performance"]) for entry in self._entries]
+        low = min(values)
+        high = max(values)
+        for step in (50, 100, 150, 200, 250, 300, 400, 500):
+            lower = math.floor((low - 100) / step) * step
+            if high + 100 <= lower + _RADAR_RINGS * step:
+                return lower, step
+        return math.floor((low - 100) / 500) * 500, 500
 
     def _geometry(self):
         width = self.width()
@@ -346,8 +325,10 @@ class _ThemeRadar(QWidget):
         text = token_color(self._theme, "text")
         surface, surface_alpha = _svg_color(token_color(self._theme, "surface"))
         placeholder = self.is_placeholder()
-        lower = self.lower_rating()
-        span = _RADAR_RINGS * _RADAR_STEP
+        lower, step = 0, 100
+        if not placeholder:
+            lower, step = self._scale()
+        span = _RADAR_RINGS * step
         fractions = [0.0] * count
         parts = [
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}"',
@@ -388,7 +369,12 @@ class _ThemeRadar(QWidget):
             )
         parts.append("</g>")
         if placeholder:
-            points = self._points(center, radius, count, [_RADAR_PLACEHOLDER] * count)
+            points = self._points(
+                center,
+                radius,
+                _RADAR_PLACEHOLDER_VERTICES,
+                [_RADAR_PLACEHOLDER] * _RADAR_PLACEHOLDER_VERTICES,
+            )
             parts.append(
                 f'<polygon points="{points}" fill="{accent}" fill-opacity="0.02"'
                 f' stroke="{muted}" stroke-width="1.6" stroke-linejoin="round"/>'
@@ -405,9 +391,7 @@ class _ThemeRadar(QWidget):
             )
         else:
             for index, entry in enumerate(self._entries):
-                rating = entry.get("rating")
-                if rating is not None:
-                    fractions[index] = min(1.0, max(0.0, (float(rating) - lower) / span))
+                fractions[index] = min(1.0, max(0.0, (float(entry["performance"]) - lower) / span))
             points = self._points(center, radius, count, fractions)
             parts.append(
                 f'<g transform="translate(0, 4)">'
@@ -434,25 +418,23 @@ class _ThemeRadar(QWidget):
                 )
             for ring in range(1, _RADAR_RINGS + 1):
                 x, y = self._vertex(center, radius, 0, count, ring / _RADAR_RINGS)
-                parts.append(
-                    self._text(x + 6, y + 3, str(lower + ring * _RADAR_STEP), muted, 10, "start")
-                )
-        for index, label in enumerate(self._labels):
-            x, y = self._vertex(center, radius + 20, index, count)
-            cosine = math.cos(-math.pi / 2 + 2 * math.pi * index / count)
-            if cosine > 0.25:
-                anchor, x = "start", x + 6
-            elif cosine < -0.25:
-                anchor, x = "end", x - 6
-            else:
-                anchor = "middle"
-            color = text if fractions[index] > 0 else muted
-            parts.append(self._text(x, y + 4.5, label, color, 13, anchor, 500))
+                parts.append(self._text(x + 6, y + 3, str(lower + ring * step), muted, 10, "start"))
+        if not placeholder:
+            for index, label in enumerate(self._labels):
+                x, y = self._vertex(center, radius + 20, index, count)
+                cosine = math.cos(-math.pi / 2 + 2 * math.pi * index / count)
+                if cosine > 0.25:
+                    anchor, x = "start", x + 6
+                elif cosine < -0.25:
+                    anchor, x = "end", x - 6
+                else:
+                    anchor = "middle"
+                parts.append(self._text(x, y + 4.5, label, text, 13, anchor, 500))
         parts.append("</svg>")
         return "".join(parts)
 
     def paintEvent(self, _event):
-        if len(self._entries) < 3 or self.width() < 80 or self.height() < 80:
+        if self.width() < 80 or self.height() < 80:
             return
         if self._svg_cache is None:
             self._svg_cache = self._build_svg()
@@ -464,7 +446,8 @@ class _ThemeRadar(QWidget):
 
     def mouseMoveEvent(self, event):
         count = len(self._entries)
-        if count < 3:
+        if count < 3 or self.is_placeholder():
+            self.setToolTip("")
             return
         center, _radius = self._geometry()
         delta_x = event.position().x() - center[0]
@@ -475,27 +458,17 @@ class _ThemeRadar(QWidget):
         angle = (math.atan2(delta_y, delta_x) + math.pi / 2) % (2 * math.pi)
         index = int(round(angle / turn)) % count
         entry = self._entries[index]
-        label = self._labels[index]
-        if entry.get("rating") is None:
-            self.setToolTip(
-                t(
-                    "puzzle_profile_theme_tip_low",
-                    self._language,
-                    axis=label,
-                    attempts=entry.get("attempts", 0),
-                )
-            )
-        else:
-            self.setToolTip(
-                t(
-                    "puzzle_profile_theme_tip",
-                    self._language,
-                    axis=label,
-                    rating=entry.get("rating"),
-                    attempts=entry.get("attempts", 0),
-                    accuracy=entry.get("accuracy", 0),
-                )
-            )
+        text = t(
+            "puzzle_profile_theme_tip",
+            self._language,
+            axis=self._labels[index],
+            performance=entry.get("performance"),
+            attempts=entry.get("attempts", 0),
+            accuracy=entry.get("accuracy", 0),
+        )
+        if entry.get("unclear"):
+            text = f"{text}\n{t('puzzle_profile_theme_tip_unclear', self._language)}"
+        self.setToolTip(text)
 
     def leaveEvent(self, event):
         self.setToolTip("")
@@ -2042,14 +2015,16 @@ class _ProfileView(QWidget):
         self._refresh_themes(rating)
 
     def _refresh_themes(self, rating):
-        axes = self._summary.get("theme_axes") or []
-        if not axes:
-            axes = [
-                {"theme": axis, "attempts": 0, "solved": 0, "accuracy": 0, "rating": None}
-                for axis in _PROFILE_AXIS_KEYS
-            ]
-        labels = [_profile_axis_label(entry.get("theme"), self._language) for entry in axes]
-        self._radar.set_entries(axes, labels, rating, self._language)
+        entries = [
+            entry
+            for entry in (self._summary.get("theme_radar") or [])
+            if entry.get("performance") is not None
+        ]
+        labels = [_theme_name(entry.get("theme"), self._language) for entry in entries]
+        order = sorted(range(len(entries)), key=lambda index: labels[index].casefold())
+        entries = [entries[index] for index in order]
+        labels = [labels[index] for index in order]
+        self._radar.set_entries(entries, labels, self._language)
         visible = rating is not None
         self._themes_box.setVisible(visible)
         self._themes_label.setVisible(visible)
