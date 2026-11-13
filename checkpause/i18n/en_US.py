@@ -206,7 +206,6 @@ MESSAGES = {
     "btn_next": "Next move",
     "btn_last": "Last move",
     "btn_undo_move": "Take back move",
-    "board_step": "Step {index} / {total}",
     "btn_edit_board": "Edit board",
     "edit_hint": "Drag a piece to move it; right-click or press ✕ to delete (dragging it off the board also works). Pick a piece above, then click the board to place it.",
     "edit_erase": "Erase piece",

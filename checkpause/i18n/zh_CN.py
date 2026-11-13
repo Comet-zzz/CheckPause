@@ -204,7 +204,6 @@ MESSAGES = {
     "btn_next": "下一步",
     "btn_last": "最后一步",
     "btn_undo_move": "撤销一步",
-    "board_step": "第 {index} / {total} 步",
     "btn_edit_board": "编辑棋盘",
     "edit_hint": "拖动棋子可移动，右键或「✕」删除（拖出棋盘也可）；选中上方棋子后点击棋盘可放置。",
     "edit_erase": "擦除棋子",

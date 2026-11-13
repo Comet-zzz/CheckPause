@@ -98,9 +98,6 @@ class BoardWidget(QWidget):
         self._eval_controls = self._build_eval_controls()
         self._eval_controls.setParent(self._canvas)
 
-        self._step_label = QLabel()
-        self._step_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
         self._btn_first = QPushButton()
         self._btn_prev = QPushButton()
         self._btn_next = QPushButton()
@@ -145,7 +142,6 @@ class BoardWidget(QWidget):
         right_spacer = QSpacerItem(0, 0, QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Minimum)
         self._nav_spacers = (left_spacer, right_spacer)
         nav_row.addItem(left_spacer)
-        nav_row.addWidget(self._step_label)
         nav_row.addWidget(self._btn_edit)
         nav_row.addWidget(self._btn_flip)
         nav_row.addItem(right_spacer)
@@ -389,7 +385,6 @@ class BoardWidget(QWidget):
             self.cancel_edit()
         self._btn_edit.setVisible(visible and self._edit_available)
         self._nav.setVisible(visible)
-        self._step_label.setVisible(visible)
         self._btn_flip.setMinimumWidth(44 if visible else 180)
         policy = QSizePolicy.Policy.Fixed if visible else QSizePolicy.Policy.Expanding
         for spacer in self._nav_spacers:
@@ -1096,18 +1091,6 @@ class BoardWidget(QWidget):
             self._last_move = self._moves[self._index - 1] if self._index > 0 else None
 
         self._canvas.update()
-
-        if self._index == 0:
-            self._step_label.setText("")
-        else:
-            self._step_label.setText(
-                t(
-                    "board_step",
-                    self._language,
-                    index=self._index,
-                    total=len(self._moves),
-                )
-            )
 
         self._nav.setEnabled(not self._editable)
         has_moves = bool(self._moves)
