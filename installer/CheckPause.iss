@@ -54,7 +54,7 @@ Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern
 
-; Privacy policy / terms, shown once during installation (the accept page) and
+; Privacy policy / terms / AUP, shown once during installation (the accept page) and
 ; never inside the running app. This English file is the fallback; each
 ; [Languages] entry below overrides it with its own file, so a Simplified
 ; Chinese Windows sees agreement.zh.txt and everything else sees the English
@@ -110,3 +110,11 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename:
 
 [Run]
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
+
+[Code]
+; The author chose to preselect "I accept" on the license page.
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpLicense then
+    WizardForm.LICENSEACCEPTEDRADIO.Checked := True;
+end;
