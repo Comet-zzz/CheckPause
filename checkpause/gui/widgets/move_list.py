@@ -224,7 +224,7 @@ class MoveListWidget(QWidget):
         self._apply_highlight()
         item = self._item_for_ply(ply)
         if item is not None:
-            self._table.scrollToItem(item, QAbstractItemView.ScrollHint.PositionAtCenter)
+            self._table.scrollToItem(item, QAbstractItemView.ScrollHint.EnsureVisible)
 
     def set_theme(self, theme):
         self._theme = theme

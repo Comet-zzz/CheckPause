@@ -391,7 +391,6 @@ MESSAGES = {
     "puzzle_train_retry": "重试",
     "puzzle_train_next": "下一题",
     "puzzle_train_continue": "继续训练",
-    "puzzle_train_find_best": "找出最佳着法",
     "puzzle_train_best_move": "最佳着法！",
     "puzzle_train_keep_going": "请继续...",
     "puzzle_train_not_best": "不是最佳着法",

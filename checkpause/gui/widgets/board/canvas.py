@@ -248,7 +248,7 @@ class _BoardCanvas(QWidget):
         width = self.width()
         height = self.height()
         side = min(width, height)
-        margin = max(16, int(side * 0.05))
+        margin = max(10, int(side * 0.035))
         board_size = max(80, side - 2 * margin)
         row_h = self._eval_row_height(max(1.0, board_size / 8))
         if row_h:
@@ -433,7 +433,6 @@ class _BoardCanvas(QWidget):
                 if sq in owner._lesson_marks:
                     self._draw_lesson_mark(painter, rect, square)
 
-        self._draw_coordinates(painter, palette, x0, y0, board_size, square)
         if not owner._editable:
             self._draw_eval_bar(painter, palette, x0, y0, board_size, square)
 
@@ -604,26 +603,6 @@ class _BoardCanvas(QWidget):
                 dot_radius,
             )
         painter.restore()
-
-    def _draw_coordinates(self, painter, palette, x0, y0, board_size, square):
-        font = painter.font()
-        font.setPointSizeF(max(7.0, square * 0.3))
-        font.setBold(True)
-        painter.setFont(font)
-        painter.setPen(QColor(palette["coord"]))
-
-        label_w = min(x0, square * 0.5)
-        label_h = min(y0, square * 0.5)
-        flipped = self._owner._flipped
-        files = "abcdefgh"
-        for col in range(8):
-            file_index = 7 - col if flipped else col
-            rect = QRectF(x0 + col * square, y0 + board_size, square, label_h)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, files[file_index])
-        for row in range(8):
-            rank_index = row if flipped else 7 - row
-            rect = QRectF(x0 - label_w, y0 + row * square, label_w, square)
-            painter.drawText(rect, Qt.AlignmentFlag.AlignCenter, str(rank_index + 1))
 
     def _draw_eval_bar(self, painter, palette, x0, y0, board_size, square):
         owner = self._owner

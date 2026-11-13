@@ -393,7 +393,6 @@ MESSAGES = {
     "puzzle_train_retry": "Retry",
     "puzzle_train_next": "Next",
     "puzzle_train_continue": "Continue training",
-    "puzzle_train_find_best": "Find the best move",
     "puzzle_train_best_move": "Best move!",
     "puzzle_train_keep_going": "Keep going...",
     "puzzle_train_not_best": "Not the best move",

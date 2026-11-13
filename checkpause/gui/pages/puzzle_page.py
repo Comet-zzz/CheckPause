@@ -1070,6 +1070,7 @@ class _TrainView(QWidget):
         self._language = "zh-CN"
         self._theme = LIGHT
         self._rating = None
+        self._rating_delta_value = None
         self._puzzle_rating = None
         self.setObjectName("puzzleTrain")
 
@@ -1088,12 +1089,12 @@ class _TrainView(QWidget):
         self._status_icon = QLabel()
         self._status_icon.setObjectName("puzzleStatusIcon")
         self._status_icon.setFixedSize(28, 28)
+        self._rating_caption = QLabel()
+        self._rating_caption.setObjectName("puzzleLadderCaption")
         self._rating_value = QLabel()
         self._rating_value.setObjectName("puzzleLadderValue")
-        self._rating_value.setVisible(False)
         self._rating_delta = QLabel()
         self._rating_delta.setObjectName("puzzleLadderDelta")
-        self._rating_delta.setVisible(False)
 
         self._btn_analyze = QPushButton()
         self._btn_analyze.setObjectName("puzzleIconButton")
@@ -1102,10 +1103,20 @@ class _TrainView(QWidget):
         self._btn_analyze.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_analyze.clicked.connect(self._request_analysis)
 
+        self._rating_chip = QWidget()
+        chip_layout = QHBoxLayout(self._rating_chip)
+        chip_layout.setContentsMargins(0, 0, 0, 0)
+        chip_layout.setSpacing(6)
+        chip_layout.addWidget(self._rating_caption)
+        chip_layout.addWidget(self._rating_value)
+        chip_layout.addWidget(self._rating_delta)
+        self._rating_chip.setVisible(False)
+
         top = QHBoxLayout()
         top.setSpacing(10)
         top.addWidget(self._btn_back)
         top.addWidget(self._mode_label)
+        top.addWidget(self._rating_chip)
         top.addStretch(1)
         top.addWidget(self._counter_label)
 
@@ -1127,16 +1138,6 @@ class _TrainView(QWidget):
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
         )
-
-        self._rating_overlay = QWidget(self.board)
-        rating_overlay_layout = QHBoxLayout(self._rating_overlay)
-        rating_overlay_layout.setContentsMargins(0, 0, 0, 0)
-        rating_overlay_layout.setSpacing(6)
-        rating_overlay_layout.addWidget(self._rating_value)
-        rating_overlay_layout.addWidget(self._rating_delta)
-        self._rating_overlay.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
-        self._rating_overlay.move(14, 8)
-        self._rating_overlay.setVisible(False)
 
         self._status_title = QLabel()
         self._status_title.setObjectName("puzzleStatusTitle")
@@ -1294,10 +1295,11 @@ class _TrainView(QWidget):
 
     def set_rating(self, rating, delta=None):
         self._rating = rating
+        self._rating_delta_value = delta
         if rating is None:
+            self._rating_chip.setVisible(False)
             self._rating_value.setVisible(False)
             self._rating_delta.setVisible(False)
-            self._rating_overlay.setVisible(False)
             return
         self._rating_value.setText(str(round(float(rating))))
         self._rating_value.setVisible(True)
@@ -1310,9 +1312,7 @@ class _TrainView(QWidget):
             self._rating_delta.style().unpolish(self._rating_delta)
             self._rating_delta.style().polish(self._rating_delta)
             self._rating_delta.setVisible(True)
-        self._rating_overlay.adjustSize()
-        self._rating_overlay.setVisible(True)
-        self._rating_overlay.raise_()
+        self._rating_chip.setVisible(True)
 
     def set_online_info(self, mode, rating):
         self._mode_label.setText(mode or "")
@@ -1372,7 +1372,7 @@ class _TrainView(QWidget):
         self._set_status(
             "playing",
             t("puzzle_train_your_turn", self._language, color=color),
-            t("puzzle_train_find_best", self._language),
+            "",
             "turn",
         )
         self._turn_text = ""
@@ -1557,7 +1557,8 @@ class _TrainView(QWidget):
             button.setToolTip(label)
             button.setAccessibleName(label)
         self._btn_analyze.setAccessibleName(t("puzzle_train_analyze", language))
-        self.set_rating(self._rating)
+        self._rating_caption.setText(t("puzzle_hub_rating", language))
+        self.set_rating(self._rating, self._rating_delta_value)
         self.set_puzzle_info(self._puzzle_rating)
         state = self._status_state
         if state == "playing" and self._turn_color is not None:

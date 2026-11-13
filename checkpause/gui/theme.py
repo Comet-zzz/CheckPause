@@ -1409,11 +1409,13 @@ QWidget#puzzleMoveList QTableWidget {
     font-size: 13px;
 }
 #puzzleTrainMeta,
+#puzzleLadderCaption {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+}
 #puzzleLadderValue {
-    color: $history_selected_text;
-    background-color: $history_selected_bg;
-    border-radius: 7px;
-    padding: 3px 8px;
+    color: $text;
     font-size: 16px;
     font-weight: 700;
 }
