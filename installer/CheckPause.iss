@@ -112,7 +112,7 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; IconFilename:
 Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flags: nowait postinstall skipifsilent
 
 [Code]
-; The author chose to preselect "I accept" on the license page.
+// The author chose to preselect "I accept" on the license page.
 procedure CurPageChanged(CurPageID: Integer);
 begin
   if CurPageID = wpLicense then
