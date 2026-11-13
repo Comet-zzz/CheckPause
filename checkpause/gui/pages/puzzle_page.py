@@ -691,6 +691,7 @@ class _BoardColumn(QWidget):
 class _HubView(QWidget):
     train_requested = Signal()
     library_requested = Signal()
+    import_requested = Signal()
     profile_requested = Signal()
     collection_requested = Signal(str)
     daily_requested = Signal()
@@ -772,41 +773,51 @@ class _HubView(QWidget):
         hero_layout = QGridLayout(hero)
         hero_layout.setContentsMargins(24, 20, 24, 20)
         hero_layout.setHorizontalSpacing(24)
-        hero_layout.setVerticalSpacing(3)
+        hero_layout.setVerticalSpacing(12)
+        self._hero_icon = QLabel()
+        self._hero_icon.setFixedSize(20, 20)
         self._hero_title = QLabel()
         self._hero_title.setObjectName("puzzleHeroTitle")
-        self._hero_sub = QLabel()
-        self._hero_sub.setObjectName("puzzleHeroSub")
-        self._hero_sub.setWordWrap(True)
-        hero_text = QVBoxLayout()
-        hero_text.setSpacing(3)
-        hero_text.addWidget(self._hero_title)
-        hero_text.addWidget(self._hero_sub)
-        hero_text.addStretch(1)
-        hero_layout.addLayout(hero_text, 0, 0)
+        title_row = QHBoxLayout()
+        title_row.setSpacing(8)
+        title_row.addWidget(self._hero_icon)
+        title_row.addWidget(self._hero_title)
+        title_row.addStretch(1)
+        hero_layout.addLayout(title_row, 0, 0)
 
         self._rating_box = QWidget()
-        rating_layout = QVBoxLayout(self._rating_box)
+        rating_layout = QHBoxLayout(self._rating_box)
         rating_layout.setContentsMargins(0, 0, 0, 0)
-        rating_layout.setSpacing(0)
+        rating_layout.setSpacing(8)
         self._rating_caption = QLabel()
         self._rating_caption.setObjectName("puzzleHeroRatingCaption")
         self._rating_value = QLabel("—")
         self._rating_value.setObjectName("puzzleHeroRating")
-        rating_layout.addWidget(self._rating_caption)
-        rating_layout.addWidget(self._rating_value)
-        hero_layout.addWidget(self._rating_box, 0, 1, Qt.AlignmentFlag.AlignVCenter)
+        rating_layout.addWidget(self._rating_caption, 0, Qt.AlignmentFlag.AlignBottom)
+        rating_layout.addWidget(self._rating_value, 0, Qt.AlignmentFlag.AlignBottom)
+        rating_layout.addStretch(1)
+        hero_layout.addWidget(self._rating_box, 1, 0, Qt.AlignmentFlag.AlignLeft)
 
-        hero_actions = QVBoxLayout()
-        hero_actions.setSpacing(6)
+        self._hero_sub = QLabel()
+        self._hero_sub.setObjectName("puzzleHeroSub")
+        self._hero_sub.setWordWrap(True)
+        hero_layout.addWidget(self._hero_sub, 1, 0, Qt.AlignmentFlag.AlignLeft)
+
+        hero_actions = QHBoxLayout()
+        hero_actions.setSpacing(8)
         hero_actions.addWidget(self._btn_train)
         hero_actions.addWidget(self._btn_practice)
         hero_actions.addWidget(self._btn_signin)
-        hero_layout.addLayout(hero_actions, 0, 2)
+        hero_layout.addLayout(
+            hero_actions,
+            1,
+            1,
+            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
+        )
         hero_layout.addWidget(
             self._btn_settings,
             0,
-            3,
+            1,
             Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
         )
         hero_layout.setColumnStretch(0, 1)
@@ -893,10 +904,22 @@ class _HubView(QWidget):
         self._collection_grid.setColumnStretch(0, 1)
         self._collection_grid.setColumnStretch(1, 1)
         layout.addLayout(self._collection_grid)
+        self._empty_card = QFrame()
+        self._empty_card.setObjectName("puzzleLibraryEmpty")
+        empty_layout = QVBoxLayout(self._empty_card)
+        empty_layout.setContentsMargins(24, 22, 24, 22)
+        empty_layout.setSpacing(10)
         self._empty_label = QLabel()
-        self._empty_label.setObjectName("puzzleEmptyLabel")
-        self._empty_label.setVisible(False)
-        layout.addWidget(self._empty_label)
+        self._empty_label.setObjectName("puzzleLibraryEmptyText")
+        self._empty_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._import_button = QPushButton()
+        self._import_button.setObjectName("puzzleSecondaryButton")
+        self._import_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._import_button.clicked.connect(self.import_requested.emit)
+        empty_layout.addWidget(self._empty_label, 0, Qt.AlignmentFlag.AlignHCenter)
+        empty_layout.addWidget(self._import_button, 0, Qt.AlignmentFlag.AlignHCenter)
+        self._empty_card.setVisible(False)
+        layout.addWidget(self._empty_card)
         layout.addStretch(1)
         host_layout.addWidget(inner)
         host_layout.addStretch(1)
@@ -974,7 +997,7 @@ class _HubView(QWidget):
                 self._collection_grid.addWidget(card, 0, 0, 1, 2)
             else:
                 self._collection_grid.addWidget(card, index // 2, index % 2)
-        self._empty_label.setVisible(not visible)
+        self._empty_card.setVisible(not visible)
 
     def _fill_combo(self, combo, items, fallback):
         current = combo.currentData()
@@ -991,6 +1014,7 @@ class _HubView(QWidget):
     def apply_icons(self, theme):
         self._theme = theme
         self._btn_settings.setIcon(action_icon(theme, "settings", size=18))
+        self._hero_icon.setPixmap(action_icon(theme, "puzzle", size=20).pixmap(20, 20))
         for card in (self._records_card, self._daily_card, self._challenge_card):
             card.apply_icons(theme)
 
@@ -1029,6 +1053,7 @@ class _HubView(QWidget):
         self._challenge_card.retranslate(language)
         self._collections_label.setText(t("puzzle_home_collections", language))
         self._empty_label.setText(t("puzzle_home_no_collections", language))
+        self._import_button.setText(t("puzzle_import", language))
         self.set_online(self._online, self._rating)
         for card in self._cards:
             card.retranslate(language)
@@ -2212,6 +2237,7 @@ class PuzzlePage(QWidget):
         self._train.analysis_requested.connect(self.analysis_requested.emit)
         self._hub.train_requested.connect(self._start_training)
         self._hub.library_requested.connect(self.show_library)
+        self._hub.import_requested.connect(self._import_from_hub)
         self._hub.profile_requested.connect(self.show_profile)
         self._hub.collection_requested.connect(self._start_collection)
         self._hub.daily_requested.connect(self._start_daily)
@@ -2387,6 +2413,10 @@ class PuzzlePage(QWidget):
         elif self._library_collection is not None:
             self._library.select_row(self._library_collection.id)
         self._stack.setCurrentWidget(self._library)
+
+    def _import_from_hub(self):
+        self.show_library()
+        self._choose_file()
 
     def show_profile(self):
         self._refresh_account()

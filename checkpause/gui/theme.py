@@ -1084,13 +1084,14 @@ QTableWidget#moveTable::item {
     font-size: 13px;
 }
 #puzzleHeroRating {
-    font-size: 30px;
+    font-size: 34px;
     font-weight: 700;
 }
 #puzzleHeroRatingCaption {
     color: $text_muted;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 600;
+    padding-bottom: 4px;
 }
 #puzzleHeroText {
     color: $text_muted;
@@ -1255,6 +1256,15 @@ QTableWidget#moveTable::item {
     color: $text_muted;
     font-size: 13px;
     padding: 6px 2px;
+}
+#puzzleLibraryEmpty {
+    background-color: $surface;
+    border: 1px dashed $border_strong;
+    border-radius: 12px;
+}
+#puzzleLibraryEmptyText {
+    color: $text_muted;
+    font-size: 13px;
 }
 #puzzleRatingPill {
     background-color: $surface_alt;
