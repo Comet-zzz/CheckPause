@@ -1,3 +1,48 @@
+# v2.2.0 – Online Puzzles & Interface Polish
+
+> **A new online puzzle experience, a cleaner interface, and continued image-recognition work.**
+
+---
+
+## 🎯 What's New
+
+### 🧩 Online puzzles
+- 新增在线谜题功能，带来更完整的训练与对局体验；后续版本会继续完善题目与练习流程。
+- 优化了谜题相关的操作与信息展示，常用入口更直接。
+
+- Added online puzzles for a more complete training and play experience; future releases will keep improving the puzzle flow.
+- Refined the puzzle-related actions and information so common entry points feel more direct.
+
+### ✨ Interface polish
+- 继续优化了界面与布局，梳理了操作层级与信息呈现，整体更清晰顺手。
+- 打磨了若干交互与视觉细节，中英文下的表现更一致。
+
+- Continued refining the interface and layout, tidying the action hierarchy and information presentation for a clearer, smoother result.
+- Polished a number of interaction and visual details so both languages behave more consistently.
+
+### 🖼️ Image recognition (in progress)
+- 识图功能持续优化中，后续版本将继续完善。
+- Image recognition improvements are ongoing and will continue in future releases.
+
+## 🛠️ Full Changelog
+- feat(puzzle): add the online puzzle experience
+- chore(gui): refine the interface and layout
+- chore(recognition): continue improving image recognition
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.1.0...v2.2.0
+
+---
+
 # v2.1.0 – Learning Module & UI Polish
 
 > **A new learning module for beginners, a cleaner interface, and continued image-recognition work.**
