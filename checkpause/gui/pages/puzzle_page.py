@@ -724,7 +724,6 @@ class _HubView(QWidget):
         host = QWidget()
         host_layout = QVBoxLayout(host)
         host_layout.setContentsMargins(0, 0, 0, 0)
-        host_layout.addStretch(1)
         inner = QWidget()
         inner.setObjectName("puzzleHub")
         inner.setMaximumWidth(1180)
@@ -925,11 +924,7 @@ class _HubView(QWidget):
         library_layout.addWidget(self._empty_card)
         layout.addWidget(self._library_box)
         layout.addStretch(1)
-        host_layout.addWidget(
-            inner,
-            0,
-            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
-        )
+        host_layout.addWidget(inner, 0, Qt.AlignmentFlag.AlignHCenter)
         host_layout.addStretch(1)
         scroll.setWidget(host)
 
