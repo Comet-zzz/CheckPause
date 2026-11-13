@@ -1223,15 +1223,14 @@ QTableWidget#moveTable::item {
     font-size: 14px;
 }
 #puzzleCollectionCard {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 12px;
-    padding: 14px 16px;
+    background-color: transparent;
+    border: none;
+    border-radius: 10px;
+    padding: 12px 12px;
     text-align: left;
 }
 #puzzleCollectionCard:hover {
-    background-color: $surface_alt;
-    border-color: $border_strong;
+    background-color: $hover;
 }
 #puzzleCollectionName {
     font-size: 14px;
@@ -1257,9 +1256,9 @@ QTableWidget#moveTable::item {
     font-size: 13px;
     padding: 6px 2px;
 }
-#puzzleLibraryEmpty {
+#puzzleLibraryBox {
     background-color: $surface;
-    border: 1px dashed $border_strong;
+    border: 1px solid $border;
     border-radius: 12px;
 }
 #puzzleLibraryEmptyText {

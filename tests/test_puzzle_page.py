@@ -184,7 +184,8 @@ class PuzzlePageTests(unittest.TestCase):
         _APP.processEvents()
         self._standard_collection()
         self.page._start_collection("test")
-        self.page._set_challenge("storm")
+        self.page._challenge_mode = "storm"
+        self.page._start_challenge()
         self.assertTrue(self.page._challenge_timer.isActive())
 
         self.page.hide()
@@ -355,6 +356,37 @@ class PuzzlePageTests(unittest.TestCase):
         self.page._profile._range_buttons[2][1].click()
         self.assertEqual(self.page._profile._range_days, 90)
         self.assertEqual(self.page._profile_days, 90)
+
+    def test_challenge_combo_has_no_normal_mode(self):
+        combo = self.page._hub._challenge
+        modes = [combo.itemData(index) for index in range(combo.count())]
+        self.assertEqual(modes, ["storm", "racer"])
+
+    def test_ladder_start_clears_a_previous_challenge(self):
+        self.page._challenge_mode = "storm"
+        with (
+            mock.patch.object(self.page, "_refresh_account"),
+            mock.patch.object(self.page, "_is_online", return_value=False),
+            mock.patch.object(self.page, "_start_local_training") as start,
+        ):
+            self.page._start_training()
+        self.assertEqual(self.page._challenge_mode, "")
+        start.assert_called_once()
+
+    def test_challenge_start_scopes_the_mode_to_that_entry(self):
+        with (
+            mock.patch.object(self.page, "_refresh_account"),
+            mock.patch.object(self.page, "_is_online", return_value=False),
+            mock.patch.object(self.page, "_start_local_training") as start,
+        ):
+            self.page._start_challenge_session("racer")
+        self.assertEqual(self.page._challenge_mode, "racer")
+        start.assert_called_once()
+
+    def test_library_box_hides_manage_when_empty(self):
+        self.page._hub.set_collections([], "zh-CN")
+        self.assertFalse(self.page._hub._empty_card.isHidden())
+        self.assertTrue(self.page._hub._btn_library.isHidden())
 
     def test_retry_card_waits_for_retryable_mistakes(self):
         self.page._profile.refresh({"attempts": 1, "retryable": 0}, "zh-CN")

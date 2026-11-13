@@ -700,7 +700,7 @@ class _HubView(QWidget):
     difficulty_changed = Signal(str)
     theme_filter_changed = Signal(str)
     auto_next_changed = Signal(bool)
-    challenge_changed = Signal(str)
+    challenge_requested = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -877,16 +877,20 @@ class _HubView(QWidget):
         )
         self._challenge = QComboBox()
         self._challenge.setObjectName("puzzleRange")
-        self._challenge.currentIndexChanged.connect(
-            lambda _index: self.challenge_changed.emit(self._challenge.currentData() or "")
-        )
         self._challenge_card.add_control(self._challenge)
-        self._challenge_card.clicked.connect(self.train_requested.emit)
+        self._challenge_card.clicked.connect(
+            lambda: self.challenge_requested.emit(self._challenge.currentData() or "storm")
+        )
         modes.addWidget(self._records_card, 1)
         modes.addWidget(self._daily_card, 1)
         modes.addWidget(self._challenge_card, 1)
         layout.addLayout(modes)
 
+        self._library_box = QFrame()
+        self._library_box.setObjectName("puzzleLibraryBox")
+        library_layout = QVBoxLayout(self._library_box)
+        library_layout.setContentsMargins(16, 14, 16, 16)
+        library_layout.setSpacing(10)
         collections_header = QHBoxLayout()
         self._collections_label = QLabel()
         self._collections_label.setObjectName("puzzleSectionLabel")
@@ -897,17 +901,17 @@ class _HubView(QWidget):
         collections_header.addWidget(self._collections_label)
         collections_header.addStretch(1)
         collections_header.addWidget(self._btn_library)
-        layout.addLayout(collections_header)
+        library_layout.addLayout(collections_header)
         self._collection_grid = QGridLayout()
-        self._collection_grid.setHorizontalSpacing(12)
-        self._collection_grid.setVerticalSpacing(12)
+        self._collection_grid.setHorizontalSpacing(8)
+        self._collection_grid.setVerticalSpacing(8)
         self._collection_grid.setColumnStretch(0, 1)
         self._collection_grid.setColumnStretch(1, 1)
-        layout.addLayout(self._collection_grid)
-        self._empty_card = QFrame()
+        library_layout.addLayout(self._collection_grid)
+        self._empty_card = QWidget()
         self._empty_card.setObjectName("puzzleLibraryEmpty")
         empty_layout = QVBoxLayout(self._empty_card)
-        empty_layout.setContentsMargins(24, 22, 24, 22)
+        empty_layout.setContentsMargins(16, 18, 16, 18)
         empty_layout.setSpacing(10)
         self._empty_label = QLabel()
         self._empty_label.setObjectName("puzzleLibraryEmptyText")
@@ -919,7 +923,8 @@ class _HubView(QWidget):
         empty_layout.addWidget(self._empty_label, 0, Qt.AlignmentFlag.AlignHCenter)
         empty_layout.addWidget(self._import_button, 0, Qt.AlignmentFlag.AlignHCenter)
         self._empty_card.setVisible(False)
-        layout.addWidget(self._empty_card)
+        library_layout.addWidget(self._empty_card)
+        layout.addWidget(self._library_box)
         layout.addStretch(1)
         host_layout.addWidget(inner)
         host_layout.addStretch(1)
@@ -971,14 +976,6 @@ class _HubView(QWidget):
     def set_train_enabled(self, enabled):
         self._btn_train.setEnabled(bool(enabled))
 
-    def set_challenge(self, mode):
-        index = self._challenge.findData(mode or "")
-        if index < 0:
-            return
-        self._challenge.blockSignals(True)
-        self._challenge.setCurrentIndex(index)
-        self._challenge.blockSignals(False)
-
     def set_collections(self, collections, language):
         self._language = language
         while self._collection_grid.count():
@@ -998,6 +995,7 @@ class _HubView(QWidget):
             else:
                 self._collection_grid.addWidget(card, index // 2, index % 2)
         self._empty_card.setVisible(not visible)
+        self._btn_library.setVisible(bool(visible))
 
     def _fill_combo(self, combo, items, fallback):
         current = combo.currentData()
@@ -1031,11 +1029,10 @@ class _HubView(QWidget):
         self._fill_combo(
             self._challenge,
             (
-                ("", "puzzle_challenge_none"),
                 ("storm", "puzzle_challenge_storm"),
                 ("racer", "puzzle_challenge_racer"),
             ),
-            "",
+            "storm",
         )
         self._btn_practice.setText(t("puzzle_home_practice", language))
         self._fill_combo(
@@ -2246,7 +2243,7 @@ class PuzzlePage(QWidget):
         self._hub.difficulty_changed.connect(self._set_difficulty)
         self._hub.theme_filter_changed.connect(self._set_theme_filter)
         self._hub.auto_next_changed.connect(self._set_auto_next)
-        self._hub.challenge_changed.connect(self._set_challenge)
+        self._hub.challenge_requested.connect(self._start_challenge_session)
         self._train.back_requested.connect(self._back_from_train)
         self._train.hint_requested.connect(self._show_hint)
         self._train.reveal_requested.connect(self._reveal_solution)
@@ -2371,7 +2368,7 @@ class PuzzlePage(QWidget):
     def show_hub(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
-        self._stop_challenge()
+        self._leave_challenge()
         self._train_origin = "hub"
         self._practice_mode = False
         self._train.set_counter("")
@@ -2451,6 +2448,7 @@ class PuzzlePage(QWidget):
         self._profile.set_notice("")
 
     def _start_training(self):
+        self._leave_challenge()
         self._refresh_account()
         if self._is_online():
             self._start_online_training()
@@ -2463,9 +2461,10 @@ class PuzzlePage(QWidget):
             self.show_library()
             self._library.set_status(t("puzzle_empty", self._language))
             return
-        self._start_collection(preferred.id)
+        self._start_collection_object(preferred)
 
     def _start_mistakes(self):
+        self._leave_challenge()
         self._refresh_account()
         self._profile.set_notice("")
         if self._is_online():
@@ -2525,17 +2524,19 @@ class PuzzlePage(QWidget):
     def _set_auto_next(self, enabled):
         self._auto_next = bool(enabled)
 
-    def _set_challenge(self, mode):
+    def _start_challenge_session(self, mode):
         self._challenge_mode = mode if mode in ("storm", "racer") else ""
+        self._refresh_account()
+        if self._is_online():
+            self._start_online_training()
+        else:
+            self._start_local_training()
+
+    def _leave_challenge(self):
         if self._challenge_active:
             self._stop_challenge()
             self._train.set_counter("")
-        if (
-            self._challenge_mode
-            and self._stack.currentWidget() is self._train
-            and self._puzzle is not None
-        ):
-            self._start_challenge()
+        self._challenge_mode = ""
 
     def _start_challenge(self):
         if not self._challenge_mode or self._challenge_active:
@@ -2581,7 +2582,6 @@ class PuzzlePage(QWidget):
         mode = self._challenge_mode
         self._stop_challenge()
         self._challenge_mode = ""
-        self._hub.set_challenge("")
         self._auto_next_timer.stop()
         self._train.set_counter("")
         self._train.set_solving(False)
@@ -2640,6 +2640,7 @@ class PuzzlePage(QWidget):
             self._challenge_timer.start()
 
     def _start_daily(self):
+        self._leave_challenge()
         self._practice_mode = False
         self._review_puzzles = []
         self._review_index = -1
@@ -2651,6 +2652,7 @@ class PuzzlePage(QWidget):
         )
 
     def _start_practice(self):
+        self._leave_challenge()
         self._refresh_account()
         if not self._is_online():
             self._start_local_training()
@@ -2908,6 +2910,7 @@ class PuzzlePage(QWidget):
         collection = self._find_collection(collection_id)
         if collection is None:
             return
+        self._leave_challenge()
         self._start_collection_object(collection, index=index)
 
     def _start_collection_object(self, collection, index=None, origin=None):
