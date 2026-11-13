@@ -676,7 +676,6 @@ class _BoardColumn(QWidget):
     def __init__(self, board, parent=None):
         super().__init__(parent)
         self._board = board
-        self.setMinimumWidth(420)
         self._board.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
@@ -723,12 +722,12 @@ class _HubView(QWidget):
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.Shape.NoFrame)
         host = QWidget()
-        host_layout = QHBoxLayout(host)
+        host_layout = QVBoxLayout(host)
         host_layout.setContentsMargins(0, 0, 0, 0)
         host_layout.addStretch(1)
         inner = QWidget()
         inner.setObjectName("puzzleHub")
-        inner.setMaximumWidth(1040)
+        inner.setMaximumWidth(1180)
         self._inner = inner
         layout = QVBoxLayout(inner)
         layout.setContentsMargins(32, 28, 32, 32)
@@ -888,12 +887,16 @@ class _HubView(QWidget):
         library_layout.setContentsMargins(16, 14, 16, 16)
         library_layout.setSpacing(10)
         collections_header = QHBoxLayout()
+        collections_header.setSpacing(8)
+        self._collections_icon = QLabel()
+        self._collections_icon.setFixedSize(18, 18)
         self._collections_label = QLabel()
         self._collections_label.setObjectName("puzzleSectionLabel")
         self._btn_library = QPushButton()
         self._btn_library.setObjectName("puzzleGhostButton")
         self._btn_library.setCursor(Qt.CursorShape.PointingHandCursor)
         self._btn_library.clicked.connect(self.library_requested.emit)
+        collections_header.addWidget(self._collections_icon)
         collections_header.addWidget(self._collections_label)
         collections_header.addStretch(1)
         collections_header.addWidget(self._btn_library)
@@ -922,7 +925,11 @@ class _HubView(QWidget):
         library_layout.addWidget(self._empty_card)
         layout.addWidget(self._library_box)
         layout.addStretch(1)
-        host_layout.addWidget(inner)
+        host_layout.addWidget(
+            inner,
+            0,
+            Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter,
+        )
         host_layout.addStretch(1)
         scroll.setWidget(host)
 
@@ -933,7 +940,7 @@ class _HubView(QWidget):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        width = max(0, min(1040, self.width() - 64))
+        width = max(0, min(1180, self.width() - 64))
         if self._inner.width() != width:
             self._inner.setFixedWidth(width)
 
@@ -1009,6 +1016,7 @@ class _HubView(QWidget):
         self._theme = theme
         self._btn_settings.setIcon(action_icon(theme, "settings", size=18))
         self._hero_icon.setPixmap(action_icon(theme, "puzzle", size=20).pixmap(20, 20))
+        self._collections_icon.setPixmap(action_icon(theme, "book", size=18).pixmap(18, 18))
         for card in (self._records_card, self._daily_card, self._challenge_card):
             card.apply_icons(theme)
 
@@ -1253,8 +1261,7 @@ class _TrainView(QWidget):
 
         side = QFrame()
         side.setObjectName("puzzleSideCard")
-        side.setMinimumWidth(300)
-        side.setMaximumWidth(460)
+        side.setMinimumWidth(0)
         side_layout = QVBoxLayout(side)
         side_layout.setContentsMargins(16, 14, 16, 14)
         side_layout.setSpacing(12)
@@ -1271,7 +1278,6 @@ class _TrainView(QWidget):
         splitter.setStretchFactor(1, 1)
         splitter.setSizes([604, 380])
         splitter.setHandleWidth(12)
-        splitter.setChildrenCollapsible(False)
         self._splitter = splitter
 
         layout = QVBoxLayout(self)

@@ -104,10 +104,8 @@ MODULES = (
     {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
 
-# Width both side panels share, matching the splitter's designed 532/390 split.
-# Without this floor the panel minimum follows the label metrics, and raising it
-# steals width from the board.
-SIDE_PANEL_MIN_WIDTH = 390
+
+SIDE_PANEL_DESIGN_WIDTH = 390
 
 
 def _system_language():
@@ -358,13 +356,8 @@ class MainWindow(QMainWindow):
         return rail
 
     def _sync_side_panels(self):
-        panels = (self.tabs, self.play_page.panel)
-        target = max(
-            SIDE_PANEL_MIN_WIDTH,
-            *(panel.minimumSizeHint().width() for panel in panels),
-        )
-        for panel in panels:
-            panel.setMinimumWidth(target)
+        for panel in (self.tabs, self.play_page.panel):
+            panel.setMinimumWidth(0)
 
     def _on_module_selected(self, module_id):
         if module_id not in ("analysis", "play", "puzzle", "learn"):

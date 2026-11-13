@@ -87,12 +87,12 @@ class ImageRecognitionGateTests(unittest.TestCase):
         self.assertTrue(page._review_filter.isHidden())
 
     def test_english_action_labels_fit_the_side_panel_width(self):
-        from checkpause.gui.main_window import SIDE_PANEL_MIN_WIDTH
+        from checkpause.gui.main_window import SIDE_PANEL_DESIGN_WIDTH
 
         page = AnalysisPage()
         page.retranslate("en-US")
-        self.assertLessEqual(page.minimumSizeHint().width(), SIDE_PANEL_MIN_WIDTH)
-        self.assertLessEqual(page._review_filter.sizeHint().width(), SIDE_PANEL_MIN_WIDTH)
+        self.assertLessEqual(page.minimumSizeHint().width(), SIDE_PANEL_DESIGN_WIDTH)
+        self.assertLessEqual(page._review_filter.sizeHint().width(), SIDE_PANEL_DESIGN_WIDTH)
 
     def test_show_moves_clears_the_list_when_the_line_becomes_empty(self):
         page = AnalysisPage()
