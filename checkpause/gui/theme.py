@@ -1066,14 +1066,6 @@ QTableWidget#moveTable::item {
 #puzzleHub, #puzzleProfile, #puzzleLibrary, #puzzleTrain {
     background: transparent;
 }
-#puzzlePageTitle {
-    font-size: 26px;
-    font-weight: 700;
-}
-#puzzlePageSubtitle {
-    color: $text_muted;
-    font-size: 13px;
-}
 #puzzleHeaderTitle {
     font-size: 22px;
     font-weight: 700;
@@ -1082,11 +1074,6 @@ QTableWidget#moveTable::item {
     background-color: $surface;
     border: 1px solid $border;
     border-radius: 14px;
-}
-#puzzleHeroKicker {
-    color: $text_muted;
-    font-size: 12px;
-    font-weight: 600;
 }
 #puzzleHeroTitle {
     font-size: 22px;
@@ -1157,6 +1144,10 @@ QTableWidget#moveTable::item {
 }
 #puzzleIconButton:hover {
     background-color: $hover;
+}
+#puzzleIconButton:checked {
+    background-color: $surface_alt;
+    border-color: $border;
 }
 #puzzleIconButton:disabled {
     background: transparent;

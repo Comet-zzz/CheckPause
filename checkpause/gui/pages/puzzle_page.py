@@ -738,25 +738,12 @@ class _HubView(QWidget):
         layout.setSpacing(18)
 
         self._btn_settings = QPushButton()
-        self._btn_settings.setObjectName("puzzleGhostButton")
+        self._btn_settings.setObjectName("puzzleIconButton")
         self._btn_settings.setCheckable(True)
         self._btn_settings.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_settings.setFixedSize(30, 30)
+        self._btn_settings.setIconSize(QSize(18, 18))
         self._btn_settings.toggled.connect(self._toggle_settings)
-
-        self._page_title = QLabel()
-        self._page_title.setObjectName("puzzlePageTitle")
-        self._page_subtitle = QLabel()
-        self._page_subtitle.setObjectName("puzzlePageSubtitle")
-        title_box = QVBoxLayout()
-        title_box.setSpacing(2)
-        title_box.addWidget(self._page_title)
-        title_box.addWidget(self._page_subtitle)
-        header = QHBoxLayout()
-        header.setSpacing(16)
-        header.addLayout(title_box)
-        header.addStretch(1)
-        header.addWidget(self._btn_settings, 0, Qt.AlignmentFlag.AlignVCenter)
-        layout.addLayout(header)
 
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
@@ -782,22 +769,21 @@ class _HubView(QWidget):
 
         hero = QFrame()
         hero.setObjectName("puzzleHero")
-        hero_layout = QHBoxLayout(hero)
+        hero_layout = QGridLayout(hero)
         hero_layout.setContentsMargins(24, 20, 24, 20)
-        hero_layout.setSpacing(24)
-        hero_text = QVBoxLayout()
-        hero_text.setSpacing(3)
-        self._hero_kicker = QLabel()
-        self._hero_kicker.setObjectName("puzzleHeroKicker")
+        hero_layout.setHorizontalSpacing(24)
+        hero_layout.setVerticalSpacing(3)
         self._hero_title = QLabel()
         self._hero_title.setObjectName("puzzleHeroTitle")
         self._hero_sub = QLabel()
         self._hero_sub.setObjectName("puzzleHeroSub")
         self._hero_sub.setWordWrap(True)
-        hero_text.addWidget(self._hero_kicker)
+        hero_text = QVBoxLayout()
+        hero_text.setSpacing(3)
         hero_text.addWidget(self._hero_title)
         hero_text.addWidget(self._hero_sub)
-        hero_layout.addLayout(hero_text, 1)
+        hero_text.addStretch(1)
+        hero_layout.addLayout(hero_text, 0, 0)
 
         self._rating_box = QWidget()
         rating_layout = QVBoxLayout(self._rating_box)
@@ -809,14 +795,21 @@ class _HubView(QWidget):
         self._rating_value.setObjectName("puzzleHeroRating")
         rating_layout.addWidget(self._rating_caption)
         rating_layout.addWidget(self._rating_value)
-        hero_layout.addWidget(self._rating_box)
+        hero_layout.addWidget(self._rating_box, 0, 1, Qt.AlignmentFlag.AlignVCenter)
 
         hero_actions = QVBoxLayout()
         hero_actions.setSpacing(6)
         hero_actions.addWidget(self._btn_train)
         hero_actions.addWidget(self._btn_practice)
         hero_actions.addWidget(self._btn_signin)
-        hero_layout.addLayout(hero_actions)
+        hero_layout.addLayout(hero_actions, 0, 2)
+        hero_layout.addWidget(
+            self._btn_settings,
+            0,
+            3,
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
+        )
+        hero_layout.setColumnStretch(0, 1)
         layout.addWidget(hero)
 
         self._settings = QFrame()
@@ -932,12 +925,8 @@ class _HubView(QWidget):
                 self._language,
             )
         )
-        if self._online and rating is not None:
-            self._hero_sub.setText(t("puzzle_hub_rating_hint", self._language))
-        elif self._online:
-            self._hero_sub.setText(t("puzzle_online_loading", self._language))
-        else:
-            self._hero_sub.setText(t("puzzle_home_signin_hint", self._language))
+        self._hero_sub.setText("" if self._online else t("puzzle_home_signin_hint", self._language))
+        self._hero_sub.setVisible(not self._online)
         self._rating_box.setVisible(self._online and rating is not None)
         if rating is not None:
             self._rating_value.setText(str(round(float(rating))))
@@ -1001,18 +990,17 @@ class _HubView(QWidget):
 
     def apply_icons(self, theme):
         self._theme = theme
+        self._btn_settings.setIcon(action_icon(theme, "settings", size=18))
         for card in (self._records_card, self._daily_card, self._challenge_card):
             card.apply_icons(theme)
 
     def retranslate(self, language):
         self._language = language
-        self._page_title.setText(t("puzzle_hub_title", language))
-        self._page_subtitle.setText(t("puzzle_hub_subtitle", language))
-        self._hero_kicker.setText(t("puzzle_hub_kicker", language))
         self._rating_caption.setText(t("puzzle_hub_rating", language))
         self._btn_signin.setText(t("puzzle_home_sign_in", language))
         self._btn_library.setText(t("puzzle_home_library", language))
-        self._btn_settings.setText(t("puzzle_home_settings", language))
+        self._btn_settings.setToolTip(t("puzzle_home_settings", language))
+        self._btn_settings.setAccessibleName(t("puzzle_home_settings", language))
         self._difficulty_label.setText(t("puzzle_home_difficulty", language))
         self._theme_label.setText(t("puzzle_home_theme", language))
         self._auto_next.setText(t("puzzle_home_auto_next", language))
