@@ -1389,16 +1389,20 @@ QTableWidget#moveTable::item {
     background-color: $accent;
     border-radius: 3px;
 }
-#puzzleTrainSide {
-    background: transparent;
-    border: none;
-    border-radius: 0;
+#puzzleBoardCard,
+#puzzleSideCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#puzzleSideDivider {
+    background-color: $border;
 }
 #puzzleMoveBox,
 #puzzleStatusCard {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 12px;
+    background: transparent;
+    border: none;
+    border-radius: 0;
 }
 #puzzleMoveBox QLabel#puzzleEmptyLabel {
     padding: 12px;

@@ -679,13 +679,14 @@ class _BoardColumn(QWidget):
     def __init__(self, board, parent=None):
         super().__init__(parent)
         self._board = board
+        self.setObjectName("puzzleBoardCard")
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self._board.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
         self._board.setFixedSize(self.SIZE, self.SIZE + self._board.chrome_height())
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(0)
         layout.addWidget(self._board)
-        layout.addStretch(1)
 
 
 class _HubView(QWidget):
@@ -1243,7 +1244,7 @@ class _TrainView(QWidget):
         self._play_card = QFrame()
         self._play_card.setObjectName("puzzleStatusCard")
         play_layout = QVBoxLayout(self._play_card)
-        play_layout.setContentsMargins(16, 14, 16, 14)
+        play_layout.setContentsMargins(0, 0, 0, 0)
         play_layout.setSpacing(12)
         play_layout.addLayout(status_header)
         play_layout.addWidget(self._result_detail)
@@ -1252,20 +1253,29 @@ class _TrainView(QWidget):
         play_layout.addWidget(self._btn_next)
         play_layout.addWidget(self._vote_row)
 
+        divider = QFrame()
+        divider.setObjectName("puzzleSideDivider")
+        divider.setFixedHeight(1)
+
         side = QFrame()
-        side.setObjectName("puzzleTrainSide")
+        side.setObjectName("puzzleSideCard")
         side.setFixedWidth(340)
         side_layout = QVBoxLayout(side)
-        side_layout.setContentsMargins(0, 0, 0, 0)
+        side_layout.setContentsMargins(16, 14, 16, 14)
         side_layout.setSpacing(12)
         side_layout.addWidget(self._play_card)
+        side_layout.addWidget(divider)
         side_layout.addWidget(self._move_box, 1)
 
         board_column = _BoardColumn(self.board)
-        board_column.setFixedWidth(_BoardColumn.SIZE)
+        board_column.setFixedWidth(_BoardColumn.SIZE + 24)
+        card_height = self.board.height() + 24
+        board_column.setFixedHeight(card_height)
+        side.setFixedHeight(card_height)
 
         content = QHBoxLayout()
         content.setSpacing(12)
+        content.setAlignment(Qt.AlignmentFlag.AlignTop)
         content.addStretch(1)
         content.addWidget(board_column)
         content.addWidget(side)
