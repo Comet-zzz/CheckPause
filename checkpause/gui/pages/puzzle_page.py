@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -672,21 +673,15 @@ def _piece_pixmap(piece_set, code, size):
 
 
 class _BoardColumn(QWidget):
-    """Keeps the board at a stable square size under the nav row."""
-
-    SIZE = 580
-
     def __init__(self, board, parent=None):
         super().__init__(parent)
         self._board = board
-        self.setObjectName("puzzleBoardCard")
-        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-        self._board.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        self._board.setFixedSize(self.SIZE, self.SIZE + self._board.chrome_height())
+        self.setMinimumWidth(420)
+        self._board.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(0)
-        layout.addWidget(self._board)
+        layout.addWidget(self._board, 1)
 
 
 class _HubView(QWidget):
@@ -1134,7 +1129,6 @@ class _TrainView(QWidget):
         self.board.set_edit_available(False)
         self.board.set_undo_visible(False)
         self.board.setMinimumWidth(360)
-        self.board.setMaximumWidth(600)
         self.board.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Expanding,
@@ -1259,7 +1253,8 @@ class _TrainView(QWidget):
 
         side = QFrame()
         side.setObjectName("puzzleSideCard")
-        side.setFixedWidth(340)
+        side.setMinimumWidth(300)
+        side.setMaximumWidth(460)
         side_layout = QVBoxLayout(side)
         side_layout.setContentsMargins(16, 14, 16, 14)
         side_layout.setSpacing(12)
@@ -1268,40 +1263,24 @@ class _TrainView(QWidget):
         side_layout.addWidget(self._move_box, 1)
 
         board_column = _BoardColumn(self.board)
-        board_column.setFixedWidth(_BoardColumn.SIZE + 24)
-        card_height = self.board.height() + 24
-        board_column.setFixedHeight(card_height)
-        side.setFixedHeight(card_height)
 
-        content = QHBoxLayout()
-        content.setSpacing(12)
-        content.setAlignment(Qt.AlignmentFlag.AlignTop)
-        content.addStretch(1)
-        content.addWidget(board_column)
-        content.addWidget(side)
-        content.addStretch(1)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
+        splitter.addWidget(board_column)
+        splitter.addWidget(side)
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 1)
+        splitter.setSizes([604, 380])
+        splitter.setHandleWidth(12)
+        splitter.setChildrenCollapsible(False)
+        self._splitter = splitter
 
-        self._workspace = QWidget()
-        self._workspace.setMaximumWidth(1040)
-        workspace_layout = QVBoxLayout(self._workspace)
-        workspace_layout.setContentsMargins(0, 0, 0, 0)
-        workspace_layout.setSpacing(12)
-        workspace_layout.addLayout(top)
-        workspace_layout.addLayout(content, 1)
-
-        layout = QHBoxLayout(self)
+        layout = QVBoxLayout(self)
         layout.setContentsMargins(28, 18, 28, 20)
-        layout.addStretch(1)
-        layout.addWidget(self._workspace)
-        layout.addStretch(1)
+        layout.setSpacing(12)
+        layout.addLayout(top)
+        layout.addWidget(splitter, 1)
         self.set_line("")
         self.hide_result()
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        width = max(0, min(1040, self.width() - 56))
-        if self._workspace.width() != width:
-            self._workspace.setFixedWidth(width)
 
     def set_rating(self, rating, delta=None):
         self._rating = rating

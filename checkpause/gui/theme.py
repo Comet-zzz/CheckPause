@@ -1389,7 +1389,6 @@ QTableWidget#moveTable::item {
     background-color: $accent;
     border-radius: 3px;
 }
-#puzzleBoardCard,
 #puzzleSideCard {
     background-color: $surface;
     border: 1px solid $border;
