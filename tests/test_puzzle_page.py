@@ -356,12 +356,29 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertEqual(self.page._profile._range_days, 90)
         self.assertEqual(self.page._profile_days, 90)
 
-    def test_retry_button_waits_for_retryable_mistakes(self):
+    def test_retry_card_waits_for_retryable_mistakes(self):
         self.page._profile.refresh({"attempts": 1, "retryable": 0}, "zh-CN")
-        self.assertTrue(self.page._profile._btn_mistakes.isHidden())
+        self.assertFalse(self.page._profile._retryable.isEnabled())
+        self.assertIn("没有可重练", self.page._profile._retryable.toolTip())
 
         self.page._profile.refresh({"attempts": 1, "retryable": 2}, "zh-CN")
-        self.assertFalse(self.page._profile._btn_mistakes.isHidden())
+        self.assertTrue(self.page._profile._retryable.isEnabled())
+        self.assertEqual(self.page._profile._retryable.toolTip(), "")
+
+    def test_retry_card_triggers_mistakes(self):
+        self.page._profile.refresh({"attempts": 1, "retryable": 2}, "zh-CN")
+        with mock.patch.object(self.page, "_start_mistakes") as start:
+            self.page._profile._retryable.clicked.emit()
+        start.assert_called_once()
+
+    def test_retry_failure_from_profile_is_visible(self):
+        self.page._profile.set_retry_busy(True)
+        self.page._stack.setCurrentWidget(self.page._profile)
+        self.page._on_online_next_failed(
+            "retry", "没有可重练的错题", "no_mistakes", self.page._next_request_id
+        )
+        self.assertFalse(self.page._profile._notice.isHidden())
+        self.assertFalse(self.page._profile._retry_busy)
 
 
 if __name__ == "__main__":

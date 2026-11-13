@@ -212,6 +212,54 @@ class _StatCard(QFrame):
         self.caption.setText(t(self._caption_key, language))
 
 
+class _ActionCard(QFrame):
+    clicked = Signal()
+
+    def __init__(self, caption_key, parent=None):
+        super().__init__(parent)
+        self._caption_key = caption_key
+        self.setObjectName("puzzleActionCard")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.value = QLabel("—")
+        self.value.setObjectName("puzzleStatValue")
+        self.value.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self.caption = QLabel()
+        self.caption.setObjectName("puzzleStatCaption")
+        self.caption.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        arrow = QLabel("→")
+        arrow.setObjectName("puzzleActionArrow")
+        arrow.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        meta = QHBoxLayout()
+        meta.setContentsMargins(0, 0, 0, 0)
+        meta.setSpacing(6)
+        meta.addWidget(self.caption)
+        meta.addStretch(1)
+        meta.addWidget(arrow)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 12, 14, 12)
+        layout.setSpacing(2)
+        layout.addWidget(self.value)
+        layout.addLayout(meta)
+
+    def set_value(self, value):
+        self.value.setText("—" if value is None else str(value))
+
+    def retranslate(self, language):
+        self.caption.setText(t(self._caption_key, language))
+
+    def mouseReleaseEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton and self.isEnabled():
+            self.clicked.emit()
+        super().mouseReleaseEvent(event)
+
+    def keyPressEvent(self, event):
+        if event.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter, Qt.Key.Key_Space):
+            self.clicked.emit()
+            return
+        super().keyPressEvent(event)
+
+
 _RADAR_RINGS = 6
 _RADAR_PLACEHOLDER_VERTICES = 9
 _RADAR_PLACEHOLDER = 3 / _RADAR_RINGS
@@ -1837,10 +1885,6 @@ class _ProfileView(QWidget):
         self._btn_back.clicked.connect(self.back_requested.emit)
         self._title = QLabel()
         self._title.setObjectName("puzzleHeaderTitle")
-        self._btn_mistakes = QPushButton()
-        self._btn_mistakes.setObjectName("puzzlePrimaryButton")
-        self._btn_mistakes.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_mistakes.clicked.connect(self.mistakes_requested.emit)
         self._range_box = QFrame()
         self._range_box.setObjectName("puzzleRangeGroup")
         range_layout = QHBoxLayout(self._range_box)
@@ -1863,7 +1907,6 @@ class _ProfileView(QWidget):
         header.addWidget(self._btn_back)
         header.addWidget(self._title)
         header.addStretch(1)
-        header.addWidget(self._btn_mistakes)
         header.addWidget(self._range_box)
         layout.addLayout(header)
         self._scope_note = QLabel()
@@ -1902,7 +1945,10 @@ class _ProfileView(QWidget):
         self._attempted = _StatCard("puzzle_profile_attempts")
         self._active_days = _StatCard("puzzle_profile_active_days")
         self._best_streak = _StatCard("puzzle_profile_best_streak")
-        self._retryable = _StatCard("puzzle_profile_retryable")
+        self._retryable = _ActionCard("puzzle_profile_retryable")
+        self._retryable.clicked.connect(self.mistakes_requested.emit)
+        self._retryable_count = 0
+        self._retry_busy = False
         for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
             metrics.addWidget(card, 1)
         layout.addLayout(metrics)
@@ -2007,12 +2053,24 @@ class _ProfileView(QWidget):
         self._attempted.set_value(self._summary.get("attempts", 0))
         self._active_days.set_value(self._summary.get("active_days", 0))
         self._best_streak.set_value(self._summary.get("best_streak", 0))
-        self._retryable.set_value(self._summary.get("retryable", 0))
+        self._retryable_count = int(self._summary.get("retryable") or 0)
+        self._retryable.set_value(self._retryable_count)
+        self._sync_retry_card()
 
-        self._btn_mistakes.setVisible(int(self._summary.get("retryable") or 0) > 0)
         has_data = bool(self._summary.get("attempts"))
         self._empty.setVisible(not has_data and rating is None)
         self._refresh_themes(rating)
+
+    def _sync_retry_card(self):
+        enabled = self._retryable_count > 0 and not self._retry_busy
+        self._retryable.setEnabled(enabled)
+        self._retryable.setToolTip(
+            "" if enabled else t("puzzle_profile_retry_empty", self._language)
+        )
+
+    def set_retry_busy(self, busy):
+        self._retry_busy = bool(busy)
+        self._sync_retry_card()
 
     def _refresh_themes(self, rating):
         entries = [
@@ -2040,7 +2098,6 @@ class _ProfileView(QWidget):
         self._language = language
         self._btn_back.setText(t("puzzle_train_back", language))
         self._title.setText(t("puzzle_profile_title", language))
-        self._btn_mistakes.setText(t("puzzle_home_mistakes", language))
         range_keys = (
             "puzzle_profile_range_7",
             "puzzle_profile_range_30",
@@ -2055,6 +2112,7 @@ class _ProfileView(QWidget):
         self._empty.setText(t("puzzle_profile_empty", language))
         for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
             card.retranslate(language)
+        self._sync_retry_card()
         self._update_scope()
         if self._summary:
             self.refresh(self._summary, language)
@@ -2391,12 +2449,16 @@ class PuzzlePage(QWidget):
 
     def _start_mistakes(self):
         self._refresh_account()
+        self._profile.set_notice("")
         if self._is_online():
+            self._profile.set_retry_busy(True)
+            self._profile.set_notice(t("puzzle_online_retry_loading", self._language))
             self._start_online_retry()
             return
         self._start_local_mistakes()
 
     def _start_local_mistakes(self):
+        self._profile.set_retry_busy(False)
         failed = mistake_puzzles()
         if not failed:
             QMessageBox.information(
@@ -2621,9 +2683,13 @@ class PuzzlePage(QWidget):
             return
         self._hub.set_train_enabled(True)
         self._hub.set_notice("")
+        self._profile.set_retry_busy(False)
+        if action == "retry":
+            self._profile.set_notice("")
         if not self.isVisible() or self._stack.currentWidget() not in (
             self._hub,
             self._train,
+            self._profile,
         ):
             return
         if action == "solved":
@@ -2658,6 +2724,7 @@ class PuzzlePage(QWidget):
         if request_id != self._next_request_id:
             return
         self._hub.set_train_enabled(True)
+        self._profile.set_retry_busy(False)
         if code in ("missing_token", "unknown_token"):
             self._mark_online_expired()
         if action == "solved":
@@ -2667,11 +2734,15 @@ class PuzzlePage(QWidget):
             self._hub.set_notice(message)
             return
         if action == "retry" and code == "no_mistakes":
-            self._hub.set_notice(message)
+            if self._stack.currentWidget() is self._profile:
+                self._profile.set_notice(message)
+            else:
+                self._hub.set_notice(message)
             return
         if not self.isVisible() or self._stack.currentWidget() not in (
             self._hub,
             self._train,
+            self._profile,
         ):
             return
         self.refresh_collections()

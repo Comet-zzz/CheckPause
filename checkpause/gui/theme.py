@@ -1205,6 +1205,31 @@ QTableWidget#moveTable::item {
     color: $text_muted;
     font-size: 12px;
 }
+#puzzleActionCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 12px;
+    padding: 0;
+    text-align: left;
+}
+#puzzleActionCard:hover {
+    background-color: $surface_alt;
+    border-color: $border_strong;
+}
+#puzzleActionCard:pressed {
+    background-color: $surface_alt;
+    border-color: $border_strong;
+}
+#puzzleActionCard:disabled {
+    background-color: $surface_alt;
+}
+#puzzleActionCard:disabled QLabel {
+    color: $text_disabled;
+}
+#puzzleActionArrow {
+    color: $text_muted;
+    font-size: 14px;
+}
 #puzzleCollectionCard {
     background-color: $surface;
     border: 1px solid $border;
