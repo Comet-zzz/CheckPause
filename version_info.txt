@@ -21,7 +21,7 @@ VSVersionInfo(
           StringStruct('LegalCopyright', 'Copyright (C) 2026 CometZZZ'),
           StringStruct('OriginalFilename', 'CheckPause.exe'),
           StringStruct('ProductName', 'CheckPause'),
-           StringStruct('ProductVersion', '2.1.0.0')
+           StringStruct('ProductVersion', '2.2.0.0')
         ]
       )
     ]),
