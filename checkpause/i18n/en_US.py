@@ -115,6 +115,7 @@ MESSAGES = {
     "cloud_account_username": "Username:",
     "cloud_account_password": "Password:",
     "cloud_account_show_password": "Show password",
+    "cloud_account_advanced": "Advanced",
     "cloud_account_sign_in": "Sign in",
     "cloud_account_register": "Sign up",
     "cloud_account_signed_in": "Signed in as {username}",

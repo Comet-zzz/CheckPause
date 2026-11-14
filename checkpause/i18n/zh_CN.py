@@ -113,6 +113,7 @@ MESSAGES = {
     "cloud_account_username": "用户名：",
     "cloud_account_password": "密码：",
     "cloud_account_show_password": "显示密码",
+    "cloud_account_advanced": "高级设置",
     "cloud_account_sign_in": "登录",
     "cloud_account_register": "注册新账号",
     "cloud_account_signed_in": "已登录：{username}",

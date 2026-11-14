@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
+    QMenu,
     QMessageBox,
     QSplitter,
     QStackedWidget,
@@ -352,7 +353,10 @@ class MainWindow(QMainWindow):
         for module in MODULES:
             rail.add_module(module["id"], module["label_key"], module["icon"])
         rail.module_selected.connect(self._on_module_selected)
+        rail.account_clicked.connect(self._open_cloud_account)
+        rail.set_settings_menu(self._rail_menu)
         rail.retranslate(self._language)
+        rail.set_account_name(self._account_button_text(), self._account_button_tooltip())
         return rail
 
     def _sync_side_panels(self):
@@ -380,21 +384,19 @@ class MainWindow(QMainWindow):
         self._rail.set_active(self._module)
 
     def _build_menus(self):
-        menubar = self.menuBar()
+        # The rail's gear button owns the whole menu tree; there is no menu bar.
+        self._rail_menu = QMenu(self)
 
-        self._menu_settings = menubar.addMenu("")
+        self._menu_settings = self._rail_menu.addMenu("")
 
         self._act_api_settings = QAction(self)
         self._act_api_settings.triggered.connect(self._open_api_settings)
-        self._act_cloud_account = QAction(self)
-        self._act_cloud_account.triggered.connect(self._open_cloud_account)
         self._act_language = QAction(self)
         self._act_language.triggered.connect(self._change_language)
         self._menu_settings.addAction(self._act_api_settings)
-        self._menu_settings.addAction(self._act_cloud_account)
         self._menu_settings.addAction(self._act_language)
 
-        self._menu_personalization = menubar.addMenu("")
+        self._menu_personalization = self._rail_menu.addMenu("")
 
         self._menu_appearance = self._menu_personalization.addMenu("")
         self._theme_group = QActionGroup(self)
@@ -466,7 +468,7 @@ class MainWindow(QMainWindow):
             self._menu_analysis_depth.addAction(action)
             self._analysis_depth_actions[depth] = action
 
-        self._menu_help = menubar.addMenu("")
+        self._menu_help = self._rail_menu.addMenu("")
         self._act_check_update = QAction(self)
         self._act_check_update.triggered.connect(lambda: self._check_for_update(manual=True))
         self._act_about = QAction(self)
@@ -475,7 +477,6 @@ class MainWindow(QMainWindow):
         self._menu_help.addAction(self._act_about)
 
     def _set_chrome_visible(self, visible):
-        self.menuBar().setVisible(visible)
         self._rail.setVisible(visible)
 
     def _enter_main(self):
@@ -529,7 +530,7 @@ class MainWindow(QMainWindow):
                 account.get("id"),
             )
         self._account = get_account()
-        self._refresh_account_menu()
+        self._refresh_account_button()
         self._apply_theme()
         self._apply_board_preferences()
         self._enter_main()
@@ -542,7 +543,7 @@ class MainWindow(QMainWindow):
         self._act_dark.setText(t("theme_dark", self._language))
         self._menu_help.setTitle(t("menu_help", self._language))
         self._act_api_settings.setText(t("action_api_settings", self._language))
-        self._refresh_account_menu()
+        self._refresh_account_button()
         self._act_language.setText(t("action_change_language", self._language))
         self._act_check_update.setText(t("action_check_update", self._language))
         self._act_about.setText(t("action_about", self._language))
@@ -874,28 +875,26 @@ class MainWindow(QMainWindow):
         self._open_cloud_account()
         return bool(self._account.get("token"))
 
-    def _account_menu_text(self):
-        """The settings entry doubles as the balance readout."""
+    def _account_button_text(self):
         if not self._account.get("token"):
-            return t("action_cloud_account", self._language)
+            return t("cloud_account_not_signed_in", self._language)
+        return self._account.get("username", "") or t("cloud_account_not_signed_in", self._language)
+
+    def _account_button_tooltip(self):
+        if not self._account.get("token"):
+            return t("cloud_account_not_signed_in", self._language)
         username = self._account.get("username", "")
         balance = self._account.get("balance")
+        lines = [t("cloud_account_signed_in", self._language, username=username)]
         if balance is None:
-            return t(
-                "cloud_account_menu_no_balance",
-                self._language,
-                username=username,
-            )
-        return t(
-            "cloud_account_menu_signed_in",
-            self._language,
-            username=username,
-            balance=balance,
-        )
+            lines.append(t("cloud_account_balance_unknown", self._language))
+        else:
+            lines.append(t("cloud_account_balance", self._language, balance=balance))
+        return "\n".join(lines)
 
-    def _refresh_account_menu(self):
-        if hasattr(self, "_act_cloud_account"):
-            self._act_cloud_account.setText(self._account_menu_text())
+    def _refresh_account_button(self):
+        if hasattr(self, "_rail"):
+            self._rail.set_account_name(self._account_button_text(), self._account_button_tooltip())
 
     def _refresh_balance(self):
         """Ask the server what is left; the reply just came out of it."""
@@ -920,7 +919,7 @@ class MainWindow(QMainWindow):
             return
         self._account["balance"] = balance
         save_balance(balance)
-        self._refresh_account_menu()
+        self._refresh_account_button()
 
     def _on_balance_finished(self):
         worker = self._account_worker
@@ -947,7 +946,7 @@ class MainWindow(QMainWindow):
             # Logging out is a full logout: go back to the sign-in screen the
             # app started on, instead of leaving the user in the main view with
             # no account behind it. A deleted account has nowhere else to go.
-            self._refresh_account_menu()
+            self._refresh_account_button()
             self._show_welcome()
             return
         if action in ("sign_in", "register"):
@@ -959,7 +958,7 @@ class MainWindow(QMainWindow):
             # The cloud name is the identity, so the local display follows it.
             self.profile = set_username(self.profile, self._account.get("username", ""))
             self._refresh_stats()
-        self._refresh_account_menu()
+        self._refresh_account_button()
         if hasattr(self, "puzzle_page"):
             self.puzzle_page.refresh_account()
 

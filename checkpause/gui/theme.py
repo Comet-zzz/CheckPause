@@ -124,6 +124,7 @@ _TOKENS = {
         "rail_hover": "rgba(16, 20, 26, 0.06)",
         "rail_checked_bg": "rgba(16, 20, 26, 0.09)",
         "rail_checked_text": "#1b1e23",
+        "rail_footer_bg": "rgba(16, 20, 26, 0.04)",
         "editbar_btn_bg": "rgba(255, 255, 255, 0.9)",
         "editbar_btn_border": "rgba(16, 20, 26, 0.16)",
         "editbar_btn_hover": "#ffffff",
@@ -174,6 +175,7 @@ _TOKENS = {
         "rail_hover": "rgba(255, 255, 255, 0.08)",
         "rail_checked_bg": "rgba(255, 255, 255, 0.14)",
         "rail_checked_text": "#f2f3f5",
+        "rail_footer_bg": "rgba(255, 255, 255, 0.04)",
         "editbar_btn_bg": "rgba(233, 235, 238, 0.92)",
         "editbar_btn_border": "rgba(255, 255, 255, 0.24)",
         "editbar_btn_hover": "#f4f6f8",
@@ -588,6 +590,30 @@ QScrollArea > QWidget > QWidget {
 }
 #moduleRail QToolButton::menu-indicator {
     image: none;
+}
+#railFooter {
+    background-color: $rail_footer_bg;
+}
+#railFooter QToolButton {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: $rail_text;
+    font-size: 12px;
+    padding: 4px 6px;
+}
+#railFooter QToolButton:hover {
+    background-color: $rail_hover;
+}
+#railFooter QToolButton::menu-indicator {
+    image: none;
+}
+#railAccount {
+    padding: 4px;
+    text-align: left;
+}
+#railSettings {
+    padding: 0;
 }
 #panelCard {
     background-color: $surface;

@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QFrame,
+    QGridLayout,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -15,6 +16,7 @@ from PySide6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QVBoxLayout,
+    QWidget,
 )
 
 from checkpause import (
@@ -172,7 +174,7 @@ def cloud_account_dialog(parent, language, config=None):
 
     dialog = QDialog(parent)
     dialog.setWindowTitle(t("cloud_account_title", language))
-    dialog.setMinimumWidth(500)
+    dialog.setFixedWidth(360)
 
     hint = QLabel(t("cloud_account_hint", language))
     hint.setWordWrap(True)
@@ -213,53 +215,82 @@ def cloud_account_dialog(parent, language, config=None):
     topup_status = QLabel()
     topup_status.setWordWrap(True)
 
+    # The server address is only needed for self-hosted deployments, so it
+    # stays folded away instead of dominating the sign-in form.
+    server_box = QWidget()
+    server_box.setObjectName("accountServer")
+    server_layout = QVBoxLayout(server_box)
+    server_layout.setContentsMargins(0, 0, 0, 0)
+    server_layout.setSpacing(4)
+    server_layout.addWidget(QLabel(t("cloud_account_server", language)))
+    server_layout.addWidget(server_field)
+    server_box.setVisible(False)
+
+    advanced_toggle = QCheckBox(t("cloud_account_advanced", language))
+    advanced_toggle.toggled.connect(server_box.setVisible)
+
     form = QFormLayout()
-    form.setHorizontalSpacing(16)
-    form.setVerticalSpacing(10)
-    form.addRow(t("cloud_account_server", language), server_field)
+    form.setHorizontalSpacing(12)
+    form.setVerticalSpacing(8)
     form.addRow(t("cloud_account_username", language), username_field)
     form.addRow(t("cloud_account_password", language), password_field)
     form.addRow("", show_toggle)
 
-    row = QHBoxLayout()
-    for button in (
-        sign_in_button,
-        register_button,
-        rename_button,
-        refresh_button,
-        sign_out_button,
-        delete_button,
-    ):
-        row.addWidget(button)
-    row.addStretch(1)
-    row.addWidget(close_button)
+    sign_buttons = QHBoxLayout()
+    sign_buttons.setSpacing(8)
+    sign_buttons.addWidget(sign_in_button, 1)
+    sign_buttons.addWidget(register_button, 1)
 
-    topup_row = QHBoxLayout()
-    topup_row.addWidget(topup_label)
-    topup_row.addWidget(pack_combo, 1)
-    topup_row.addWidget(buy_button)
+    auth_box = QWidget()
+    auth_box.setObjectName("accountAuth")
+    auth_layout = QVBoxLayout(auth_box)
+    auth_layout.setContentsMargins(0, 0, 0, 0)
+    auth_layout.setSpacing(8)
+    auth_layout.addWidget(advanced_toggle)
+    auth_layout.addWidget(server_box)
+    auth_layout.addLayout(form)
+    auth_layout.addLayout(sign_buttons)
+
+    topup_box = QWidget()
+    topup_box.setObjectName("accountTopup")
+    topup_layout = QVBoxLayout(topup_box)
+    topup_layout.setContentsMargins(0, 0, 0, 0)
+    topup_layout.setSpacing(6)
+    topup_layout.addWidget(topup_label)
+    topup_layout.addWidget(pack_combo)
+    topup_layout.addWidget(buy_button)
+    topup_layout.addWidget(topup_status)
+
+    account_actions = QGridLayout()
+    account_actions.setHorizontalSpacing(8)
+    account_actions.setVerticalSpacing(8)
+    account_actions.addWidget(refresh_button, 0, 0)
+    account_actions.addWidget(rename_button, 0, 1)
+    account_actions.addWidget(sign_out_button, 1, 0)
+    account_actions.addWidget(delete_button, 1, 1)
+
+    account_box = QWidget()
+    account_box.setObjectName("accountSession")
+    account_layout = QVBoxLayout(account_box)
+    account_layout.setContentsMargins(0, 0, 0, 0)
+    account_layout.setSpacing(10)
+    account_layout.addWidget(topup_box)
+    account_layout.addLayout(account_actions)
+
+    bottom_row = QHBoxLayout()
+    bottom_row.addStretch(1)
+    bottom_row.addWidget(close_button)
 
     layout = QVBoxLayout(dialog)
+    layout.setContentsMargins(16, 16, 16, 16)
+    layout.setSpacing(12)
     layout.addWidget(hint)
-    layout.addLayout(form)
     layout.addWidget(status)
-    layout.addLayout(topup_row)
-    layout.addWidget(topup_status)
-    layout.addLayout(row)
+    layout.addWidget(auth_box)
+    layout.addWidget(account_box)
+    layout.addLayout(bottom_row)
 
-    credentials = (
-        username_field,
-        password_field,
-        show_toggle,
-        sign_in_button,
-        register_button,
-    )
-    # A hidden input still leaves its label behind, which reads as a bug, so the
-    # labels move with their fields.
-    credential_labels = [(field, form.labelForField(field)) for field in credentials]
-    session_buttons = (rename_button, refresh_button, sign_out_button, delete_button)
-    topup_widgets = (topup_label, pack_combo, buy_button, topup_status)
-    everything = credentials + session_buttons + topup_widgets + (close_button, server_field)
+    everything = (auth_box, account_box, close_button)
 
     def signed_in():
         return bool(account.get("token"))
@@ -284,17 +315,12 @@ def cloud_account_dialog(parent, language, config=None):
 
     def refresh():
         logged_in = signed_in()
-        for widget in credentials:
-            widget.setVisible(not logged_in)
-        for _field, label in credential_labels:
-            if label is not None and label.text():
-                label.setVisible(not logged_in)
-        for widget in session_buttons + topup_widgets:
-            widget.setVisible(logged_in)
-        server_field.setEnabled(not logged_in)
+        auth_box.setVisible(not logged_in)
+        account_box.setVisible(logged_in)
         if not logged_in:
             username_field.setFocus()
         show_status()
+        dialog.adjustSize()
 
     def set_busy(value):
         for widget in everything:
