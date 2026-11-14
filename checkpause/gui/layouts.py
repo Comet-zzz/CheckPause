@@ -54,6 +54,7 @@ class BoardWorkspace(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(0)
+        outer.addStretch(1)
         outer.addLayout(row)
         outer.addStretch(1)
 

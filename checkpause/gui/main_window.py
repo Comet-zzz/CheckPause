@@ -107,6 +107,15 @@ MODULES = (
     {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
 
+# At this width the board workspace (board + navigation + margins) is 624
+# logical pixels tall, so the default window fits it without a page-background
+# band below. Taller windows still show page background; a square board cannot
+# fill a page that is taller than its pane is wide.
+WINDOW_WIDTH = 1080
+WINDOW_HEIGHT = 624
+MIN_WINDOW_WIDTH = 920
+MIN_WINDOW_HEIGHT = 600
+
 
 def _system_language():
     """First-run language: Simplified Chinese on Chinese systems, else English."""
@@ -205,8 +214,8 @@ class MainWindow(QMainWindow):
 
         self._apply_theme()
         self._apply_board_preferences()
-        self.resize(1080, 760)
-        self.setMinimumSize(920, 640)
+        self.resize(WINDOW_WIDTH, WINDOW_HEIGHT)
+        self.setMinimumSize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
 
         # Delayed so the window is on screen before any prompt can appear.
         self._update_timer = QTimer(self)

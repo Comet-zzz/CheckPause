@@ -1150,6 +1150,15 @@ QTableWidget#moveTable::item {
     background: transparent;
     border-color: transparent;
 }
+#puzzleBackButton {
+    background: transparent;
+    border: none;
+    border-radius: 16px;
+    padding: 0;
+}
+#puzzleBackButton:hover {
+    background-color: $hover;
+}
 #puzzleSecondaryButton:hover, #puzzleGhostButton:hover {
     background-color: $hover;
     color: $text;

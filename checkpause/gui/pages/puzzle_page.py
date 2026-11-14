@@ -1077,11 +1077,11 @@ class _TrainView(QWidget):
         self.setObjectName("puzzleTrain")
 
         self._btn_back = QPushButton()
-        self._btn_back.setObjectName("puzzleGhostButton")
+        self._btn_back.setObjectName("puzzleBackButton")
         self._btn_back.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._btn_back.setFixedSize(32, 32)
+        self._btn_back.setIconSize(QSize(18, 18))
         self._btn_back.clicked.connect(self.back_requested.emit)
-        self._mode_label = QLabel()
-        self._mode_label.setObjectName("puzzleModeLabel")
         self._counter_label = QLabel()
         self._counter_label.setObjectName("puzzleCounterLabel")
         self._turn_text = ""
@@ -1113,13 +1113,6 @@ class _TrainView(QWidget):
         chip_layout.addWidget(self._rating_value)
         chip_layout.addWidget(self._rating_delta)
         self._rating_chip.setVisible(False)
-
-        top = QHBoxLayout()
-        top.setSpacing(10)
-        top.addWidget(self._btn_back)
-        top.addWidget(self._mode_label)
-        top.addStretch(1)
-        top.addWidget(self._counter_label)
 
         self._prompt = QLabel()
         self._prompt.setObjectName("puzzleStatusSub")
@@ -1262,24 +1255,30 @@ class _TrainView(QWidget):
         side_layout = QVBoxLayout(side)
         side_layout.setContentsMargins(16, 14, 16, 14)
         side_layout.setSpacing(12)
-        side_layout.addWidget(self._rating_chip)
+
+        rating_row = QHBoxLayout()
+        rating_row.setSpacing(8)
+        rating_row.addWidget(self._rating_chip)
+        rating_row.addStretch(1)
+        rating_row.addWidget(self._counter_label)
+        side_layout.addLayout(rating_row)
         side_layout.addWidget(self._play_card)
         side_layout.addWidget(divider)
         side_layout.addWidget(self._move_box, 1)
 
         board_column = _BoardColumn(self.board)
 
-        header_host = QWidget()
-        header_layout = QVBoxLayout(header_host)
-        header_layout.setContentsMargins(28, 18, 28, 12)
-        header_layout.setSpacing(0)
-        header_layout.addLayout(top)
-
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        layout.addWidget(header_host)
-        layout.addWidget(BoardWorkspace(board_column, side), 1)
+        workspace = BoardWorkspace(board_column, side)
+        layout.addWidget(workspace, 1)
+
+        # Floating back button: no layout height, so the puzzle board keeps the
+        # exact size of the play and analysis boards.
+        self._btn_back.setParent(self)
+        self._btn_back.move(12, 12)
+        self._btn_back.raise_()
         self.set_line("")
         self.hide_result()
 
@@ -1305,14 +1304,10 @@ class _TrainView(QWidget):
         self._rating_chip.setVisible(True)
 
     def set_online_info(self, mode, rating):
-        self._mode_label.setText(mode or "")
-        self._mode_label.setVisible(bool(mode))
         self._counter_label.clear()
         self.set_rating(rating)
 
     def set_session_info(self, mode, index, total, human_color):
-        self._mode_label.setText(mode or "")
-        self._mode_label.setVisible(bool(mode))
         self.set_rating(None)
         self._counter_label.setText(
             t(
@@ -1534,7 +1529,7 @@ class _TrainView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._btn_back.setText(t("puzzle_train_back", language))
+        self._btn_back.setToolTip(t("puzzle_train_back", language))
         self._btn_hint.setText(t("puzzle_train_hint", language))
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_next.setText(t("puzzle_train_continue", language))
