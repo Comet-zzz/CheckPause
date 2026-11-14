@@ -10,10 +10,10 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QMenu,
     QMessageBox,
-    QSplitter,
     QStackedWidget,
     QTabBar,
     QTabWidget,
+    QVBoxLayout,
     QWidget,
 )
 
@@ -78,6 +78,7 @@ from checkpause.gui.dialogs import (
     show_update_dialog,
 )
 from checkpause.gui.icons import app_icon
+from checkpause.gui.layouts import BoardWorkspace
 from checkpause.gui.pages.analysis_page import AnalysisPage
 from checkpause.gui.pages.chat_page import ChatPage
 from checkpause.gui.pages.learn_page import LearnPage
@@ -87,6 +88,7 @@ from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
 from checkpause.gui.theme import DARK, LIGHT, apply_theme
 from checkpause.gui.widgets.board import BoardWidget
+from checkpause.gui.widgets.eval_bar import EvalBar
 from checkpause.gui.widgets.module_rail import ModuleRail
 from checkpause.gui.workers import (
     AccountWorker,
@@ -104,9 +106,6 @@ MODULES = (
     {"id": "learn", "label_key": "nav_learn", "icon": "rail_learn"},
     {"id": "analysis", "label_key": "nav_analysis", "icon": "rail_analysis"},
 )
-
-
-SIDE_PANEL_DESIGN_WIDTH = 390
 
 
 def _system_language():
@@ -188,7 +187,6 @@ class MainWindow(QMainWindow):
 
         self._build_menus()
         self._rail = self._build_rail()
-        self._sync_side_panels()
 
         shell = QWidget()
         shell_layout = QHBoxLayout(shell)
@@ -207,7 +205,8 @@ class MainWindow(QMainWindow):
 
         self._apply_theme()
         self._apply_board_preferences()
-        self.resize(1034, 726)
+        self.resize(1080, 760)
+        self.setMinimumSize(920, 640)
 
         # Delayed so the window is on screen before any prompt can appear.
         self._update_timer = QTimer(self)
@@ -340,13 +339,38 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.chat_page, "")
         self.tabs.addTab(self.stats_page, "")
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.board)
-        splitter.addWidget(self.tabs)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([532, 390])
-        return splitter
+        self._eval_bar = EvalBar()
+        self._eval_bar.set_colors(*self.board.eval_colors())
+        self.board.eval_ratio_changed.connect(self._eval_bar.set_ratio)
+        self.board.canvas_height_changed.connect(self._sync_eval_bar_height)
+
+        bar_host = QWidget()
+        bar_layout = QVBoxLayout(bar_host)
+        bar_layout.setContentsMargins(6, self.board.layout().contentsMargins().top(), 0, 0)
+        bar_layout.setSpacing(0)
+        bar_layout.addWidget(self._eval_bar, 0, Qt.AlignmentFlag.AlignTop)
+        bar_layout.addStretch(1)
+
+        content = QWidget()
+        content_layout = QVBoxLayout(content)
+        content_layout.setContentsMargins(10, 10, 10, 10)
+        content_layout.setSpacing(8)
+        content_layout.addWidget(self.board.eval_controls())
+        content_layout.addWidget(self.tabs, 1)
+
+        panel = QWidget()
+        panel.setObjectName("analysisPanel")
+        panel_layout = QHBoxLayout(panel)
+        panel_layout.setContentsMargins(0, 0, 0, 0)
+        panel_layout.setSpacing(0)
+        panel_layout.addWidget(bar_host)
+        panel_layout.addWidget(content, 1)
+
+        workspace = BoardWorkspace(self.board, panel)
+        return workspace
+
+    def _sync_eval_bar_height(self, height):
+        self._eval_bar.setFixedHeight(max(80, int(height)))
 
     def _build_rail(self):
         rail = ModuleRail()
@@ -358,10 +382,6 @@ class MainWindow(QMainWindow):
         rail.retranslate(self._language)
         rail.set_account_name(self._account_button_text(), self._account_button_tooltip())
         return rail
-
-    def _sync_side_panels(self):
-        for panel in (self.tabs, self.play_page.panel):
-            panel.setMinimumWidth(0)
 
     def _on_module_selected(self, module_id):
         if module_id not in ("analysis", "play", "puzzle", "learn"):
@@ -571,7 +591,6 @@ class MainWindow(QMainWindow):
         self.learn_page.retranslate(self._language)
         self.chat_page.retranslate(self._language)
         self.stats_page.retranslate(self._language)
-        self._sync_side_panels()
         self._refresh_stats()
 
     def _refresh_stats(self):
@@ -974,6 +993,8 @@ class MainWindow(QMainWindow):
         self._rail.set_theme(self._theme)
         self.chat_page.set_theme(self._theme)
         self.board.set_theme(self._theme)
+        if hasattr(self, "_eval_bar"):
+            self._eval_bar.set_colors(*self.board.eval_colors())
         self.analysis_page.set_theme(self._theme)
         self.play_page.set_theme(self._theme)
         self.puzzle_page.set_theme(self._theme)

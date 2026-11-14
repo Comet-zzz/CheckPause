@@ -48,6 +48,8 @@ class BoardWidget(QWidget):
     position_changed = Signal(str)
     hint_toggled = Signal(bool)
     eval_depth_changed = Signal(int)
+    eval_ratio_changed = Signal(float)
+    canvas_height_changed = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -85,6 +87,7 @@ class BoardWidget(QWidget):
         self._lesson_marks = set()
         self._lesson_arrows = []
         self._lesson_mode = False
+        self._shown = False
 
         self._anim_timer = QTimer(self)
         self._anim_timer.setInterval(FRAME_MS)
@@ -92,11 +95,11 @@ class BoardWidget(QWidget):
 
         self._canvas = _BoardCanvas(self)
         self._canvas.setMinimumSize(320, 320)
+        self._canvas.eval_ratio_changed.connect(self.eval_ratio_changed.emit)
+        self._canvas.size_changed.connect(self.canvas_height_changed.emit)
 
-        # The evaluation bar is painted by the canvas in the empty margin above
-        # the board; the controls ride on top of that margin as child widgets.
+        # The evaluation controls and the evaluation bar live in the side panel.
         self._eval_controls = self._build_eval_controls()
-        self._eval_controls.setParent(self._canvas)
 
         self._btn_first = QPushButton()
         self._btn_prev = QPushButton()
@@ -150,14 +153,16 @@ class BoardWidget(QWidget):
         self._edit_bar.setVisible(False)
 
         layout = QVBoxLayout(self)
-        layout.addWidget(self._canvas, 1)
+        layout.addStretch(1)
+        layout.addWidget(self._canvas)
         layout.addLayout(nav_row)
         layout.addWidget(self._edit_bar)
+        layout.addStretch(1)
 
         self.retranslate(self._language)
 
     def _build_eval_controls(self):
-        controls = QWidget()
+        controls = QWidget(self)
         controls.setObjectName("evalControls")
         row = QHBoxLayout(controls)
         row.setContentsMargins(10, 3, 8, 3)
@@ -389,6 +394,7 @@ class BoardWidget(QWidget):
         policy = QSizePolicy.Policy.Fixed if visible else QSizePolicy.Policy.Expanding
         for spacer in self._nav_spacers:
             spacer.changeSize(0, 0, policy, QSizePolicy.Policy.Minimum)
+        self._sync_canvas_height()
 
     def set_undo_visible(self, visible):
         self._btn_undo.setVisible(visible)
@@ -405,6 +411,58 @@ class BoardWidget(QWidget):
         if self._edit_bar.isVisible():
             height += self._edit_bar.sizeHint().height() + spacing
         return height
+
+    def natural_height(self):
+        """Height of the board block: canvas, navigation and edit bar."""
+        layout = self.layout()
+        if layout is None:
+            return max(1, self.height())
+        margins = layout.contentsMargins()
+        width = max(1, self.width() - margins.left() - margins.right())
+        spacing = max(0, layout.spacing())
+        extra = 2 if not self._edit_bar.isHidden() else 3
+        return self._canvas.natural_height(width) + self.chrome_height() + spacing * extra
+
+    def eval_colors(self):
+        palette = self._palette()
+        return palette["eval_light"], palette["eval_dark"], palette["eval_border"]
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._sync_canvas_height()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._shown = True
+        self._sync_canvas_height()
+
+    def _sync_canvas_height(self):
+        """Keep the canvas at its natural height and centre the whole block.
+
+        The pane can be much taller than the board. Letting the canvas stretch
+        left a blank strip between the board and the navigation buttons; here
+        the canvas takes only what the board plus the eval row need, and the
+        layout's stretches share the remaining height above and below.
+        """
+        if not self._shown:
+            return
+        layout = self.layout()
+        if layout is None:
+            return
+        margins = layout.contentsMargins()
+        spacing = max(0, layout.spacing())
+        width = max(1, self.width() - margins.left() - margins.right())
+        natural = self._canvas.natural_height(width)
+
+        nav_h = 0
+        if not self._nav.isHidden():
+            nav_h = max(self._nav.sizeHint().height(), self._btn_flip.sizeHint().height())
+        edit_h = 0
+        if not self._edit_bar.isHidden():
+            edit_h = self._edit_bar.sizeHint().height()
+        available = self.height() - margins.top() - margins.bottom() - nav_h - edit_h - spacing * 4
+        target = max(1, min(natural, available))
+        self._canvas.setFixedHeight(int(target))
 
     def set_hint(self, uci):
         if uci:
@@ -426,6 +484,7 @@ class BoardWidget(QWidget):
         if enabled and layout is not None:
             layout.setContentsMargins(0, 0, 0, 0)
             layout.setSpacing(0)
+        self._sync_canvas_height()
 
     def set_lesson_marks(self, squares=(), arrows=()):
         """Draw target squares and teaching arrows over the current position."""
@@ -475,12 +534,16 @@ class BoardWidget(QWidget):
         self._eval_available = bool(available)
         self._sync_eval_controls_visibility()
 
+    def eval_controls(self):
+        """The evaluation header widget, hosted by the analysis side panel."""
+        return self._eval_controls
+
     def _sync_eval_controls_visibility(self):
         # The evaluation row is hidden while editing the board so it does not
         # crowd the palette and its stale score cannot mislead.
         visible = self._eval_available and not self._editable
         self._eval_controls.setVisible(visible)
-        self._canvas.place_eval_controls()
+        self._sync_canvas_height()
 
     def set_hint_enabled(self, enabled):
         enabled = bool(enabled)
@@ -1123,5 +1186,4 @@ class BoardWidget(QWidget):
         self._eval_check.setText(t("hint_toggle", language))
         self._eval_depth_label.setText(t("eval_depth", language))
         self._retranslate_edit_bar(language)
-        self._canvas.place_eval_controls()
         self.render()

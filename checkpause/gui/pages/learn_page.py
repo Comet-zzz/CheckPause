@@ -25,6 +25,7 @@ from checkpause.core.lesson import INFO, MOVE, LessonSession
 from checkpause.data.learn import load_progress, save_lesson_progress
 from checkpause.data.lessons import SECTIONS, load_lessons
 from checkpause.gui.icons import action_icon
+from checkpause.gui.layouts import HOME_MAX_WIDTH, BoardWorkspace
 from checkpause.gui.theme import DARK, LIGHT
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.i18n import t
@@ -244,7 +245,15 @@ class LearnPage(QWidget):
             layout.addLayout(grid)
 
         layout.addStretch(1)
-        scroll.setWidget(inner)
+        inner.setMaximumWidth(HOME_MAX_WIDTH)
+
+        host = QWidget()
+        host_layout = QHBoxLayout(host)
+        host_layout.setContentsMargins(0, 0, 0, 0)
+        host_layout.addStretch(0)
+        host_layout.addWidget(inner, 1)
+        host_layout.addStretch(0)
+        scroll.setWidget(host)
         return scroll
 
     def _build_detail(self):
@@ -292,16 +301,8 @@ class LearnPage(QWidget):
         self._board = BoardWidget()
         self._board.set_lesson_mode(True)
         self._board.setMinimumWidth(360)
-        self._board.setMaximumWidth(600)
         self._board.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._board.move_requested.connect(self._on_move_requested)
-
-        board_row = QHBoxLayout()
-        board_row.setContentsMargins(0, 0, 0, 0)
-        board_row.addStretch(1)
-        board_row.addWidget(self._board, 6)
-        board_row.addStretch(1)
-        layout.addLayout(board_row, 1)
 
         panel = QFrame()
         panel.setObjectName("learnPanel")
@@ -337,7 +338,7 @@ class LearnPage(QWidget):
         panel_layout.addWidget(self._instruction)
         panel_layout.addWidget(self._feedback)
         panel_layout.addLayout(buttons)
-        layout.addWidget(panel)
+        layout.addWidget(BoardWorkspace(self._board, panel, panel_position="bottom"), 1)
         return view
 
     def _apply_icons(self):

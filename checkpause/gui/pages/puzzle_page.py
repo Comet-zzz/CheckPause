@@ -26,7 +26,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
-    QSplitter,
     QStackedWidget,
     QVBoxLayout,
     QWidget,
@@ -53,6 +52,7 @@ from checkpause.data.puzzles import (
 )
 from checkpause.data.settings import get_account, get_server_url, save_account
 from checkpause.gui.icons import action_icon
+from checkpause.gui.layouts import HOME_MAX_WIDTH, BoardWorkspace
 from checkpause.gui.theme import LIGHT, accent_color, token_color
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
@@ -678,9 +678,12 @@ class _BoardColumn(QWidget):
         self._board = board
         self._board.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
         layout.addWidget(self._board, 1)
+
+    def natural_height(self):
+        return self._board.natural_height()
 
 
 class _HubView(QWidget):
@@ -726,7 +729,7 @@ class _HubView(QWidget):
         host_layout.setContentsMargins(0, 0, 0, 0)
         inner = QWidget()
         inner.setObjectName("puzzleHub")
-        inner.setMaximumWidth(1180)
+        inner.setMaximumWidth(HOME_MAX_WIDTH)
         self._inner = inner
         layout = QVBoxLayout(inner)
         layout.setContentsMargins(32, 28, 32, 32)
@@ -1115,7 +1118,6 @@ class _TrainView(QWidget):
         top.setSpacing(10)
         top.addWidget(self._btn_back)
         top.addWidget(self._mode_label)
-        top.addWidget(self._rating_chip)
         top.addStretch(1)
         top.addWidget(self._counter_label)
 
@@ -1260,26 +1262,24 @@ class _TrainView(QWidget):
         side_layout = QVBoxLayout(side)
         side_layout.setContentsMargins(16, 14, 16, 14)
         side_layout.setSpacing(12)
+        side_layout.addWidget(self._rating_chip)
         side_layout.addWidget(self._play_card)
         side_layout.addWidget(divider)
         side_layout.addWidget(self._move_box, 1)
 
         board_column = _BoardColumn(self.board)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(board_column)
-        splitter.addWidget(side)
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([604, 380])
-        splitter.setHandleWidth(12)
-        self._splitter = splitter
+        header_host = QWidget()
+        header_layout = QVBoxLayout(header_host)
+        header_layout.setContentsMargins(28, 18, 28, 12)
+        header_layout.setSpacing(0)
+        header_layout.addLayout(top)
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(28, 18, 28, 20)
-        layout.setSpacing(12)
-        layout.addLayout(top)
-        layout.addWidget(splitter, 1)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+        layout.addWidget(header_host)
+        layout.addWidget(BoardWorkspace(board_column, side), 1)
         self.set_line("")
         self.hide_result()
 
@@ -1875,7 +1875,7 @@ class _ProfileView(QWidget):
         host_layout.addStretch(1)
         inner = QWidget()
         inner.setObjectName("puzzleProfile")
-        inner.setMaximumWidth(1040)
+        inner.setMaximumWidth(HOME_MAX_WIDTH)
         self._inner = inner
         layout = QVBoxLayout(inner)
         layout.setContentsMargins(32, 24, 32, 32)

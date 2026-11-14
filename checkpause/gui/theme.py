@@ -551,15 +551,6 @@ QSlider::handle:horizontal:hover {
 QSlider::handle:horizontal:disabled {
     background-color: $text_disabled;
 }
-QSplitter::handle {
-    background: transparent;
-}
-QSplitter::handle:horizontal {
-    width: 6px;
-}
-QSplitter::handle:hover {
-    background-color: $border;
-}
 QScrollArea {
     background: transparent;
     border: none;
@@ -749,9 +740,13 @@ QCheckBox#historyCheck::indicator:checked {
     border-color: $history_selected_text;
 }
 QTabWidget#sidePanelTabs::pane {
+    background: transparent;
+    border: none;
+}
+#analysisPanel {
     background-color: $surface;
     border: 1px solid $border;
-    border-radius: 12px;
+    border-radius: 14px;
 }
 QTabWidget#sidePanelTabs QTabBar::tab {
     background: transparent;

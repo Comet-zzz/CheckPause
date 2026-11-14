@@ -2,7 +2,7 @@ import math
 import time
 
 import chess
-from PySide6.QtCore import QPointF, QRectF, Qt, QTimer
+from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
@@ -29,11 +29,11 @@ from checkpause.gui.widgets.board.constants import (
 # full arrow, alternates get progressively thinner and fainter.
 _ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
 
-# Breathing room above and below the evaluation strip; split evenly by _eval_row.
-EVAL_ROW_PADDING = 12
-
 
 class _BoardCanvas(QWidget):
+    eval_ratio_changed = Signal(float)
+    size_changed = Signal(int)
+
     def __init__(self, owner, parent=None):
         super().__init__(parent)
         self._owner = owner
@@ -244,86 +244,23 @@ class _BoardCanvas(QWidget):
         else:
             self.setCursor(Qt.CursorShape.ArrowCursor)
 
+    def natural_height(self, width):
+        """Height this canvas needs for a width-limited board."""
+        return max(1, int(width))
+
     def _geometry(self):
         width = self.width()
         height = self.height()
         side = min(width, height)
         margin = max(10, int(side * 0.035))
         board_size = max(80, side - 2 * margin)
-        row_h = self._eval_row_height(max(1.0, board_size / 8))
-        if row_h:
-            # The strip above the board has a mostly fixed height while the
-            # margin is proportional. Near-square windows make both meet, so
-            # reserve the strip plus a little breathing room. The board is
-            # only sacrificed when the canvas is genuinely tight.
-            board_size = max(
-                80,
-                min(board_size, height - 2 * (row_h + EVAL_ROW_PADDING)),
-            )
         x0 = (width - board_size) / 2
         y0 = (height - board_size) / 2
         return x0, y0, board_size, max(1.0, board_size / 8)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        self.place_eval_controls()
-
-    def _eval_bar_metrics(self, square):
-        bar_h = min(16.0, max(8.0, square * 0.18))
-        gap = max(4.0, square * 0.045)
-        return bar_h, gap
-
-    def _eval_controls_height(self):
-        owner = self._owner
-        controls = getattr(owner, "_eval_controls", None)
-        if not owner._eval_available or controls is None:
-            return 0.0
-        # Measure only: adjustSize() here would shrink the strip back to its
-        # size hint after place_eval_controls() stretched it.
-        controls.layout().activate()
-        return float(controls.sizeHint().height())
-
-    def _eval_row_height(self, square):
-        controls_h = self._eval_controls_height()
-        if not controls_h:
-            return 0.0
-        bar_h, gap = self._eval_bar_metrics(square)
-        return bar_h + gap + controls_h
-
-    def _eval_row(self, x0, y0, board_size, square):
-        """Geometry for the evaluation bar and the controls under it.
-
-        Both live in the empty margin above the board: the bar spans the full
-        board width and the controls stretch across the line below it. The
-        margin is reserved in _geometry so the strip never overlaps the board.
-        """
-        bar_h, gap = self._eval_bar_metrics(square)
-        controls_h = self._eval_controls_height()
-        row_h = bar_h + (gap + controls_h if controls_h else 0)
-        row_y = max(0.0, (y0 - row_h) / 2.0)
-        bar_rect = QRectF(x0, row_y, board_size, bar_h)
-        controls_rect = QRectF(
-            x0,
-            row_y + bar_h + gap,
-            board_size,
-            controls_h,
-        )
-        return bar_rect, controls_rect
-
-    def place_eval_controls(self):
-        owner = self._owner
-        controls = getattr(owner, "_eval_controls", None)
-        if controls is None or not owner._eval_available:
-            return
-        x0, y0, board_size, square = self._geometry()
-        _, controls_rect = self._eval_row(x0, y0, board_size, square)
-        controls.setGeometry(
-            int(controls_rect.x()),
-            int(controls_rect.y()),
-            int(controls_rect.width()),
-            int(controls_rect.height()),
-        )
-        controls.raise_()
+        self.size_changed.emit(self.height())
 
     def animate_eval(self, margin, mate=None):
         target = eval_ratio(margin, mate)
@@ -344,6 +281,7 @@ class _BoardCanvas(QWidget):
             eased = 1.0 - (1.0 - progress) ** 3
             self._eval_ratio = self._eval_from + (self._eval_to - self._eval_from) * eased
         self.update()
+        self.eval_ratio_changed.emit(self._eval_ratio)
 
     def _square_from_display(self, row, col, flipped):
         if flipped:
@@ -432,9 +370,6 @@ class _BoardCanvas(QWidget):
 
                 if sq in owner._lesson_marks:
                     self._draw_lesson_mark(painter, rect, square)
-
-        if not owner._editable:
-            self._draw_eval_bar(painter, palette, x0, y0, board_size, square)
 
         if animation is not None:
             self._draw_animation(painter, x0, y0, square, animation)
@@ -602,50 +537,6 @@ class _BoardCanvas(QWidget):
                 dot_radius,
                 dot_radius,
             )
-        painter.restore()
-
-    def _draw_eval_bar(self, painter, palette, x0, y0, board_size, square):
-        owner = self._owner
-        if not owner._eval_available or owner._editable:
-            return
-        rect, _ = self._eval_row(x0, y0, board_size, square)
-        radius = rect.height() / 2.0
-        ratio = max(0.0, min(1.0, self._eval_ratio))
-        track = rect.adjusted(0.6, 0.6, -0.6, -0.6)
-
-        painter.save()
-        painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        shape = QPainterPath()
-        shape.addRoundedRect(track, radius, radius)
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(QColor(palette["eval_dark"]))
-        painter.drawPath(shape)
-
-        painter.setClipPath(shape)
-        painter.fillRect(
-            QRectF(
-                track.left(),
-                track.top(),
-                track.width() * ratio,
-                track.height(),
-            ),
-            QColor(palette["eval_light"]),
-        )
-        painter.setClipping(False)
-
-        notch = QColor(palette["eval_border"])
-        notch.setAlpha(70)
-        pen = QPen(notch)
-        pen.setWidthF(1.0)
-        painter.setPen(pen)
-        center_x = track.center().x()
-        painter.drawLine(QPointF(center_x, track.top()), QPointF(center_x, track.bottom()))
-
-        pen = QPen(QColor(palette["eval_border"]))
-        pen.setWidthF(1.2)
-        painter.setPen(pen)
-        painter.setBrush(Qt.BrushStyle.NoBrush)
-        painter.drawRoundedRect(track, radius, radius)
         painter.restore()
 
     def _draw_live_arrows(self, painter, lines, x0, y0, square):

@@ -13,7 +13,6 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSlider,
-    QSplitter,
     QVBoxLayout,
     QWidget,
 )
@@ -33,6 +32,7 @@ from checkpause.core.endgames import load_endgames
 from checkpause.core.openings import load_openings, opening_display_name, opening_san
 from checkpause.core.play_session import PlaySession
 from checkpause.gui.icons import action_icon
+from checkpause.gui.layouts import BoardWorkspace
 from checkpause.gui.opening_picker import choose_opening_dialog
 from checkpause.gui.theme import LIGHT, danger_color
 from checkpause.gui.widgets.board import BoardWidget
@@ -84,16 +84,11 @@ class PlayPage(QWidget):
         self._move_list.ply_selected.connect(self.board.goto)
         self.board.index_changed.connect(self._move_list.set_current_ply)
 
-        splitter = QSplitter(Qt.Orientation.Horizontal)
-        splitter.addWidget(self.board)
-        splitter.addWidget(self._build_panel())
-        splitter.setStretchFactor(0, 1)
-        splitter.setStretchFactor(1, 1)
-        splitter.setSizes([532, 390])
+        workspace = BoardWorkspace(self.board, self._build_panel())
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(splitter)
+        layout.addWidget(workspace)
 
         self._apply_icons()
         self.retranslate(self._language)
