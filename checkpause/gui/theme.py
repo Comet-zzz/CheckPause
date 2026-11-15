@@ -593,9 +593,6 @@ QScrollArea > QWidget > QWidget {
     font-size: 12px;
     padding: 4px 6px;
 }
-#railFooter QToolButton:hover {
-    background-color: $rail_hover;
-}
 #railFooter QToolButton::menu-indicator {
     image: none;
 }
@@ -1155,9 +1152,6 @@ QTableWidget#moveTable::item {
     border: none;
     border-radius: 16px;
     padding: 0;
-}
-#puzzleBackButton:hover {
-    background-color: $hover;
 }
 #puzzleSecondaryButton:hover, #puzzleGhostButton:hover {
     background-color: $hover;

@@ -1505,11 +1505,12 @@ class _TrainView(QWidget):
     def apply_icons(self, theme):
         self._theme = theme
         for button, name in (
-            (self._btn_back, "nav_prev"),
+            (self._btn_back, "back"),
             (self._btn_analyze, "rail_analysis"),
         ):
             button.setIcon(action_icon(theme, name))
             button.setIconSize(QSize(18, 18))
+        self._btn_back.setIconSize(QSize(20, 20))
         self._btn_next.setIcon(action_icon(theme, "play", on_accent=True))
         self._btn_next.setIconSize(QSize(18, 18))
         kinds = {
@@ -1529,7 +1530,7 @@ class _TrainView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._btn_back.setToolTip(t("puzzle_train_back", language))
+        self._btn_back.setAccessibleName(t("puzzle_train_back", language))
         self._btn_hint.setText(t("puzzle_train_hint", language))
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_next.setText(t("puzzle_train_continue", language))

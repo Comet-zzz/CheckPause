@@ -389,7 +389,7 @@ class MainWindow(QMainWindow):
         rail.account_clicked.connect(self._open_cloud_account)
         rail.set_settings_menu(self._rail_menu)
         rail.retranslate(self._language)
-        rail.set_account_name(self._account_button_text(), self._account_button_tooltip())
+        rail.set_account_name(self._account_button_text())
         return rail
 
     def _on_module_selected(self, module_id):
@@ -908,21 +908,9 @@ class MainWindow(QMainWindow):
             return t("cloud_account_not_signed_in", self._language)
         return self._account.get("username", "") or t("cloud_account_not_signed_in", self._language)
 
-    def _account_button_tooltip(self):
-        if not self._account.get("token"):
-            return t("cloud_account_not_signed_in", self._language)
-        username = self._account.get("username", "")
-        balance = self._account.get("balance")
-        lines = [t("cloud_account_signed_in", self._language, username=username)]
-        if balance is None:
-            lines.append(t("cloud_account_balance_unknown", self._language))
-        else:
-            lines.append(t("cloud_account_balance", self._language, balance=balance))
-        return "\n".join(lines)
-
     def _refresh_account_button(self):
         if hasattr(self, "_rail"):
-            self._rail.set_account_name(self._account_button_text(), self._account_button_tooltip())
+            self._rail.set_account_name(self._account_button_text())
 
     def _refresh_balance(self):
         """Ask the server what is left; the reply just came out of it."""

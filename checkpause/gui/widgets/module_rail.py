@@ -113,8 +113,8 @@ class ModuleRail(QWidget):
         row.addWidget(self._settings_button)
         return footer
 
-    def set_account_name(self, name, tooltip=""):
-        self._account_button.setToolTip(tooltip)
+    def set_account_name(self, name):
+        self._account_button.setAccessibleName(name)
         self._account_button.set_full_text(name)
 
     def set_settings_menu(self, menu):
@@ -149,4 +149,4 @@ class ModuleRail(QWidget):
         for entry in self._modules.values():
             label = t(entry["label_key"], language)
             entry["button"].setText(label)
-        self._settings_button.setToolTip(t("menu_settings", language))
+        self._settings_button.setAccessibleName(t("menu_settings", language))
