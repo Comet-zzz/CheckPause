@@ -43,6 +43,19 @@ class ProfileTests(unittest.TestCase):
         self.assertEqual(loaded["board_theme"], DEFAULT_BOARD_THEME)
         self.assertEqual(loaded["sound_set"], DEFAULT_SOUND_SET)
 
+    def test_open_profile_keeps_history_when_reopening(self):
+        created = profile.create_profile("Tester")
+        profile.update_profile(created, 80, "1. e4 e5")
+
+        reopened = profile.open_profile("player", "en-US")
+        self.assertEqual(reopened["username"], "Tester")
+        self.assertEqual(reopened["language"], "en-US")
+        self.assertEqual(reopened["history"], created["history"])
+
+        cloud = profile.open_profile("CloudName", "zh-CN", use_username=True)
+        self.assertEqual(cloud["username"], "CloudName")
+        self.assertEqual(cloud["history"], created["history"])
+
     def test_sound_set_can_be_changed_and_persists(self):
         created = profile.create_profile("Tester")
         profile.set_sound_set(created, SOUND_OFF)

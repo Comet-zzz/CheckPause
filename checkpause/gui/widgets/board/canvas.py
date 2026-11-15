@@ -32,7 +32,6 @@ _ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
 
 class _BoardCanvas(QWidget):
     eval_ratio_changed = Signal(float)
-    size_changed = Signal(int)
 
     def __init__(self, owner, parent=None):
         super().__init__(parent)
@@ -257,10 +256,6 @@ class _BoardCanvas(QWidget):
         x0 = (width - board_size) / 2
         y0 = (height - board_size) / 2
         return x0, y0, board_size, max(1.0, board_size / 8)
-
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.size_changed.emit(self.height())
 
     def animate_eval(self, margin, mate=None):
         target = eval_ratio(margin, mate)

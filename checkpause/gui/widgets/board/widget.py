@@ -49,7 +49,6 @@ class BoardWidget(QWidget):
     hint_toggled = Signal(bool)
     eval_depth_changed = Signal(int)
     eval_ratio_changed = Signal(float)
-    canvas_height_changed = Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -96,7 +95,6 @@ class BoardWidget(QWidget):
         self._canvas = _BoardCanvas(self)
         self._canvas.setMinimumSize(320, 320)
         self._canvas.eval_ratio_changed.connect(self.eval_ratio_changed.emit)
-        self._canvas.size_changed.connect(self.canvas_height_changed.emit)
 
         # The evaluation controls and the evaluation bar live in the side panel.
         self._eval_controls = self._build_eval_controls()

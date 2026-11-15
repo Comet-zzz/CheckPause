@@ -1,6 +1,6 @@
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QPainter, QPainterPath, QPen
-from PySide6.QtWidgets import QWidget
+from PySide6.QtWidgets import QSizePolicy, QWidget
 
 
 class EvalBar(QWidget):
@@ -11,6 +11,7 @@ class EvalBar(QWidget):
         self.setObjectName("evalBar")
         self.setFixedWidth(10)
         self.setMinimumHeight(80)
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
         self._ratio = 0.5
         self._light = "#ffffff"
         self._dark = "#2b2f34"

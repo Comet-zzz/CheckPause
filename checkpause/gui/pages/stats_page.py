@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QPushButton,
     QScrollArea,
+    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -115,6 +116,7 @@ class _HistoryRow(QFrame):
 class StatsPage(QWidget):
     history_cleared = Signal()
     history_delete_requested = Signal(list)
+    analyze_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -129,15 +131,37 @@ class StatsPage(QWidget):
         self._games_value = QLabel()
         self._avg_value = QLabel()
         self._latest_value = QLabel()
-        cards = QHBoxLayout()
-        cards.setSpacing(10)
-        self._games_caption = self._build_card(cards, self._games_value)
-        self._avg_caption = self._build_card(cards, self._avg_value)
-        self._latest_caption = self._build_card(cards, self._latest_value)
 
-        self._empty_label = QLabel()
-        self._empty_label.setObjectName("mutedLabel")
-        self._empty_label.setVisible(False)
+        summary = QFrame()
+        summary.setObjectName("statCard")
+        summary_layout = QHBoxLayout(summary)
+        summary_layout.setContentsMargins(10, 8, 10, 8)
+        summary_layout.setSpacing(6)
+        self._games_caption = self._build_card(summary_layout, self._games_value)
+        summary_layout.addWidget(self._divider())
+        self._avg_caption = self._build_card(summary_layout, self._avg_value)
+        summary_layout.addWidget(self._divider())
+        self._latest_caption = self._build_card(summary_layout, self._latest_value)
+
+        self._empty_box = QWidget()
+        self._empty_title = QLabel()
+        self._empty_title.setObjectName("statEmptyTitle")
+        self._empty_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint = QLabel()
+        self._empty_hint.setObjectName("mutedLabel")
+        self._empty_hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self._empty_hint.setWordWrap(True)
+        self._analyze_button = QPushButton()
+        self._analyze_button.setObjectName("primaryButton")
+        self._analyze_button.clicked.connect(self.analyze_requested.emit)
+        empty_layout = QVBoxLayout(self._empty_box)
+        empty_layout.setContentsMargins(12, 16, 12, 16)
+        empty_layout.setSpacing(8)
+        empty_layout.addStretch(1)
+        empty_layout.addWidget(self._empty_title)
+        empty_layout.addWidget(self._empty_hint)
+        empty_layout.addWidget(self._analyze_button, 0, Qt.AlignmentFlag.AlignHCenter)
+        empty_layout.addStretch(1)
 
         self._history_container = QWidget()
         self._history_layout = QVBoxLayout(self._history_container)
@@ -162,34 +186,47 @@ class StatsPage(QWidget):
         self._clear_button = QPushButton()
         self._clear_button.setEnabled(False)
         self._clear_button.clicked.connect(self.history_cleared.emit)
-        footer = QHBoxLayout()
-        footer.addWidget(self._select_button)
-        footer.addStretch(1)
-        footer.addWidget(self._delete_selected_button)
-        footer.addWidget(self._clear_button)
+
+        self._footer = QWidget()
+        footer_layout = QHBoxLayout(self._footer)
+        footer_layout.setContentsMargins(0, 0, 0, 0)
+        footer_layout.setSpacing(8)
+        footer_layout.addWidget(self._select_button)
+        footer_layout.addStretch(1)
+        footer_layout.addWidget(self._delete_selected_button)
+        footer_layout.addWidget(self._clear_button)
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
         layout.setSpacing(10)
         layout.addWidget(self._username_label)
-        layout.addLayout(cards)
-        layout.addWidget(self._empty_label)
+        layout.addWidget(summary)
+        layout.addWidget(self._empty_box, 1)
         layout.addWidget(self._history_area, 1)
-        layout.addLayout(footer)
+        layout.addWidget(self._footer)
 
+        self._history_area.setVisible(False)
+        self._footer.setVisible(False)
         self.retranslate(self._language)
 
+    def _divider(self):
+        line = QFrame()
+        line.setObjectName("statDivider")
+        line.setFixedWidth(1)
+        line.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Expanding)
+        return line
+
     def _build_card(self, row, value_label):
-        card = QFrame()
-        card.setObjectName("statCard")
-        card_layout = QVBoxLayout(card)
-        card_layout.setContentsMargins(14, 12, 14, 12)
-        card_layout.setSpacing(2)
+        block = QWidget()
+        block_layout = QVBoxLayout(block)
+        block_layout.setContentsMargins(4, 2, 4, 2)
+        block_layout.setSpacing(2)
         value_label.setObjectName("statValue")
         caption = QLabel()
         caption.setObjectName("statCaption")
-        card_layout.addWidget(value_label)
-        card_layout.addWidget(caption)
-        row.addWidget(card, 1)
+        block_layout.addWidget(value_label)
+        block_layout.addWidget(caption)
+        row.addWidget(block, 1)
         return caption
 
     def refresh(self, profile):
@@ -197,8 +234,9 @@ class StatsPage(QWidget):
         self._clear_rows()
         if not profile:
             self._history = []
+            self._username_label.clear()
             self._set_values(None, None, None)
-            self._empty_label.setVisible(True)
+            self._empty_box.setVisible(True)
             self._history_area.setVisible(False)
             self._sync_selection_mode()
             return
@@ -215,7 +253,7 @@ class StatsPage(QWidget):
         history = profile.get("history", [])
         self._history = list(history)
         self._build_rows(history)
-        self._empty_label.setVisible(not history)
+        self._empty_box.setVisible(not history)
         self._history_area.setVisible(bool(history))
         self._sync_selection_mode()
         self._history_area.verticalScrollBar().setValue(0)
@@ -258,6 +296,7 @@ class StatsPage(QWidget):
         has_history = bool(self._history_rows)
         for row in self._history_rows:
             row.set_selecting(self._selecting)
+        self._footer.setVisible(has_history)
         self._select_button.setText(
             t("btn_no" if self._selecting else "stat_select", self._language)
         )
@@ -293,5 +332,7 @@ class StatsPage(QWidget):
         self._games_caption.setText(t("stat_games_caption", language))
         self._avg_caption.setText(t("stat_avg_caption", language))
         self._latest_caption.setText(t("stat_latest_caption", language))
-        self._empty_label.setText(t("stat_no_data", language))
+        self._empty_title.setText(t("stat_no_data", language))
+        self._empty_hint.setText(t("stat_empty_hint", language))
+        self._analyze_button.setText(t("stat_go_analyze", language))
         self._sync_selection_mode()

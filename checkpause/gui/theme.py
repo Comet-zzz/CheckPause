@@ -692,6 +692,14 @@ QScrollArea > QWidget > QWidget {
     color: $text_muted;
     font-size: 12px;
 }
+#statDivider {
+    background-color: $border;
+}
+#statEmptyTitle {
+    color: $text;
+    font-size: 15px;
+    font-weight: 600;
+}
 #historyScroll {
     background: transparent;
     border: none;

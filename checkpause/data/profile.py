@@ -92,6 +92,22 @@ def create_profile(username, language="zh-CN"):
     return profile
 
 
+def open_profile(username, language="zh-CN", use_username=False):
+    """Load the profile for the welcome screen without losing local history.
+
+    Only a first launch creates a new profile. Returning to the welcome screen
+    (for example after signing out) reuses the existing file; the local history
+    survives, and the display name only follows the cloud account when asked.
+    """
+    profile = load_profile()
+    if profile is None:
+        return create_profile(username, language)
+    profile = set_language(profile, language)
+    if use_username:
+        profile = set_username(profile, username)
+    return profile
+
+
 def set_username(profile, username):
     """Rename the local display name, e.g. after a cloud rename."""
     username = (username or "").strip()

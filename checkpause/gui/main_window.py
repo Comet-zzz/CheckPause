@@ -41,9 +41,9 @@ from checkpause.core.engine import compact_analysis, player_side
 from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
-    create_profile,
     delete_history_records,
     load_profile,
+    open_profile,
     set_analysis_depth,
     set_board_theme,
     set_eval_depth,
@@ -339,6 +339,7 @@ class MainWindow(QMainWindow):
         self.chat_page.reset_requested.connect(self._reset_chat)
         self.stats_page.history_cleared.connect(self._clear_history)
         self.stats_page.history_delete_requested.connect(self._delete_history_records)
+        self.stats_page.analyze_requested.connect(self._open_analysis_tab)
 
         self.tabs = QTabWidget()
         self.tabs.setObjectName("sidePanelTabs")
@@ -351,14 +352,12 @@ class MainWindow(QMainWindow):
         self._eval_bar = EvalBar()
         self._eval_bar.set_colors(*self.board.eval_colors())
         self.board.eval_ratio_changed.connect(self._eval_bar.set_ratio)
-        self.board.canvas_height_changed.connect(self._sync_eval_bar_height)
 
         bar_host = QWidget()
         bar_layout = QVBoxLayout(bar_host)
-        bar_layout.setContentsMargins(6, self.board.layout().contentsMargins().top(), 0, 0)
+        bar_layout.setContentsMargins(6, 6, 0, 0)
         bar_layout.setSpacing(0)
-        bar_layout.addWidget(self._eval_bar, 0, Qt.AlignmentFlag.AlignTop)
-        bar_layout.addStretch(1)
+        bar_layout.addWidget(self._eval_bar, 1)
 
         content = QWidget()
         content_layout = QVBoxLayout(content)
@@ -377,9 +376,6 @@ class MainWindow(QMainWindow):
 
         workspace = BoardWorkspace(self.board, panel)
         return workspace
-
-    def _sync_eval_bar_height(self, height):
-        self._eval_bar.setFixedHeight(max(80, int(height)))
 
     def _build_rail(self):
         rail = ModuleRail()
@@ -514,6 +510,7 @@ class MainWindow(QMainWindow):
         self._stack.setCurrentWidget(self._main_view)
         self._show_module()
         self._retranslate()
+        self._sync_local_username()
         self._refresh_stats()
         self._ensure_eval_worker()
 
@@ -532,7 +529,7 @@ class MainWindow(QMainWindow):
         username = result.get("username") or "player"
         language = result.get("language", "zh-CN")
         mode = result.get("mode", MODE_LOCAL)
-        self.profile = create_profile(username, language)
+        self.profile = open_profile(username, language, use_username=(mode == MODE_CLOUD))
         self._language = language
         self._theme = self.profile.get("theme", LIGHT)
         self._piece_set = self.profile.get("piece_set", DEFAULT_PIECE_SET)
@@ -604,6 +601,17 @@ class MainWindow(QMainWindow):
 
     def _refresh_stats(self):
         self.stats_page.refresh(self.profile)
+
+    def _sync_local_username(self):
+        """When signed in, the cloud name is the local display name."""
+        if not self.profile:
+            return
+        username = self._account.get("username", "")
+        if self._account.get("token") and username and self.profile.get("username") != username:
+            self.profile = set_username(self.profile, username)
+
+    def _open_analysis_tab(self):
+        self.tabs.setCurrentWidget(self.analysis_page)
 
     def _on_moves_shown(self, pgn):
         if not self.board._moves:
@@ -970,9 +978,9 @@ class MainWindow(QMainWindow):
             # menu click away in API settings.
             set_ai_mode(MODE_CLOUD)
             self._ai_mode = MODE_CLOUD
-        elif action == "rename" and self.profile:
+        if action in ("sign_in", "register", "rename") and self.profile:
             # The cloud name is the identity, so the local display follows it.
-            self.profile = set_username(self.profile, self._account.get("username", ""))
+            self._sync_local_username()
             self._refresh_stats()
         self._refresh_account_button()
         if hasattr(self, "puzzle_page"):
