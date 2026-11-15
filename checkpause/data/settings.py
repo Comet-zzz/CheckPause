@@ -15,12 +15,6 @@ from checkpause.data.secrets import load_secrets, save_secrets
 # genuinely custom address is left alone.
 LEGACY_SERVER_URLS = ("http://43.108.99.244",)
 
-# Address and model an earlier version pre-filled on the user's behalf. They are
-# treated as "unset" too, so after an upgrade the dialog opens empty instead of
-# showing a provider the user never chose. A value the user typed is kept.
-LEGACY_BASE_URLS = ("https://api.deepseek.com",)
-LEGACY_MODELS = ("deepseek-flash",)
-
 # Where the paid tier sends its requests. The client only ever sends raw
 # material here; the tuned prompt stays on the server.
 DEFAULT_SERVER_URL = "https://checkpause.com"
@@ -118,13 +112,11 @@ def get_api_key():
 
 
 def get_base_url():
-    url = (load_settings().get("base_url") or "").strip()
-    return "" if url in LEGACY_BASE_URLS else url
+    return (load_settings().get("base_url") or "").strip()
 
 
 def get_model():
-    model = (load_settings().get("model") or "").strip()
-    return "" if model in LEGACY_MODELS else model
+    return (load_settings().get("model") or "").strip()
 
 
 def get_ai_mode():
