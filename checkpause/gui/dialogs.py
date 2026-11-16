@@ -7,7 +7,6 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QFrame,
-    QGridLayout,
     QHBoxLayout,
     QInputDialog,
     QLabel,
@@ -173,11 +172,26 @@ def cloud_account_dialog(parent, language, config=None):
     busy = {"worker": None}
 
     dialog = QDialog(parent)
+    dialog.setObjectName("accountDialog")
     dialog.setWindowTitle(t("cloud_account_title", language))
-    dialog.setFixedWidth(360)
+    dialog.setFixedWidth(380)
 
-    hint = QLabel(t("cloud_account_hint", language))
-    hint.setWordWrap(True)
+    def divider():
+        line = QFrame()
+        line.setObjectName("accountDivider")
+        line.setFixedHeight(1)
+        return line
+
+    # The account owns this window: the balance is the headline and topping up
+    # is one section inside the card, not the reason the window exists.
+    subtitle = QLabel(t("cloud_account_subtitle", language))
+    subtitle.setObjectName("accountSubtitle")
+    subtitle.setWordWrap(True)
+
+    status = QLabel()
+    status.setObjectName("accountStatusLine")
+    status.setWordWrap(True)
+    status.setVisible(False)
 
     server_field = QLineEdit(server_url)
     server_field.setPlaceholderText("http://...")
@@ -193,27 +207,64 @@ def cloud_account_dialog(parent, language, config=None):
         )
     )
 
-    status = QLabel()
-    status.setWordWrap(True)
-
     sign_in_button = QPushButton(t("cloud_account_sign_in", language))
     sign_in_button.setObjectName("primaryButton")
     register_button = QPushButton(t("cloud_account_register", language))
     rename_button = QPushButton(t("cloud_account_rename", language))
     refresh_button = QPushButton(t("cloud_account_refresh", language))
+    refresh_button.setObjectName("accountPill")
     sign_out_button = QPushButton(t("cloud_account_sign_out", language))
     delete_button = QPushButton(t("cloud_account_delete", language))
     delete_button.setObjectName("dangerButton")
-    close_button = QPushButton(t("cloud_account_close", language))
 
     # Buying credits. The server owns the prices; this only picks one of the
     # packs it offers and then hands the browser over to the payment page.
     pack_combo = QComboBox()
     buy_button = QPushButton(t("cloud_topup_buy", language))
     buy_button.setObjectName("primaryButton")
-    topup_label = QLabel(t("cloud_topup_label", language))
+    topup_title = QLabel(t("cloud_topup_title", language))
+    topup_title.setObjectName("accountSectionTitle")
     topup_status = QLabel()
     topup_status.setWordWrap(True)
+    topup_status.setVisible(False)
+    topup_hint = QLabel(t("cloud_topup_hint", language))
+    topup_hint.setObjectName("accountHint")
+    topup_hint.setWordWrap(True)
+
+    avatar = QLabel()
+    avatar.setObjectName("accountAvatar")
+    avatar.setFixedSize(40, 40)
+    avatar.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+    name_label = QLabel()
+    name_label.setObjectName("accountName")
+    signed_in_label = QLabel(t("cloud_account_status_signed_in", language))
+    signed_in_label.setObjectName("accountMuted")
+
+    heading = QVBoxLayout()
+    heading.setContentsMargins(0, 0, 0, 0)
+    heading.setSpacing(1)
+    heading.addWidget(name_label)
+    heading.addWidget(signed_in_label)
+
+    header_row = QHBoxLayout()
+    header_row.setContentsMargins(0, 0, 0, 0)
+    header_row.setSpacing(12)
+    header_row.addWidget(avatar)
+    header_row.addLayout(heading, 1)
+
+    balance_value = QLabel()
+    balance_value.setObjectName("accountBalanceValue")
+    balance_unit = QLabel(t("cloud_account_balance_unit", language))
+    balance_unit.setObjectName("accountBalanceUnit")
+
+    balance_row = QHBoxLayout()
+    balance_row.setContentsMargins(0, 0, 0, 0)
+    balance_row.setSpacing(6)
+    balance_row.addWidget(balance_value, 0, Qt.AlignmentFlag.AlignBottom)
+    balance_row.addWidget(balance_unit, 0, Qt.AlignmentFlag.AlignBottom)
+    balance_row.addStretch(1)
+    balance_row.addWidget(refresh_button)
 
     # The server address is only needed for self-hosted deployments, so it
     # stays folded away instead of dominating the sign-in form.
@@ -246,77 +297,74 @@ def cloud_account_dialog(parent, language, config=None):
     auth_layout = QVBoxLayout(auth_box)
     auth_layout.setContentsMargins(0, 0, 0, 0)
     auth_layout.setSpacing(8)
+    auth_layout.addLayout(form)
     auth_layout.addWidget(advanced_toggle)
     auth_layout.addWidget(server_box)
-    auth_layout.addLayout(form)
     auth_layout.addLayout(sign_buttons)
 
-    topup_box = QWidget()
-    topup_box.setObjectName("accountTopup")
-    topup_layout = QVBoxLayout(topup_box)
-    topup_layout.setContentsMargins(0, 0, 0, 0)
-    topup_layout.setSpacing(6)
-    topup_layout.addWidget(topup_label)
-    topup_layout.addWidget(pack_combo)
-    topup_layout.addWidget(buy_button)
-    topup_layout.addWidget(topup_status)
+    account_card = QFrame()
+    account_card.setObjectName("accountCard")
+    card_layout = QVBoxLayout(account_card)
+    card_layout.setContentsMargins(18, 16, 18, 16)
+    card_layout.setSpacing(12)
+    card_layout.addLayout(header_row)
+    card_layout.addWidget(divider())
+    card_layout.addLayout(balance_row)
+    card_layout.addWidget(divider())
+    card_layout.addWidget(topup_title)
+    card_layout.addWidget(pack_combo)
+    card_layout.addWidget(buy_button)
+    card_layout.addWidget(topup_status)
+    card_layout.addWidget(topup_hint)
 
-    account_actions = QGridLayout()
-    account_actions.setHorizontalSpacing(8)
-    account_actions.setVerticalSpacing(8)
-    account_actions.addWidget(refresh_button, 0, 0)
-    account_actions.addWidget(rename_button, 0, 1)
-    account_actions.addWidget(sign_out_button, 1, 0)
-    account_actions.addWidget(delete_button, 1, 1)
+    # One row, equal width: the three account actions are equally easy to reach.
+    account_row = QHBoxLayout()
+    account_row.setSpacing(8)
+    account_row.addWidget(rename_button, 1)
+    account_row.addWidget(sign_out_button, 1)
+    account_row.addWidget(delete_button, 1)
 
     account_box = QWidget()
     account_box.setObjectName("accountSession")
     account_layout = QVBoxLayout(account_box)
     account_layout.setContentsMargins(0, 0, 0, 0)
-    account_layout.setSpacing(10)
-    account_layout.addWidget(topup_box)
-    account_layout.addLayout(account_actions)
-
-    bottom_row = QHBoxLayout()
-    bottom_row.addStretch(1)
-    bottom_row.addWidget(close_button)
+    account_layout.setSpacing(12)
+    account_layout.addWidget(account_card)
+    account_layout.addLayout(account_row)
 
     layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(16, 16, 16, 16)
+    layout.setContentsMargins(18, 18, 18, 18)
     layout.setSpacing(12)
-    layout.addWidget(hint)
+    layout.addWidget(subtitle)
     layout.addWidget(status)
     layout.addWidget(auth_box)
     layout.addWidget(account_box)
-    layout.addLayout(bottom_row)
 
-    everything = (auth_box, account_box, close_button)
+    everything = (auth_box, account_box)
 
     def signed_in():
         return bool(account.get("token"))
 
     def show_status():
         if not signed_in():
-            status.setText(t("cloud_account_not_signed_in", language))
+            subtitle.setVisible(True)
+            account_box.setVisible(False)
             return
+        subtitle.setVisible(False)
+        account_box.setVisible(True)
+        username = account.get("username", "")
+        avatar.setText((username[:1] or "?").upper())
+        name_label.setText(username)
         balance = account.get("balance")
-        lines = [
-            t(
-                "cloud_account_signed_in",
-                language,
-                username=account.get("username", ""),
-            )
-        ]
-        if balance is None:
-            lines.append(t("cloud_account_balance_unknown", language))
-        else:
-            lines.append(t("cloud_account_balance", language, balance=balance))
-        status.setText("\n".join(lines))
+        balance_value.setText("—" if balance is None else str(balance))
+        fee = account.get("rename_fee")
+        rename_button.setToolTip(
+            t("cloud_rename_cost", language, fee=fee) if fee is not None else ""
+        )
 
     def refresh():
         logged_in = signed_in()
         auth_box.setVisible(not logged_in)
-        account_box.setVisible(logged_in)
         if not logged_in:
             username_field.setFocus()
         show_status()
@@ -327,7 +375,9 @@ def cloud_account_dialog(parent, language, config=None):
             widget.setEnabled(not value)
         if value:
             status.setText(t("cloud_account_working", language))
+            status.setVisible(True)
         else:
+            status.setVisible(False)
             refresh()
 
     def finish():
@@ -355,6 +405,7 @@ def cloud_account_dialog(parent, language, config=None):
             order = result.get("order") or {}
             if order.get("pay_url"):
                 topup_status.setText(t("cloud_topup_waiting", language))
+                topup_status.setVisible(True)
                 # The hosted checkout belongs in a browser, so the desktop app
                 # opens a page rather than trying to become a web application.
                 QDesktopServices.openUrl(QUrl(order["pay_url"]))
@@ -554,6 +605,7 @@ def cloud_account_dialog(parent, language, config=None):
         changed["action"] = "order_status"
         account["balance"] = order.get("balance")
         topup_status.setText(t("cloud_topup_done", language, balance=order.get("balance")))
+        topup_status.setVisible(True)
         show_status()
 
     def poll_once():
@@ -563,6 +615,7 @@ def cloud_account_dialog(parent, language, config=None):
         if poll["tries"] > POLL_LIMIT:
             stop_polling()
             topup_status.setText(t("cloud_topup_gave_up", language))
+            topup_status.setVisible(True)
             return
         worker = AccountWorker(
             "order_status",
@@ -595,7 +648,6 @@ def cloud_account_dialog(parent, language, config=None):
     sign_out_button.clicked.connect(sign_out)
     delete_button.clicked.connect(delete_account)
     buy_button.clicked.connect(buy)
-    close_button.clicked.connect(dialog.accept)
 
     refresh()
     if signed_in():

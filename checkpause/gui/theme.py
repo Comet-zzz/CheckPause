@@ -863,6 +863,56 @@ QTableWidget#moveTable::item {
     background-color: $border;
     border: none;
 }
+#accountCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 16px;
+}
+#accountAvatar {
+    background-color: $accent_soft;
+    color: $text;
+    border: 1px solid $border;
+    border-radius: 20px;
+    font-size: 17px;
+    font-weight: 700;
+}
+#accountName {
+    color: $text;
+    font-size: 17px;
+    font-weight: 600;
+}
+#accountMuted, #accountStatusLine, #accountSubtitle {
+    color: $text_muted;
+    font-size: 12px;
+}
+#accountBalanceValue {
+    color: $text;
+    font-size: 30px;
+    font-weight: 700;
+}
+#accountBalanceUnit {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+}
+#accountSectionTitle {
+    color: $text_muted;
+    font-size: 12px;
+    font-weight: 600;
+}
+#accountHint {
+    color: $text_muted;
+    font-size: 12px;
+}
+#accountDivider {
+    background-color: $border;
+    border: none;
+}
+#accountPill {
+    padding: 3px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+}
 #welcomePage {
     background: transparent;
 }
