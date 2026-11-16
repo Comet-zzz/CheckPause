@@ -2,13 +2,11 @@ import subprocess
 import sys
 
 from PySide6.QtCore import QLocale, QSize, Qt, QTimer
-from PySide6.QtGui import QAction, QActionGroup
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
     QHBoxLayout,
     QMainWindow,
-    QMenu,
     QMessageBox,
     QStackedWidget,
     QTabBar,
@@ -19,16 +17,13 @@ from PySide6.QtWidgets import (
 
 from checkpause import APP_VERSION
 from checkpause.assets import (
-    BOARD_THEMES,
     DEFAULT_BOARD_THEME,
     DEFAULT_PIECE_SET,
     DEFAULT_SOUND_SET,
-    PIECE_SETS,
     SOUND_CHOICES,
     SOUND_OFF,
 )
 from checkpause.config import (
-    ANALYSIS_DEPTH_OPTIONS,
     DEFAULT_ANALYSIS_DEPTH,
     DEFAULT_EVAL_DEPTH,
     DEFAULT_HINT_ENABLED,
@@ -44,7 +39,6 @@ from checkpause.data.profile import (
     delete_history_records,
     load_profile,
     open_profile,
-    set_analysis_depth,
     set_board_theme,
     set_eval_depth,
     set_hint_enabled,
@@ -67,14 +61,12 @@ from checkpause.data.settings import (
     set_ai_mode,
 )
 from checkpause.gui.dialogs import (
-    api_settings_dialog,
-    choose_language_dialog,
     cloud_account_dialog,
     confirm_close_dialog,
     confirm_dialog,
     confirm_update_install,
     download_update_dialog,
-    show_about,
+    settings_dialog,
     show_update_dialog,
 )
 from checkpause.gui.icons import app_icon
@@ -86,7 +78,7 @@ from checkpause.gui.pages.play_page import PlayPage
 from checkpause.gui.pages.puzzle_page import PuzzlePage
 from checkpause.gui.pages.stats_page import StatsPage
 from checkpause.gui.pages.welcome_page import WelcomePage
-from checkpause.gui.theme import DARK, LIGHT, apply_theme
+from checkpause.gui.theme import LIGHT, apply_theme
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.eval_bar import EvalBar
 from checkpause.gui.widgets.module_rail import ModuleRail
@@ -197,7 +189,6 @@ class MainWindow(QMainWindow):
         self._stack.addWidget(self._welcome)
         self._stack.addWidget(self._main_view)
 
-        self._build_menus()
         self._rail = self._build_rail()
 
         shell = QWidget()
@@ -386,7 +377,7 @@ class MainWindow(QMainWindow):
             rail.add_module(module["id"], module["label_key"], module["icon"])
         rail.module_selected.connect(self._on_module_selected)
         rail.account_clicked.connect(self._open_cloud_account)
-        rail.set_settings_menu(self._rail_menu)
+        rail.settings_clicked.connect(self._open_settings)
         rail.retranslate(self._language)
         rail.set_account_name(self._account_button_text())
         return rail
@@ -411,98 +402,28 @@ class MainWindow(QMainWindow):
             self._main_stack.setCurrentWidget(self._analysis_view)
         self._rail.set_active(self._module)
 
-    def _build_menus(self):
-        # The rail's gear button owns the whole menu tree; there is no menu bar.
-        self._rail_menu = QMenu(self)
-
-        self._menu_settings = self._rail_menu.addMenu("")
-
-        self._act_api_settings = QAction(self)
-        self._act_api_settings.triggered.connect(self._open_api_settings)
-        self._act_language = QAction(self)
-        self._act_language.triggered.connect(self._change_language)
-        self._menu_settings.addAction(self._act_api_settings)
-        self._menu_settings.addAction(self._act_language)
-
-        self._menu_personalization = self._rail_menu.addMenu("")
-
-        self._menu_appearance = self._menu_personalization.addMenu("")
-        self._theme_group = QActionGroup(self)
-        self._theme_group.setExclusive(True)
-        self._act_light = QAction(self)
-        self._act_light.setCheckable(True)
-        self._act_light.triggered.connect(lambda: self._change_theme(LIGHT))
-        self._act_dark = QAction(self)
-        self._act_dark.setCheckable(True)
-        self._act_dark.triggered.connect(lambda: self._change_theme(DARK))
-        self._theme_group.addAction(self._act_light)
-        self._theme_group.addAction(self._act_dark)
-        self._menu_appearance.addAction(self._act_light)
-        self._menu_appearance.addAction(self._act_dark)
-        self._act_light.setChecked(self._theme == LIGHT)
-        self._act_dark.setChecked(self._theme == DARK)
-
-        self._menu_pieces = self._menu_personalization.addMenu("")
-        self._piece_group = QActionGroup(self)
-        self._piece_group.setExclusive(True)
-        self._piece_actions = {}
-        for name in PIECE_SETS:
-            action = QAction(name, self)
-            action.setCheckable(True)
-            action.setChecked(name == self._piece_set)
-            action.triggered.connect(lambda _checked, value=name: self._change_piece_set(value))
-            self._piece_group.addAction(action)
-            self._menu_pieces.addAction(action)
-            self._piece_actions[name] = action
-
-        self._menu_board = self._menu_personalization.addMenu("")
-        self._board_group = QActionGroup(self)
-        self._board_group.setExclusive(True)
-        self._board_actions = {}
-        for name in BOARD_THEMES:
-            action = QAction(self)
-            action.setCheckable(True)
-            action.setChecked(name == self._board_theme)
-            action.triggered.connect(lambda _checked, value=name: self._change_board_theme(value))
-            self._board_group.addAction(action)
-            self._menu_board.addAction(action)
-            self._board_actions[name] = action
-
-        self._menu_sound = self._menu_personalization.addMenu("")
-        self._sound_group = QActionGroup(self)
-        self._sound_group.setExclusive(True)
-        self._sound_actions = {}
-        for name in SOUND_CHOICES:
-            action = QAction(self)
-            action.setCheckable(True)
-            action.setChecked(name == self._sound_set)
-            action.triggered.connect(lambda _checked, value=name: self._change_sound_set(value))
-            self._sound_group.addAction(action)
-            self._menu_sound.addAction(action)
-            self._sound_actions[name] = action
-
-        self._menu_analysis_depth = self._menu_personalization.addMenu("")
-        self._analysis_depth_group = QActionGroup(self)
-        self._analysis_depth_group.setExclusive(True)
-        self._analysis_depth_actions = {}
-        for depth in ANALYSIS_DEPTH_OPTIONS:
-            action = QAction(str(depth), self)
-            action.setCheckable(True)
-            action.setChecked(depth == self._analysis_depth)
-            action.triggered.connect(
-                lambda _checked, value=depth: self._change_analysis_depth(value)
-            )
-            self._analysis_depth_group.addAction(action)
-            self._menu_analysis_depth.addAction(action)
-            self._analysis_depth_actions[depth] = action
-
-        self._menu_help = self._rail_menu.addMenu("")
-        self._act_check_update = QAction(self)
-        self._act_check_update.triggered.connect(lambda: self._check_for_update(manual=True))
-        self._act_about = QAction(self)
-        self._act_about.triggered.connect(lambda: show_about(self, self._language, self._theme))
-        self._menu_help.addAction(self._act_check_update)
-        self._menu_help.addAction(self._act_about)
+    def _open_settings(self):
+        """One window for every preference; changes apply as they are made."""
+        settings_dialog(
+            self,
+            self._language,
+            {
+                "theme": self._theme,
+                "language": self._language,
+                "piece_set": self._piece_set,
+                "board_theme": self._board_theme,
+                "sound_set": self._sound_set,
+            },
+            {
+                "theme": self._change_theme,
+                "language": self._set_language,
+                "piece_set": self._change_piece_set,
+                "board_theme": self._change_board_theme,
+                "sound_set": self._change_sound_set,
+                "save_byok": self._save_byok,
+                "check_update": lambda: self._check_for_update(manual=True),
+            },
+        )
 
     def _set_chrome_visible(self, visible):
         self._rail.setVisible(visible)
@@ -541,12 +462,6 @@ class MainWindow(QMainWindow):
         self._hint_enabled = self.profile.get("hint_enabled", DEFAULT_HINT_ENABLED)
         self._eval_depth = self.profile.get("eval_depth", DEFAULT_EVAL_DEPTH)
         self._analysis_depth = self.profile.get("analysis_depth", DEFAULT_ANALYSIS_DEPTH)
-        self._act_light.setChecked(self._theme == LIGHT)
-        self._act_dark.setChecked(self._theme == DARK)
-        self._piece_actions[self._piece_set].setChecked(True)
-        self._board_actions[self._board_theme].setChecked(True)
-        self._sound_actions[self._sound_set].setChecked(True)
-        self._analysis_depth_actions[self._analysis_depth].setChecked(True)
         # The cloud account is the identity; offline just leaves it unset.
         set_ai_mode(mode)
         self._ai_mode = mode
@@ -566,26 +481,7 @@ class MainWindow(QMainWindow):
 
     def _retranslate(self):
         self.setWindowTitle(t("app_title", self._language))
-        self._menu_settings.setTitle(t("menu_settings", self._language))
-        self._menu_appearance.setTitle(t("menu_appearance", self._language))
-        self._act_light.setText(t("theme_light", self._language))
-        self._act_dark.setText(t("theme_dark", self._language))
-        self._menu_help.setTitle(t("menu_help", self._language))
-        self._act_api_settings.setText(t("action_api_settings", self._language))
         self._refresh_account_button()
-        self._act_language.setText(t("action_change_language", self._language))
-        self._act_check_update.setText(t("action_check_update", self._language))
-        self._act_about.setText(t("action_about", self._language))
-
-        self._menu_personalization.setTitle(t("menu_personalization", self._language))
-        self._menu_pieces.setTitle(t("menu_pieces", self._language))
-        self._menu_board.setTitle(t("menu_board", self._language))
-        self._menu_sound.setTitle(t("menu_sound", self._language))
-        self._menu_analysis_depth.setTitle(t("menu_analysis_depth", self._language))
-        for name, action in self._sound_actions.items():
-            action.setText(t("sound_" + name, self._language))
-        for name, action in self._board_actions.items():
-            action.setText(t("board_theme_" + name, self._language))
 
         self.tabs.setTabText(0, t("tab_analysis", self._language))
         self.tabs.setTabText(1, t("tab_chat", self._language))
@@ -1061,14 +957,6 @@ class MainWindow(QMainWindow):
         if self.profile:
             self.profile = set_sound_set(self.profile, self._sound_set)
 
-    def _change_analysis_depth(self, depth):
-        if depth in ANALYSIS_DEPTH_OPTIONS:
-            self._analysis_depth = depth
-        else:
-            self._analysis_depth = DEFAULT_ANALYSIS_DEPTH
-        if self.profile:
-            self.profile = set_analysis_depth(self.profile, self._analysis_depth)
-
     def _on_hint_toggled(self, enabled):
         self._hint_enabled = bool(enabled)
         retry = self._eval_failed
@@ -1134,25 +1022,11 @@ class MainWindow(QMainWindow):
             worker.wait(2000)
             worker.deleteLater()
 
-    def _open_api_settings(self):
-        result = api_settings_dialog(self, self._language)
-        if not result:
-            return
-        save_api_config(
-            result["api_key"],
-            result["base_url"],
-            result["model"],
-            mode=result["mode"],
-        )
-        self._ai_mode = result["mode"]
-        QMessageBox.information(
-            self,
-            t("api_settings_title", self._language),
-            t("api_settings_saved", self._language),
-        )
+    def _save_byok(self, api_key, base_url, model):
+        save_api_config(api_key, base_url, model, mode=MODE_LOCAL)
+        self._ai_mode = MODE_LOCAL
 
-    def _change_language(self):
-        chosen = choose_language_dialog(self, self._language)
+    def _set_language(self, chosen):
         if not chosen or chosen == self._language:
             return
         self._language = chosen

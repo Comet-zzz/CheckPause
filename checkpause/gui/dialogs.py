@@ -1,6 +1,8 @@
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QDesktopServices
+from PySide6.QtGui import QColor, QDesktopServices, QPainter, QPixmap
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QComboBox,
     QDialog,
@@ -14,6 +16,9 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QScrollArea,
+    QSizePolicy,
+    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -23,139 +28,27 @@ from checkpause import (
     AUTHOR,
     COPYRIGHT_YEAR,
     GITHUB_URL,
+    SUPPORT_EMAIL,
     WEBSITE_URL,
 )
+from checkpause.assets import BOARD_THEMES, PIECE_SETS, SOUND_CHOICES
 from checkpause.data.settings import (
     DEFAULT_SERVER_URL,
-    MODE_LOCAL,
     get_api_key,
     get_base_url,
     get_model,
 )
 from checkpause.gui.icons import action_icon
+from checkpause.gui.theme import DARK, LIGHT
 from checkpause.gui.workers import AccountWorker, UpdateDownloadWorker
 from checkpause.i18n import t
+from checkpause.resources import resource_path
 
 # How often to ask whether a payment has landed, and when to stop asking.
 # Three seconds feels immediate without hammering the server; ten minutes is
 # longer than the cashier holds an order anyway.
 POLL_INTERVAL_MS = 3000
 POLL_LIMIT = 200
-
-
-def choose_language_dialog(parent, current="zh-CN"):
-    dialog = QDialog(parent)
-    dialog.setWindowTitle(t("menu_language", current))
-
-    combo = QComboBox()
-    combo.addItem(t("lang_zh", current), "zh-CN")
-    combo.addItem(t("lang_en", current), "en-US")
-    if current == "en-US":
-        combo.setCurrentIndex(1)
-
-    buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-    )
-    buttons.accepted.connect(dialog.accept)
-    buttons.rejected.connect(dialog.reject)
-
-    layout = QVBoxLayout(dialog)
-    layout.addWidget(QLabel(t("label_language", current)))
-    layout.addWidget(combo)
-    layout.addWidget(buttons)
-
-    if dialog.exec() == QDialog.DialogCode.Accepted:
-        return combo.currentData()
-    return None
-
-
-def api_settings_dialog(parent, language):
-    """The bring-your-own-key path.
-
-    The cloud account is the ordinary way in and has its own menu entry; this
-    dialog is the advanced option for a user who has their own key. It asks for
-    the key, the endpoint and the model, all of them the user's to choose: the
-    app ships no provider and suggests no address. Saving is also choosing to
-    run against what was entered, which is why the result carries the local
-    mode.
-    """
-    dialog = QDialog(parent)
-    dialog.setWindowTitle(t("api_settings_title", language))
-    dialog.setMinimumWidth(520)
-
-    key_field = QLineEdit()
-    key_field.setEchoMode(QLineEdit.EchoMode.Password)
-    key_field.setPlaceholderText(t("api_key_placeholder", language))
-    key_field.setText(get_api_key())
-
-    show_toggle = QCheckBox(t("api_key_show", language))
-    show_toggle.toggled.connect(
-        lambda checked: key_field.setEchoMode(
-            QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
-        )
-    )
-
-    base_field = QLineEdit()
-    base_field.setText(get_base_url())
-
-    model_field = QLineEdit()
-    model_field.setText(get_model())
-
-    form = QFormLayout()
-    form.setHorizontalSpacing(16)
-    form.setVerticalSpacing(10)
-    form.addRow(t("api_key_label", language), key_field)
-    form.addRow("", show_toggle)
-    form.addRow(t("api_base_url_label", language), base_field)
-    form.addRow(t("api_model_label", language), model_field)
-
-    buttons = QDialogButtonBox(
-        QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-    )
-    ok_button = buttons.button(QDialogButtonBox.StandardButton.Ok)
-    ok_button.setText(t("btn_yes", language))
-    ok_button.setObjectName("primaryButton")
-    buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("btn_no", language))
-
-    def on_accept():
-        if not key_field.text().strip():
-            QMessageBox.warning(
-                dialog,
-                t("api_settings_title", language),
-                t("api_key_empty", language),
-            )
-            return
-        if not base_field.text().strip():
-            QMessageBox.warning(
-                dialog,
-                t("api_settings_title", language),
-                t("api_base_url_empty", language),
-            )
-            return
-        if not model_field.text().strip():
-            QMessageBox.warning(
-                dialog,
-                t("api_settings_title", language),
-                t("api_model_empty", language),
-            )
-            return
-        dialog.accept()
-
-    buttons.accepted.connect(on_accept)
-    buttons.rejected.connect(dialog.reject)
-
-    layout = QVBoxLayout(dialog)
-    layout.addLayout(form)
-    layout.addWidget(buttons)
-
-    if dialog.exec() == QDialog.DialogCode.Accepted:
-        return {
-            "mode": MODE_LOCAL,
-            "api_key": key_field.text().strip(),
-            "base_url": base_field.text().strip(),
-            "model": model_field.text().strip(),
-        }
-    return None
 
 
 def cloud_account_dialog(parent, language, config=None):
@@ -660,6 +553,407 @@ def cloud_account_dialog(parent, language, config=None):
     return dict(account, action=changed["action"])
 
 
+def _piece_label(name):
+    """Turn an asset id like ``kiwen-suwi`` into something a person reads."""
+    return " ".join(part.capitalize() for part in name.split("-"))
+
+
+PREVIEW_PIECES = ("wK", "wQ", "wR", "wN")
+
+
+def _piece_pixmap(piece_set, code, size):
+    renderer = QSvgRenderer(resource_path("assets", "pieces", piece_set, code + ".svg"))
+    if not renderer.isValid():
+        return QPixmap()
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
+    painter.setRenderHint(QPainter.RenderHint.SmoothPixmapTransform, True)
+    renderer.render(painter)
+    painter.end()
+    return pixmap
+
+
+def _pieces_preview(piece_set, size=26):
+    gap = 2
+    pieces = [_piece_pixmap(piece_set, code, size) for code in PREVIEW_PIECES]
+    pixmap = QPixmap(len(pieces) * (size + gap) - gap, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    for index, piece in enumerate(pieces):
+        painter.drawPixmap(index * (size + gap), 0, piece)
+    painter.end()
+    return pixmap
+
+
+def _board_preview(name, size=64):
+    """The chosen board's two colours, shown as a little 4x4 board."""
+    light, dark = BOARD_THEMES.get(name, BOARD_THEMES["blue"])
+    cell = size // 4
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    for row in range(4):
+        for column in range(4):
+            color = light if (row + column) % 2 == 0 else dark
+            painter.fillRect(column * cell, row * cell, cell, cell, QColor(color))
+    painter.end()
+    return pixmap
+
+
+class _SettingsDialog(QDialog):
+    """Every preference in one window: a category list beside the options.
+
+    Changes apply the moment a control is touched. The language switch is the
+    only one that rebuilds the window, because its own labels have to follow.
+    """
+
+    def __init__(self, parent, language, current, handlers):
+        super().__init__(parent)
+        self.setObjectName("settingsDialog")
+        self._language = language
+        self._current = dict(current)
+        self._handlers = handlers
+        self._page_index = 0
+        self._shell = None
+        self._root = QVBoxLayout(self)
+        self._root.setContentsMargins(0, 0, 0, 0)
+        self.setFixedWidth(660)
+        self._build()
+
+    # -- construction ---------------------------------------------------
+
+    def _build(self):
+        if self._shell is not None:
+            self._root.removeWidget(self._shell)
+            self._shell.deleteLater()
+        self.setWindowTitle(t("menu_settings", self._language))
+        self._shell = QWidget()
+        self._root.addWidget(self._shell)
+
+        outer = QHBoxLayout(self._shell)
+        outer.setContentsMargins(14, 14, 14, 14)
+        outer.setSpacing(14)
+
+        self._nav = QWidget()
+        self._nav.setObjectName("settingsNav")
+        self._nav.setFixedWidth(150)
+        nav_layout = QVBoxLayout(self._nav)
+        nav_layout.setContentsMargins(6, 6, 6, 6)
+        nav_layout.setSpacing(2)
+        group = QButtonGroup(self._shell)
+        group.setExclusive(True)
+        self._nav_buttons = []
+        self._stack = QStackedWidget()
+
+        for index, key in enumerate(("general", "look", "service", "about")):
+            button = QPushButton(t("settings_section_" + key, self._language))
+            button.setObjectName("settingsNavItem")
+            button.setCheckable(True)
+            button.setFixedHeight(34)
+            button.setCursor(Qt.CursorShape.PointingHandCursor)
+            button.clicked.connect(lambda _checked=False, i=index: self._show_page(i))
+            group.addButton(button)
+            nav_layout.addWidget(button)
+            self._nav_buttons.append(button)
+            self._stack.addWidget(self._page(key))
+        nav_layout.addStretch(1)
+
+        outer.addWidget(self._nav)
+        outer.addWidget(self._stack, 1)
+
+        self._show_page(min(self._page_index, self._stack.count() - 1))
+        self._lock_size()
+
+    def _show_page(self, index):
+        self._page_index = index
+        self._stack.setCurrentIndex(index)
+        for position, button in enumerate(self._nav_buttons):
+            button.setChecked(position == index)
+
+    def _lock_size(self):
+        """One fixed window size, tall enough for every page."""
+        height = self._nav.sizeHint().height()
+        for index in range(self._stack.count()):
+            page = self._stack.widget(index)
+            body = page.widget() if isinstance(page, QScrollArea) else page
+            height = max(height, body.sizeHint().height())
+        self.setFixedSize(self.width(), height + 28)
+
+    def _page(self, key):
+        scroll = QScrollArea()
+        scroll.setObjectName("settingsPage")
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.Shape.NoFrame)
+        body = QWidget()
+        layout = QVBoxLayout(body)
+        layout.setContentsMargins(0, 0, 12, 0)
+        layout.setSpacing(14)
+        getattr(self, "_page_" + key)(layout)
+        scroll.setWidget(body)
+        return scroll
+
+    def _page_general(self, layout):
+        box = self._panel(layout)
+        self._choice_row(
+            box,
+            "menu_language",
+            [("zh-CN", t("lang_zh", self._language)), ("en-US", t("lang_en", self._language))],
+            "language",
+        )
+        self._choice_row(
+            box,
+            "settings_theme",
+            [(LIGHT, t("theme_light", self._language)), (DARK, t("theme_dark", self._language))],
+            "theme",
+        )
+        self._choice_row(
+            box,
+            "menu_sound",
+            [(name, t("sound_" + name, self._language)) for name in SOUND_CHOICES],
+            "sound_set",
+        )
+
+    def _page_look(self, layout):
+        box = self._panel(layout)
+        self._piece_picker(box)
+        self._board_picker(box)
+
+    def _page_service(self, layout):
+        box = self._panel(layout)
+        key_field = QLineEdit(get_api_key())
+        key_field.setEchoMode(QLineEdit.EchoMode.Password)
+        key_field.setPlaceholderText(t("api_key_placeholder", self._language))
+        show_toggle = QCheckBox(t("api_key_show", self._language))
+        show_toggle.toggled.connect(
+            lambda checked: key_field.setEchoMode(
+                QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+            )
+        )
+        base_field = QLineEdit(get_base_url())
+        model_field = QLineEdit(get_model())
+
+        form = QFormLayout()
+        form.setHorizontalSpacing(12)
+        form.setVerticalSpacing(8)
+        form.addRow(t("api_key_label", self._language), key_field)
+        form.addRow("", show_toggle)
+        form.addRow(t("api_base_url_label", self._language), base_field)
+        form.addRow(t("api_model_label", self._language), model_field)
+        box.addLayout(form)
+
+        status = QLabel()
+        status.setObjectName("settingsRowHint")
+
+        def on_save():
+            api_key = key_field.text().strip()
+            base_url = base_field.text().strip()
+            model = model_field.text().strip()
+            checks = (
+                (api_key, "api_key_empty"),
+                (base_url, "api_base_url_empty"),
+                (model, "api_model_empty"),
+            )
+            for value, key in checks:
+                if not value:
+                    QMessageBox.warning(
+                        self,
+                        t("api_settings_title", self._language),
+                        t(key, self._language),
+                    )
+                    return
+            handler = self._handlers.get("save_byok")
+            if handler is not None:
+                handler(api_key, base_url, model)
+            status.setText(t("api_settings_saved", self._language))
+
+        save_button = QPushButton(t("settings_save", self._language))
+        save_button.setObjectName("primaryButton")
+        save_button.clicked.connect(on_save)
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        row.addWidget(save_button)
+        row.addWidget(status, 1)
+        box.addLayout(row)
+
+    def _page_about(self, layout):
+        box = self._panel(layout, stretch=False)
+        version = QLabel(t("about_version", self._language, version=APP_VERSION))
+        version.setObjectName("settingsVersion")
+        description = QLabel(t("about_text", self._language))
+        description.setObjectName("settingsRowHint")
+        description.setWordWrap(True)
+        box.addWidget(version)
+        box.addWidget(description)
+        box.addLayout(self._link_row("github", GITHUB_URL))
+        box.addLayout(self._link_row("globe", WEBSITE_URL))
+        box.addLayout(self._link_row("mail", f"mailto:{SUPPORT_EMAIL}", SUPPORT_EMAIL))
+
+        check = QPushButton(t("action_check_update", self._language))
+        check.setObjectName("primaryButton")
+        check.clicked.connect(lambda: self._hand_off("check_update"))
+        buttons = QHBoxLayout()
+        buttons.setSpacing(8)
+        buttons.addWidget(check)
+        buttons.addStretch(1)
+        box.addLayout(buttons)
+
+        box.addStretch(1)
+        copyright_line = QLabel(
+            t("about_copyright", self._language, year=COPYRIGHT_YEAR, author=AUTHOR)
+        )
+        copyright_line.setObjectName("settingsVersion")
+        copyright_row = QHBoxLayout()
+        copyright_row.addStretch(1)
+        copyright_row.addWidget(copyright_line)
+        box.addLayout(copyright_row)
+
+    # -- building blocks ------------------------------------------------
+
+    def _panel(self, layout, stretch=True):
+        card = QFrame()
+        card.setObjectName("settingsCard")
+        card.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Expanding)
+        outer = QVBoxLayout(card)
+        outer.setContentsMargins(18, 16, 18, 16)
+        outer.setSpacing(14)
+        content = QVBoxLayout()
+        content.setSpacing(14)
+        outer.addLayout(content)
+        if stretch:
+            outer.addStretch(1)
+        layout.addWidget(card)
+        return content
+
+    def _row_label(self, text):
+        label = QLabel(text)
+        label.setObjectName("settingsRowLabel")
+        label.setMinimumWidth(84)
+        return label
+
+    def _link_row(self, icon_name, url, text=None):
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.setSpacing(8)
+        if icon_name:
+            icon = QLabel()
+            icon.setPixmap(
+                action_icon(self._current.get("theme", LIGHT), icon_name, size=16).pixmap(16, 16)
+            )
+            icon.setFixedSize(16, 16)
+            icon.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            row.addWidget(icon)
+        else:
+            row.addSpacing(24)
+        label = QLabel(f'<a href="{url}">{text or url.split("://", 1)[-1]}</a>')
+        label.setObjectName("settingsRowHint")
+        label.setOpenExternalLinks(True)
+        label.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
+        row.addWidget(label)
+        row.addStretch(1)
+        return row
+
+    def _choice_row(self, box, label_key, options, key):
+        row = QHBoxLayout()
+        row.setSpacing(8)
+        row.addWidget(self._row_label(t(label_key, self._language)))
+        row.addStretch(1)
+        group = QButtonGroup(self._shell)
+        group.setExclusive(True)
+        for value, text in options:
+            button = QPushButton(text)
+            button.setObjectName("settingsChoice")
+            button.setCheckable(True)
+            button.setChecked(self._current.get(key) == value)
+            group.addButton(button)
+            button.clicked.connect(lambda _checked=False, v=value, k=key: self._choose(k, v))
+            row.addWidget(button)
+        box.addLayout(row)
+
+    def _piece_picker(self, box):
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        row.addWidget(self._row_label(t("menu_pieces", self._language)))
+        row.addStretch(1)
+        combo = QComboBox()
+        combo.setMinimumWidth(160)
+        for name in PIECE_SETS:
+            combo.addItem(_piece_label(name), name)
+        index = combo.findData(self._current.get("piece_set"))
+        if index >= 0:
+            combo.setCurrentIndex(index)
+        preview = QLabel()
+        preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview.setPixmap(_pieces_preview(self._current.get("piece_set", PIECE_SETS[0])))
+        preview.setFixedSize(preview.pixmap().size())
+
+        def on_change(_index):
+            value = combo.currentData()
+            preview.setPixmap(_pieces_preview(value))
+            self._choose("piece_set", value)
+
+        combo.currentIndexChanged.connect(on_change)
+        row.addWidget(combo)
+        row.addWidget(preview)
+        box.addLayout(row)
+
+    def _board_picker(self, box):
+        row = QHBoxLayout()
+        row.setSpacing(10)
+        row.addWidget(self._row_label(t("menu_board", self._language)))
+        row.addStretch(1)
+        combo = QComboBox()
+        combo.setMinimumWidth(160)
+        for name in BOARD_THEMES:
+            combo.addItem(t("board_theme_" + name, self._language), name)
+        index = combo.findData(self._current.get("board_theme"))
+        if index >= 0:
+            combo.setCurrentIndex(index)
+        preview = QLabel()
+        preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        preview.setPixmap(_board_preview(self._current.get("board_theme", "blue")))
+        preview.setFixedSize(preview.pixmap().size())
+
+        def on_change(_index):
+            value = combo.currentData()
+            preview.setPixmap(_board_preview(value))
+            self._choose("board_theme", value)
+
+        combo.currentIndexChanged.connect(on_change)
+        row.addWidget(combo)
+        row.addWidget(preview)
+        box.addLayout(row)
+
+    # -- actions --------------------------------------------------------
+
+    def _choose(self, key, value):
+        if self._current.get(key) == value:
+            return
+        self._current[key] = value
+        handler = self._handlers.get(key)
+        if handler is not None:
+            handler(value)
+        if key in ("language", "theme"):
+            # Language changes the labels and the theme changes the link icons.
+            if key == "language":
+                self._language = value
+            self._build()
+
+    def _hand_off(self, name):
+        handler = self._handlers.get(name)
+        if handler is None:
+            return
+        self.accept()
+        handler()
+
+
+def settings_dialog(parent, language, current, handlers):
+    """Open the one window that owns every preference."""
+    dialog = _SettingsDialog(parent, language, current, handlers)
+    dialog.exec()
+
+
 def confirm_dialog(parent, language, title_key, text_key):
     """A yes/no warning whose wording comes from two i18n keys."""
     box = QMessageBox(parent)
@@ -683,105 +977,6 @@ def confirm_close_dialog(parent, language="zh-CN"):
     box.addButton(t("btn_no", language), QMessageBox.ButtonRole.RejectRole)
     box.exec()
     return box.clickedButton() is yes_button
-
-
-def show_about(parent, language, theme="light"):
-    dialog = QDialog(parent)
-    dialog.setObjectName("aboutDialog")
-    dialog.setWindowTitle(t("about_title", language))
-    dialog.setMinimumWidth(480)
-
-    card = QFrame()
-    card.setObjectName("aboutCard")
-    card_layout = QVBoxLayout(card)
-    card_layout.setContentsMargins(24, 22, 24, 18)
-    card_layout.setSpacing(12)
-
-    title = QLabel(t("app_title", language))
-    title.setObjectName("aboutTitle")
-
-    version = QLabel(t("about_version", language, version=APP_VERSION))
-    version.setObjectName("mutedLabel")
-
-    heading = QVBoxLayout()
-    heading.setContentsMargins(0, 0, 0, 0)
-    heading.setSpacing(2)
-    heading.addWidget(title)
-    heading.addWidget(version)
-
-    body = QLabel(t("about_text", language).split("\n", 1)[-1])
-    body.setObjectName("aboutBody")
-    body.setWordWrap(True)
-
-    divider = QFrame()
-    divider.setObjectName("aboutDivider")
-    divider.setFixedHeight(1)
-
-    author = QLabel(t("about_author", language, author=AUTHOR))
-    author.setObjectName("mutedLabel")
-    copyright_label = QLabel(t("about_copyright", language, year=COPYRIGHT_YEAR, author=AUTHOR))
-    copyright_label.setObjectName("mutedLabel")
-
-    meta = QHBoxLayout()
-    meta.setContentsMargins(0, 0, 0, 0)
-    meta.addWidget(author)
-    meta.addStretch(1)
-    meta.addWidget(copyright_label)
-
-    github_logo = QLabel()
-    github_logo.setPixmap(action_icon(theme, "github", size=16).pixmap(16, 16))
-    github_logo.setFixedSize(16, 16)
-    github_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-    github_name = GITHUB_URL.split("://", 1)[-1]
-    link = QLabel(f'<a href="{GITHUB_URL}">{github_name}</a>')
-    link.setOpenExternalLinks(True)
-    link.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-
-    github_row = QHBoxLayout()
-    github_row.setContentsMargins(0, 0, 0, 0)
-    github_row.setSpacing(8)
-    github_row.addWidget(github_logo)
-    github_row.addWidget(link)
-    github_row.addStretch(1)
-
-    web_logo = QLabel()
-    web_logo.setPixmap(action_icon(theme, "globe", size=16).pixmap(16, 16))
-    web_logo.setFixedSize(16, 16)
-    web_logo.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-
-    website_name = WEBSITE_URL.split("://", 1)[-1]
-    website = QLabel(f'<a href="{WEBSITE_URL}">{website_name}</a>')
-    website.setOpenExternalLinks(True)
-    website.setTextInteractionFlags(Qt.TextInteractionFlag.TextBrowserInteraction)
-
-    website_row = QHBoxLayout()
-    website_row.setContentsMargins(0, 0, 0, 0)
-    website_row.setSpacing(8)
-    website_row.addWidget(web_logo)
-    website_row.addWidget(website)
-    website_row.addStretch(1)
-
-    buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
-    close_button = buttons.button(QDialogButtonBox.StandardButton.Close)
-    close_button.setText(t("about_close", language))
-    close_button.setObjectName("primaryButton")
-    close_button.setMinimumWidth(96)
-    buttons.rejected.connect(dialog.reject)
-
-    card_layout.addLayout(heading)
-    card_layout.addWidget(body)
-    card_layout.addWidget(divider)
-    card_layout.addLayout(meta)
-    card_layout.addLayout(github_row)
-    card_layout.addLayout(website_row)
-    card_layout.addWidget(buttons)
-
-    layout = QVBoxLayout(dialog)
-    layout.setContentsMargins(14, 14, 14, 14)
-    layout.addWidget(card)
-
-    dialog.exec()
 
 
 def show_update_dialog(parent, language, info, in_app=False):

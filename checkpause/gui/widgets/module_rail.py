@@ -1,4 +1,4 @@
-from PySide6.QtCore import QPoint, QSize, Qt, Signal
+from PySide6.QtCore import QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QButtonGroup,
     QHBoxLayout,
@@ -41,6 +41,7 @@ class _AccountButton(QToolButton):
 class ModuleRail(QWidget):
     module_selected = Signal(str)
     account_clicked = Signal()
+    settings_clicked = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -106,8 +107,7 @@ class ModuleRail(QWidget):
         self._settings_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self._settings_button.setFixedSize(32, 32)
         self._settings_button.setIconSize(QSize(18, 18))
-        self._settings_button.clicked.connect(self._open_settings_menu)
-        self._settings_menu = None
+        self._settings_button.clicked.connect(lambda: self.settings_clicked.emit())
 
         row.addWidget(self._account_button, 1)
         row.addWidget(self._settings_button)
@@ -116,17 +116,6 @@ class ModuleRail(QWidget):
     def set_account_name(self, name):
         self._account_button.setAccessibleName(name)
         self._account_button.set_full_text(name)
-
-    def set_settings_menu(self, menu):
-        self._settings_menu = menu
-
-    def _open_settings_menu(self):
-        if self._settings_menu is None:
-            return
-        # The gear sits at the bottom edge, so the menu opens upwards.
-        pos = self._settings_button.mapToGlobal(QPoint(0, 0))
-        pos.setY(pos.y() - self._settings_menu.sizeHint().height())
-        self._settings_menu.exec(pos)
 
     def _apply_icon(self, module_id):
         entry = self._modules[module_id]

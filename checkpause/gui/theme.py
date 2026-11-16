@@ -845,24 +845,6 @@ QTableWidget#moveTable::item {
 #boardEditBar QLabel {
     color: $text_muted;
 }
-#aboutTitle {
-    color: $text;
-    font-size: 22px;
-    font-weight: 600;
-}
-#aboutBody {
-    color: $text;
-    font-size: 13px;
-}
-#aboutCard {
-    background-color: $surface;
-    border: 1px solid $border;
-    border-radius: 16px;
-}
-#aboutDivider {
-    background-color: $border;
-    border: none;
-}
 #accountCard {
     background-color: $surface;
     border: 1px solid $border;
@@ -911,6 +893,62 @@ QTableWidget#moveTable::item {
 #accountPill {
     padding: 3px 12px;
     border-radius: 8px;
+    font-size: 12px;
+}
+#settingsNav {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#settingsNavItem {
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: $text_muted;
+    font-size: 13px;
+    min-height: 34px;
+    max-height: 34px;
+    padding: 0 12px;
+    text-align: left;
+}
+#settingsNavItem:hover {
+    background-color: $hover;
+    color: $text;
+}
+#settingsNavItem:checked {
+    background-color: $accent_soft;
+    color: $text;
+    font-weight: 600;
+}
+#settingsPage {
+    background: transparent;
+    border: none;
+}
+#settingsCard {
+    background-color: $surface;
+    border: 1px solid $border;
+    border-radius: 14px;
+}
+#settingsRowLabel {
+    color: $text;
+    font-size: 13px;
+}
+#settingsRowHint {
+    color: $text_muted;
+    font-size: 12px;
+}
+#settingsChoice {
+    padding: 6px 14px;
+    border-radius: 8px;
+}
+#settingsChoice:checked {
+    background-color: $accent;
+    border-color: $accent;
+    color: $accent_text;
+    font-weight: 600;
+}
+#settingsVersion {
+    color: $text_muted;
     font-size: 12px;
 }
 #welcomePage {
