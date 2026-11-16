@@ -1,5 +1,5 @@
 # 代码风格配置（只放工具配置，不做打包元数据；打包走 CheckPause.spec）
-# 约定与硬规则见 CODING.md，名字清单见 NAMING.md。
+# 代码约定与命名清单由维护者在本地文档里维护，不随公开仓库分发。
 
 [tool.ruff]
 line-length = 100

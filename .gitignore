@@ -58,13 +58,7 @@ output/
 
 # Local working notes, kept out of the public repository on purpose
 AGENTS.md
-PROJECT_MAP.md
-ARCHITECTURE.md
-DEPLOYMENT.md
-DEV_NOTES.md
-CODING.md
-NAMING.md
-RELEASE_PENDING.md
+local-docs/
 .kilo/jetbrains.json
 
 # Image-recognition training: kept out of the public repository on purpose
