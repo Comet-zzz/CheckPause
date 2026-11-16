@@ -52,27 +52,21 @@ output/
 # Kilo local state
 .kilo/worktrees/
 .kilo/agent-manager.json
-
-# Agent-only skills (contain production ops/IP; keep out of the public repo)
 .kilo/skill/
-
-# Local working notes, kept out of the public repository on purpose
-AGENTS.md
-local-docs/
 .kilo/jetbrains.json
 
-# Image-recognition training: kept out of the public repository on purpose
-# (long-term feature + differentiator; see AGENTS.md "识图训练：保密资产").
-# Private working copy lives in D:\Projects\CheckPause-Recognizer.
+# Local-only working documents
+AGENTS.md
+local-docs/
+
+# Assets kept out of the public repository
 tools/train_recognizer.py
 assets/recognition/
 
-# Scratch space: one-off scripts (some touch the production database) must
-# never be committed to the public repository.
+# Scratch space
 tmp/
 
-# Update-signing private key and the local encrypted secret store. The private
-# key belongs on the release machine only; secrets.dat belongs in APPDATA.
+# Keys and local secret stores
 update_ed25519.key
 *.key
 secrets.dat
