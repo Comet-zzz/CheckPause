@@ -11,19 +11,34 @@ installation; there is deliberately no in-app switch. Whether the client sends
 is therefore always yes, and ``get_share_reviews`` keeps that decision in one
 named place rather than scattering the assumption.
 
-This is best effort by design. A sample that cannot be sent is dropped, because
-an upload failure must never interrupt a reply the user already has.
+A failed upload is never dropped: the same de-identified payload is written to a
+local outbox before the request and retried on a later launch, so one offline
+minute or a server restart cannot silently remove a finished review. Nothing new
+travels - the queued copy is exactly what an upload would have sent.
 """
 
+import json
+import os
 import re
 import threading
+import uuid
 
 import httpx
 
+from checkpause.data.paths import DATA_DIR
 from checkpause.data.settings import get_install_id, get_share_reviews
 
 SAMPLE_ENDPOINT = "/v1/dataset/samples"
 SAMPLE_TIMEOUT = 20.0
+
+# Retries live next to the other local data. The cap keeps a permanently offline
+# machine from growing the file without bound; older entries are kept, because
+# they are the ones that have been waiting longest.
+SAMPLES_OUTBOX_NAME = "samples_outbox.jsonl"
+MAX_PENDING_SAMPLES = 200
+
+_outbox_lock = threading.RLock()
+_flush_lock = threading.Lock()
 
 # The server caps the conversation it will keep; trimming here means an upload
 # is never rejected for being merely long.
@@ -98,27 +113,178 @@ def build_sample(
     }
 
 
-def send_sample(server_url, sample, timeout=SAMPLE_TIMEOUT):
-    """Best-effort upload. True when the server accepted it.
+def samples_outbox_path(base_dir=None):
+    return os.path.join(base_dir or DATA_DIR, SAMPLES_OUTBOX_NAME)
 
-    Never raises. A dropped sample costs one training example, while an
-    exception raised here would surface inside a reply the user already has.
+
+def _sample_id(entry):
+    return str(entry.get("client_sample_id") or "").strip()
+
+
+def load_sample_outbox(base_dir=None):
+    """Samples still waiting for a retry, oldest first."""
+    path = samples_outbox_path(base_dir)
+    if not os.path.isfile(path):
+        return []
+    entries = []
+    seen = set()
+    with open(path, encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except ValueError:
+                continue  # a torn line must not hide the samples around it
+            if not isinstance(entry, dict):
+                continue
+            sample_id = _sample_id(entry)
+            if not sample_id or sample_id in seen:
+                continue
+            if not (entry.get("pgn") or "").strip():
+                continue
+            seen.add(sample_id)
+            entries.append(entry)
+    return entries
+
+
+def _write_sample_outbox(entries, base_dir=None):
+    path = samples_outbox_path(base_dir)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    temp = path + ".tmp"
+    with open(temp, "w", encoding="utf-8") as handle:
+        for entry in entries:
+            handle.write(json.dumps(entry, ensure_ascii=False, separators=(",", ":")))
+            handle.write("\n")
+    os.replace(temp, path)
+
+
+def append_sample_outbox(sample, base_dir=None):
+    """Remember one sample for a retry. Returns its id, or "" when not kept."""
+    if not sample or not (sample.get("pgn") or "").strip():
+        return ""
+    entry = dict(sample)
+    sample_id = _sample_id(entry) or uuid.uuid4().hex
+    entry["client_sample_id"] = sample_id
+    with _outbox_lock:
+        entries = load_sample_outbox(base_dir)
+        if any(_sample_id(item) == sample_id for item in entries):
+            return sample_id
+        if len(entries) >= MAX_PENDING_SAMPLES:
+            # Keep what is already waiting; the new sample still gets one direct
+            # attempt, it just cannot also be stored for later.
+            return ""
+        entries.append(entry)
+        _write_sample_outbox(entries, base_dir)
+    return sample_id
+
+
+def remove_sample_outbox(sample_id, base_dir=None):
+    """Forget one queued sample once the server has taken it, or refused it."""
+    sample_id = str(sample_id or "").strip()
+    if not sample_id:
+        return False
+    with _outbox_lock:
+        entries = load_sample_outbox(base_dir)
+        remaining = [item for item in entries if _sample_id(item) != sample_id]
+        if len(remaining) == len(entries):
+            return False
+        _write_sample_outbox(remaining, base_dir)
+    return True
+
+
+def _post_sample(server_url, sample, timeout=SAMPLE_TIMEOUT):
+    """The server's answer, or None when the request never produced one."""
+    url = (server_url or "").rstrip("/") + SAMPLE_ENDPOINT
+    try:
+        return httpx.post(url, json=sample, timeout=timeout)
+    except httpx.HTTPError:
+        return None  # offline, DNS, timeout: the sample stays queued
+
+
+def _is_transient(response):
+    """True when the same sample may be accepted on a later try."""
+    if response is None:
+        return True
+    return response.status_code == 429 or response.status_code >= 500
+
+
+def send_sample(server_url, sample, timeout=SAMPLE_TIMEOUT):
+    """One upload attempt. True when the server accepted it.
+
+    Never raises. This is the bare attempt; callers that want durability use
+    ``deliver_sample``, which keeps the sample when this returns False.
     """
     if not sample or not (sample.get("pgn") or "").strip():
         return False
-    url = (server_url or "").rstrip("/") + SAMPLE_ENDPOINT
-    try:
-        response = httpx.post(url, json=sample, timeout=timeout)
-    except httpx.HTTPError:
+    response = _post_sample(server_url, sample, timeout)
+    return response is not None and response.status_code < 400
+
+
+def deliver_sample(server_url, sample, base_dir=None):
+    """Upload one sample, keeping it queued unless the server takes it.
+
+    The sample is written down before the request, so closing the app mid-flight
+    cannot lose it either. True when this call was accepted.
+    """
+    if not sample or not (sample.get("pgn") or "").strip():
         return False
-    return response.status_code < 400
+    entry = dict(sample)
+    entry["client_sample_id"] = _sample_id(entry) or uuid.uuid4().hex
+    queued = bool(append_sample_outbox(entry, base_dir))
+    response = _post_sample(server_url, entry)
+    if queued and _is_transient(response):
+        return False
+    if queued:
+        # Accepted, or refused for good (duplicate, validation): either way a
+        # retry would say the same thing again.
+        remove_sample_outbox(entry["client_sample_id"], base_dir)
+    return response is not None and response.status_code < 400
+
+
+def flush_sample_outbox(server_url, base_dir=None):
+    """Retry queued samples, oldest first. Returns how many were accepted.
+
+    Stops at the first transient failure: when the network is down there is no
+    point in waiting out a timeout per queued sample.
+    """
+    if not _flush_lock.acquire(blocking=False):
+        return 0
+    try:
+        sent = 0
+        for entry in load_sample_outbox(base_dir):
+            response = _post_sample(server_url, entry)
+            if _is_transient(response):
+                break
+            remove_sample_outbox(_sample_id(entry), base_dir)
+            if response.status_code < 400:
+                sent += 1
+        return sent
+    finally:
+        _flush_lock.release()
+
+
+def _deliver_in_background(server_url, sample):
+    if deliver_sample(server_url, sample):
+        flush_sample_outbox(server_url)
 
 
 def send_sample_async(server_url, sample):
-    """Upload in a daemon thread so the interface never waits on it."""
+    """Deliver in a daemon thread so the interface never waits on it."""
     worker = threading.Thread(
-        target=send_sample,
+        target=_deliver_in_background,
         args=(server_url, sample),
+        daemon=True,
+    )
+    worker.start()
+
+
+def flush_sample_outbox_async(server_url):
+    """Retry what an earlier run could not send, without blocking startup."""
+    worker = threading.Thread(
+        target=flush_sample_outbox,
+        args=(server_url,),
         daemon=True,
     )
     worker.start()

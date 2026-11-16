@@ -174,6 +174,9 @@ class MainWindow(QMainWindow):
         self._ai_mode = api_config["mode"]
         self._server_url = api_config["server_url"]
         self._account = api_config["account"]
+        # Samples an earlier run could not upload are retried in the background;
+        # a launch must not depend on a network round trip for that.
+        collect.flush_sample_outbox_async(self._server_url)
         self._analysis_worker = None
         self._chat_worker = None
         self._account_worker = None

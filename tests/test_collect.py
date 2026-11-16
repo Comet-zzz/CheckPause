@@ -1,3 +1,5 @@
+import shutil
+import tempfile
 import unittest
 from unittest import mock
 
@@ -160,6 +162,86 @@ class MaybeSendTests(unittest.TestCase):
             )
         self.assertIsNone(result)
         send.assert_not_called()
+
+
+class SampleOutboxTests(unittest.TestCase):
+    def setUp(self):
+        self.base = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.base, True)
+
+    def test_the_sample_is_written_down_before_the_request(self):
+        seen = {}
+
+        def capture(url, **kwargs):
+            seen["queued"] = collect.load_sample_outbox(self.base)
+            return FakeResponse(200)
+
+        with mock.patch.object(collect.httpx, "post", capture):
+            sent = collect.deliver_sample("http://server", {"pgn": "1. e4"}, self.base)
+
+        self.assertTrue(sent)
+        self.assertEqual(len(seen["queued"]), 1)
+        self.assertEqual(collect.load_sample_outbox(self.base), [])
+
+    def test_a_failed_upload_is_kept_and_replayed(self):
+        def offline(*args, **kwargs):
+            raise httpx.ConnectError("down")
+
+        with mock.patch.object(collect.httpx, "post", offline):
+            sent = collect.deliver_sample("http://server", {"pgn": "1. e4"}, self.base)
+
+        self.assertFalse(sent)
+        queued = collect.load_sample_outbox(self.base)
+        self.assertEqual(len(queued), 1)
+        self.assertTrue(queued[0]["client_sample_id"])
+
+        with mock.patch.object(collect.httpx, "post", lambda *a, **k: FakeResponse(200)):
+            self.assertEqual(collect.flush_sample_outbox("http://server", self.base), 1)
+        self.assertEqual(collect.load_sample_outbox(self.base), [])
+
+    def test_a_refused_sample_is_not_retried_forever(self):
+        with mock.patch.object(collect.httpx, "post", lambda *a, **k: FakeResponse(422)):
+            sent = collect.deliver_sample("http://server", {"pgn": "1. e4"}, self.base)
+        self.assertFalse(sent)
+        self.assertEqual(collect.load_sample_outbox(self.base), [])
+
+    def test_a_server_error_keeps_the_sample(self):
+        with mock.patch.object(collect.httpx, "post", lambda *a, **k: FakeResponse(503)):
+            sent = collect.deliver_sample("http://server", {"pgn": "1. e4"}, self.base)
+        self.assertFalse(sent)
+        self.assertEqual(len(collect.load_sample_outbox(self.base)), 1)
+
+    def test_the_outbox_stops_at_its_cap(self):
+        with mock.patch.object(collect, "MAX_PENDING_SAMPLES", 1):
+            self.assertTrue(collect.append_sample_outbox({"pgn": "1. e4"}, self.base))
+            self.assertEqual(collect.append_sample_outbox({"pgn": "1. d4"}, self.base), "")
+        self.assertEqual(len(collect.load_sample_outbox(self.base)), 1)
+
+    def test_a_torn_line_does_not_hide_the_samples_around_it(self):
+        path = collect.samples_outbox_path(self.base)
+        with open(path, "w", encoding="utf-8") as handle:
+            handle.write('{"pgn": "1. e4", "client_sample_id": "a"}\n')
+            handle.write("{not json\n")
+            handle.write('{"pgn": "1. d4", "client_sample_id": "b"}\n')
+
+        queued = collect.load_sample_outbox(self.base)
+        self.assertEqual([entry["client_sample_id"] for entry in queued], ["a", "b"])
+
+    def test_an_offline_retry_stops_instead_of_waiting_per_sample(self):
+        collect.append_sample_outbox({"pgn": "1. e4", "client_sample_id": "a"}, self.base)
+        collect.append_sample_outbox({"pgn": "1. d4", "client_sample_id": "b"}, self.base)
+        calls = []
+
+        def offline(*args, **kwargs):
+            calls.append(1)
+            raise httpx.ConnectError("down")
+
+        with mock.patch.object(collect.httpx, "post", offline):
+            sent = collect.flush_sample_outbox("http://server", self.base)
+
+        self.assertEqual(sent, 0)
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(len(collect.load_sample_outbox(self.base)), 2)
 
 
 if __name__ == "__main__":
