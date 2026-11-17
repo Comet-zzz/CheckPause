@@ -1149,6 +1149,9 @@ class MainWindow(QMainWindow):
         if self._image_worker and self._image_worker.isRunning():
             self._image_worker.terminate()
             self._image_worker.wait(1000)
+        if self._account_worker and self._account_worker.isRunning():
+            self._account_worker.terminate()
+            self._account_worker.wait(500)
         self._stop_eval_worker()
         self.play_page.shutdown()
         self.puzzle_page.shutdown()

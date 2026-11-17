@@ -3715,16 +3715,22 @@ class PuzzlePage(QWidget):
                 continue
             if name == "_import_worker" and hasattr(worker, "cancel"):
                 worker.cancel()
-            # Online requests use PUZZLE_TIMEOUT (10 s); wait a little longer.
-            worker.wait(13000 if name != "_import_worker" else 8000)
-            if worker.isRunning():
-                _keep_worker_alive(worker)
+            _stop_worker(worker, 1000 if name == "_import_worker" else 100)
         for worker in list(self._game_workers):
-            if worker.isRunning():
-                worker.wait(8000)
-            if worker.isRunning():
-                _keep_worker_alive(worker)
+            _stop_worker(worker)
         self._game_workers.clear()
+
+
+def _stop_worker(worker, wait_ms=100):
+    """Stop a thread quickly; waiting for a dead network can freeze the close."""
+    if worker is None or not worker.isRunning():
+        return
+    worker.wait(wait_ms)
+    if worker.isRunning():
+        worker.terminate()
+        worker.wait(500)
+    if worker.isRunning():
+        _keep_worker_alive(worker)
 
 
 def _keep_worker_alive(worker):

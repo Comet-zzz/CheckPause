@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest import mock
 
@@ -9,6 +10,7 @@ import chess
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 try:
+    from PySide6.QtCore import QThread
     from PySide6.QtTest import QTest
     from PySide6.QtWidgets import QApplication
 
@@ -37,6 +39,11 @@ def _puzzle():
         "themes": ["mate"],
         "opponent_first": False,
     }
+
+
+class _HangingWorker(QThread):
+    def run(self):
+        time.sleep(5)
 
 
 @unittest.skipUnless(_APP is not None, "Qt is not available")
@@ -407,10 +414,24 @@ class PuzzlePageTests(unittest.TestCase):
         self.page._profile.set_retry_busy(True)
         self.page._stack.setCurrentWidget(self.page._profile)
         self.page._on_online_next_failed(
-            "retry", "没有可重练的错题", "no_mistakes", self.page._next_request_id
+            "retry", "娌℃湁鍙噸缁冪殑閿欓", "no_mistakes", self.page._next_request_id
         )
         self.assertFalse(self.page._profile._notice.isHidden())
         self.assertFalse(self.page._profile._retry_busy)
+
+    def test_shutdown_does_not_wait_for_a_hanging_online_worker(self):
+        worker = _HangingWorker()
+        self.page._next_worker = worker
+        worker.start()
+        time.sleep(0.05)
+
+        started = time.monotonic()
+        self.page.shutdown()
+        elapsed = time.monotonic() - started
+
+        self.assertLess(elapsed, 1.5)
+        self.assertFalse(worker.isRunning())
+        worker.deleteLater()
 
 
 if __name__ == "__main__":
