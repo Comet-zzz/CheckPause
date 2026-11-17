@@ -7,6 +7,8 @@ import chess
 import chess.pgn
 
 try:
+    from PySide6.QtCore import QPoint, QPointF, Qt
+    from PySide6.QtGui import QWheelEvent
     from PySide6.QtWidgets import QApplication
 
     from checkpause.gui.widgets.board import BoardWidget
@@ -28,6 +30,81 @@ class BoardWidgetTests(unittest.TestCase):
         board = BoardWidget()
         self.assertTrue(board.load_pgn(pgn)[0])
         return board
+
+    def wheel(self, board, delta, pixel=False):
+        pixel_delta = QPoint(0, delta) if pixel else QPoint(0, 0)
+        angle_delta = QPoint(0, 0) if pixel else QPoint(0, delta)
+        event = QWheelEvent(
+            QPointF(10.0, 10.0),
+            QPointF(10.0, 10.0),
+            pixel_delta,
+            angle_delta,
+            Qt.MouseButton.NoButton,
+            Qt.KeyboardModifier.NoModifier,
+            Qt.ScrollPhase.NoScrollPhase,
+            False,
+        )
+        board._canvas.wheelEvent(event)
+
+    def test_wheel_browses_back_and_forth(self):
+        board = self.make_board()
+
+        self.wheel(board, -120)
+        self.assertEqual(board._index, 1)
+        self.wheel(board, -120)
+        self.assertEqual(board._index, 2)
+        self.wheel(board, 120)
+        self.assertEqual(board._index, 1)
+
+    def test_touchpad_pixel_delta_moves_one_ply(self):
+        board = self.make_board()
+
+        self.wheel(board, -8, pixel=True)
+
+        self.assertEqual(board._index, 1)
+
+    def test_wheel_browses_during_a_live_game(self):
+        board = self.make_board()
+        board.set_interactive(True, chess.WHITE)
+        board.goto(len(board._moves))
+
+        self.wheel(board, 120)
+        self.assertEqual(board._index, len(board._moves) - 1)
+        self.wheel(board, -120)
+        self.assertEqual(board._index, len(board._moves))
+
+    def test_wheel_works_on_an_interactive_free_line(self):
+        board = self.make_board()
+        board.set_interactive(True, None)
+
+        self.wheel(board, -120)
+
+        self.assertEqual(board._index, 1)
+
+    def test_wheel_reviews_a_finished_game(self):
+        board = self.make_board("1. f3 e5 2. g4 Qh4# *")
+        board.set_interactive(True, chess.WHITE)
+        board.goto(4)
+
+        self.wheel(board, 120)
+
+        self.assertEqual(board._index, 3)
+
+    def test_wheel_is_ignored_while_editing(self):
+        board = self.make_board()
+        board.start_edit()
+
+        self.wheel(board, -120)
+
+        self.assertEqual(board._index, 0)
+
+    def test_wheel_is_ignored_when_navigation_is_hidden(self):
+        board = self.make_board()
+        board.set_navigation_visible(False)
+
+        self.wheel(board, -120)
+
+        self.assertEqual(board._index, 0)
 
     def test_goto_animates_single_steps_in_both_directions(self):
         board = self.make_board()

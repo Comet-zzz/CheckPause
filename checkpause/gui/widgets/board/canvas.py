@@ -29,6 +29,12 @@ from checkpause.gui.widgets.board.constants import (
 # full arrow, alternates get progressively thinner and fainter.
 _ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
 
+# One mouse-wheel notch is 120 units. Touchpads report pixels instead; treating
+# about 8 pixels as a notch keeps their smaller deltas from requiring a long
+# swipe before the board moves.
+_WHEEL_NOTCH = 120
+_WHEEL_PIXEL_SCALE = 15
+
 
 class _BoardCanvas(QWidget):
     eval_ratio_changed = Signal(float)
@@ -45,6 +51,7 @@ class _BoardCanvas(QWidget):
         self._dragging = False
         self._drag_pos = None
         self._hover_square = None
+        self._wheel_accum = 0
         self._eval_ratio = 0.5
         self._eval_from = 0.5
         self._eval_to = 0.5
@@ -53,6 +60,29 @@ class _BoardCanvas(QWidget):
         self._eval_timer = QTimer(self)
         self._eval_timer.setInterval(16)
         self._eval_timer.timeout.connect(self._step_eval_animation)
+
+    def wheelEvent(self, event):
+        owner = self._owner
+        if owner._editable or not owner._nav_visible or not owner._moves:
+            super().wheelEvent(event)
+            return
+        delta = event.angleDelta().y()
+        if not delta:
+            delta = event.pixelDelta().y() * _WHEEL_PIXEL_SCALE
+        if not delta:
+            super().wheelEvent(event)
+            return
+        if self._wheel_accum and (self._wheel_accum > 0) != (delta > 0):
+            self._wheel_accum = 0
+        self._wheel_accum += delta
+        steps = int(self._wheel_accum / _WHEEL_NOTCH)
+        if not steps:
+            event.accept()
+            return
+        self._wheel_accum -= steps * _WHEEL_NOTCH
+        target = max(0, min(owner._index - steps, len(owner._moves)))
+        owner.goto(target)
+        event.accept()
 
     def mousePressEvent(self, event):
         owner = self._owner
