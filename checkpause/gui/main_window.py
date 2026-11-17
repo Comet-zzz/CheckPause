@@ -33,6 +33,7 @@ from checkpause.config import (
 )
 from checkpause.core import collect
 from checkpause.core.engine import compact_analysis, player_side
+from checkpause.core.pgn import pgn_game_text, scan_pgn_games
 from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
@@ -61,11 +62,13 @@ from checkpause.data.settings import (
     set_ai_mode,
 )
 from checkpause.gui.dialogs import (
+    choose_pgn_game_dialog,
     cloud_account_dialog,
     confirm_close_dialog,
     confirm_dialog,
     confirm_update_install,
     download_update_dialog,
+    pgn_paste_dialog,
     settings_dialog,
     show_update_dialog,
 )
@@ -321,13 +324,13 @@ class MainWindow(QMainWindow):
         self.analysis_page = AnalysisPage()
         self.chat_page = ChatPage()
         self.stats_page = StatsPage()
-        self.analysis_page.analyze_requested.connect(self._start_analysis)
+        self.analysis_page.analyze_requested.connect(self._on_analyze_requested)
         self.analysis_page.stop_requested.connect(self._stop_analysis)
         self.analysis_page.open_file_requested.connect(self._open_pgn_file)
+        self.analysis_page.paste_requested.connect(self._paste_pgn)
         self.analysis_page.image_requested.connect(self._recognize_image)
         self.analysis_page.clear_requested.connect(self._clear_analysis_board)
         self.analysis_page.ply_selected.connect(self.board.goto)
-        self.analysis_page.moves_shown.connect(self._on_moves_shown)
         self.board.index_changed.connect(self.analysis_page.set_current_ply)
         self.chat_page.send_requested.connect(self._send_chat)
         self.chat_page.reset_requested.connect(self._reset_chat)
@@ -512,9 +515,11 @@ class MainWindow(QMainWindow):
     def _open_analysis_tab(self):
         self.tabs.setCurrentWidget(self.analysis_page)
 
-    def _on_moves_shown(self, pgn):
-        if not self.board._moves:
-            self.board.load_pgn(pgn)
+    def _on_analyze_requested(self):
+        if not self._current_pgn.strip():
+            self.analysis_page.set_status(t("empty_pgn_error", self._language))
+            return
+        self._start_analysis(self._current_pgn)
 
     def _start_analysis(self, pgn):
         if self._analysis_worker and self._analysis_worker.isRunning():
@@ -583,6 +588,7 @@ class MainWindow(QMainWindow):
         self._current_pgn = ""
         self._user_side = ""
         self._clear_analysis_results()
+        self.analysis_page.show_empty()
         self.analysis_page.set_status("")
 
     def _clear_analysis_results(self):
@@ -594,9 +600,10 @@ class MainWindow(QMainWindow):
 
     def _refresh_analysis_line(self, status=None, show_moves=True):
         self._current_pgn = self.board.line_pgn()
-        self.analysis_page.set_pgn(self._current_pgn)
         if show_moves:
             self.analysis_page.show_moves(self._current_pgn)
+        else:
+            self.analysis_page.show_empty()
         if status is not None:
             self.analysis_page.set_status(status)
 
@@ -658,10 +665,41 @@ class MainWindow(QMainWindow):
         except OSError as exc:
             self.analysis_page.set_status(str(exc))
             return
-        self.analysis_page.set_pgn(content)
-        if self.board.load_pgn(content)[0]:
-            self.analysis_page.show_moves(content)
+        self._load_pgn_text(content)
+
+    def _load_pgn_text(self, text):
+        try:
+            games = scan_pgn_games(text)
+        except (ValueError, OSError):
+            games = []
+        if not games:
+            self.analysis_page.set_status(t("pgn_invalid", self._language))
+            return False
+        index = 0
+        if len(games) > 1:
+            index = choose_pgn_game_dialog(self, self._language, games)
+            if index is None:
+                return False
+        game_text = pgn_game_text(text, games[index])
+        ok, err = self.board.load_pgn(game_text)
+        if not ok:
+            self.analysis_page.set_status(t("parse_failed", self._language, error=err))
+            return False
+        self._clear_analysis_results()
+        self._current_pgn = game_text
+        self._user_side = player_side(game_text, (self.profile or {}).get("username", ""))
+        self._current_analysis = ""
+        self._messages = []
+        self.chat_page.clear_history()
+        self.analysis_page.show_moves(game_text)
+        self.analysis_page.set_status("")
         self.tabs.setCurrentWidget(self.analysis_page)
+        return True
+
+    def _paste_pgn(self):
+        text = pgn_paste_dialog(self, self._language)
+        if text:
+            self._load_pgn_text(text)
 
     def _recognize_image(self):
         if not IMAGE_RECOGNITION_ENABLED:
@@ -690,7 +728,6 @@ class MainWindow(QMainWindow):
         self.board.set_start_fen(result["fen"])
         self._clear_analysis_results()
         self._refresh_analysis_line(show_moves=False)
-        self.analysis_page.show_editor()
         self.tabs.setCurrentWidget(self.analysis_page)
         self.analysis_page.set_status(self._image_status(result))
         self._request_live_eval(self.board.current_fen())
@@ -712,9 +749,8 @@ class MainWindow(QMainWindow):
             worker.deleteLater()
 
     def _on_play_import(self, pgn):
-        self.analysis_page.set_pgn(pgn)
-        if self.board.load_pgn(pgn)[0]:
-            self.analysis_page.show_moves(pgn)
+        if not self._load_pgn_text(pgn):
+            return
         self._module = "analysis"
         self._show_module()
         self.tabs.setCurrentWidget(self.analysis_page)

@@ -150,7 +150,7 @@ def _capture_welcome(language):
 
 def _open_game(window, pgn, language):
     """Load the game and run the genuine local analysis over it."""
-    window.analysis_page.set_pgn(pgn)
+    window._current_pgn = pgn
     window.analysis_page.show_moves(pgn)
     window.board.load_pgn(pgn)
     window._current_pgn = pgn

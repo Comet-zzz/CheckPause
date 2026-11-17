@@ -1,14 +1,11 @@
 from PySide6.QtCore import QSize, Signal
-from PySide6.QtGui import QFontDatabase
 from PySide6.QtWidgets import (
     QButtonGroup,
     QFrame,
     QHBoxLayout,
     QLabel,
-    QPlainTextEdit,
     QProgressBar,
     QPushButton,
-    QStackedWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -25,13 +22,13 @@ REVIEW_SIDES = ("all", "white", "black")
 
 
 class AnalysisPage(QWidget):
-    analyze_requested = Signal(str)
+    analyze_requested = Signal()
     stop_requested = Signal()
     open_file_requested = Signal()
+    paste_requested = Signal()
     image_requested = Signal()
     clear_requested = Signal()
     ply_selected = Signal(int)
-    moves_shown = Signal(str)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -41,23 +38,13 @@ class AnalysisPage(QWidget):
         self._review_side = "all"
         self._busy = False
 
-        self._editor = QPlainTextEdit()
-        self._editor.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
-
-        editor_page = QWidget()
-        editor_layout = QVBoxLayout(editor_page)
-        editor_layout.setContentsMargins(0, 0, 0, 0)
-        editor_layout.addWidget(self._editor, 1)
-
         self._move_list = MoveListWidget()
         self._move_list.ply_selected.connect(self.ply_selected.emit)
 
-        self._stack = QStackedWidget()
-        self._stack.addWidget(editor_page)
-        self._stack.addWidget(self._move_list)
-
         self._btn_open = self._tool_button("open")
         self._btn_open.clicked.connect(self.open_file_requested.emit)
+        self._btn_paste = self._tool_button("paste")
+        self._btn_paste.clicked.connect(self.paste_requested.emit)
         self._btn_image = self._tool_button("image")
         self._btn_image.setEnabled(IMAGE_RECOGNITION_ENABLED)
         self._btn_image.clicked.connect(self.image_requested.emit)
@@ -69,7 +56,12 @@ class AnalysisPage(QWidget):
         tools_row = QHBoxLayout(tools)
         tools_row.setContentsMargins(0, 0, 0, 0)
         tools_row.setSpacing(4)
-        for button in (self._btn_open, self._btn_image, self._btn_clear):
+        for button in (
+            self._btn_open,
+            self._btn_paste,
+            self._btn_image,
+            self._btn_clear,
+        ):
             tools_row.addWidget(button)
         tools_row.addStretch(1)
 
@@ -148,7 +140,7 @@ class AnalysisPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setSpacing(8)
         layout.addWidget(tools)
-        layout.addWidget(self._stack, 1)
+        layout.addWidget(self._move_list, 1)
         layout.addWidget(self._summary_card)
         layout.addLayout(action_row)
 
@@ -161,31 +153,21 @@ class AnalysisPage(QWidget):
         button.setIconSize(QSize(16, 16))
         return button
 
-    def pgn_text(self):
-        return self._editor.toPlainText().strip()
-
-    def set_pgn(self, text):
-        self._editor.setPlainText(text)
-
     def show_moves(self, pgn_text):
         if self._move_list.set_moves(pgn_text):
-            self._stack.setCurrentIndex(1)
-            self.moves_shown.emit(pgn_text)
             return True
         self._move_list.clear()
-        self.show_editor()
         return False
 
-    def show_editor(self):
-        self._stack.setCurrentIndex(0)
+    def show_empty(self):
+        self._move_list.clear()
 
     def set_current_ply(self, ply):
         self._move_list.set_current_ply(ply)
 
     def clear(self):
-        self._editor.clear()
         self._move_list.clear()
-        self.show_editor()
+        self.show_empty()
         self.set_review([])
         self.clear_requested.emit()
 
@@ -197,6 +179,7 @@ class AnalysisPage(QWidget):
     def _apply_icons(self):
         for button, name in (
             (self._btn_open, "open"),
+            (self._btn_paste, "paste"),
             (self._btn_image, "image"),
             (self._btn_clear, "trash"),
         ):
@@ -261,8 +244,8 @@ class AnalysisPage(QWidget):
 
     def set_busy(self, busy):
         self._busy = busy
-        self._editor.setReadOnly(busy)
         self._btn_open.setEnabled(not busy)
+        self._btn_paste.setEnabled(not busy)
         self._btn_image.setEnabled(not busy and IMAGE_RECOGNITION_ENABLED)
         self._btn_clear.setEnabled(not busy)
         self._sync_primary_action()
@@ -277,11 +260,7 @@ class AnalysisPage(QWidget):
         self._on_analyze()
 
     def _on_analyze(self):
-        text = self.pgn_text()
-        if not text:
-            self.set_status(t("empty_pgn_error", self._language))
-            return
-        self.analyze_requested.emit(text)
+        self.analyze_requested.emit()
 
     def _sync_primary_action(self):
         if self._busy:
@@ -304,14 +283,15 @@ class AnalysisPage(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._editor.setPlaceholderText(t("placeholder_pgn", language))
         for button, name_key in (
             (self._btn_open, "btn_open_pgn"),
+            (self._btn_paste, "btn_paste_pgn"),
             (self._btn_image, "btn_image"),
-            (self._btn_clear, "btn_clear_pgn"),
         ):
             button.setText(t(name_key, language))
             button.setAccessibleName(t(name_key, language))
+        self._btn_clear.setText("")
+        self._btn_clear.setAccessibleName(t("btn_clear_pgn", language))
         self._side_label.setText(t("review_side_label", language))
         for side in REVIEW_SIDES:
             self._review_buttons[side].setText(t("review_side_" + side, language))

@@ -199,6 +199,10 @@ QLabel#mutedLabel {
     color: $text_muted;
     font-size: 12px;
 }
+QLabel#errorLabel {
+    color: $danger;
+    font-size: 12px;
+}
 QLabel#accuracyLabel {
     color: $accent;
     font-weight: 600;

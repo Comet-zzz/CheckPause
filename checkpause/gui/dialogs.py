@@ -1,5 +1,13 @@
 from PySide6.QtCore import Qt, QTimer, QUrl
-from PySide6.QtGui import QColor, QDesktopServices, QPainter, QPixmap
+from PySide6.QtGui import (
+    QColor,
+    QDesktopServices,
+    QFontDatabase,
+    QKeySequence,
+    QPainter,
+    QPixmap,
+    QShortcut,
+)
 from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import (
     QButtonGroup,
@@ -13,7 +21,10 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QLabel,
     QLineEdit,
+    QListWidget,
+    QListWidgetItem,
     QMessageBox,
+    QPlainTextEdit,
     QProgressBar,
     QPushButton,
     QScrollArea,
@@ -32,6 +43,7 @@ from checkpause import (
     WEBSITE_URL,
 )
 from checkpause.assets import BOARD_THEMES, PIECE_SETS, SOUND_CHOICES
+from checkpause.core.pgn import pgn_game_text, pgn_has_moves, scan_pgn_games
 from checkpause.data.settings import (
     DEFAULT_SERVER_URL,
     get_api_key,
@@ -1087,3 +1099,170 @@ def confirm_update_install(parent, language):
     )
     box.exec()
     return box.clickedButton() is install
+
+
+class _PgnGameDialog(QDialog):
+    def __init__(self, parent, language, games):
+        super().__init__(parent)
+        self._games = list(games)
+        self.setObjectName("pgnGameDialog")
+        self.setWindowTitle(t("pgn_games_title", language))
+        self.setMinimumSize(560, 380)
+
+        intro = QLabel(t("pgn_games_intro", language, count=len(self._games)))
+        intro.setObjectName("mutedLabel")
+        intro.setWordWrap(True)
+
+        self._list = QListWidget()
+        self._list.setObjectName("pgnGameList")
+        self._list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        for index, game in enumerate(self._games, start=1):
+            item = QListWidgetItem(_pgn_game_label(index, game.headers))
+            item.setToolTip(item.text())
+            self._list.addItem(item)
+        self._list.setCurrentRow(0)
+        self._list.itemDoubleClicked.connect(lambda _item: self.accept())
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        load = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        load.setText(t("pgn_games_load", language))
+        load.setObjectName("primaryButton")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("btn_no", language))
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.addWidget(intro)
+        layout.addWidget(self._list, 1)
+        layout.addWidget(buttons)
+
+    def selected_index(self):
+        row = self._list.currentRow()
+        if row < 0 or row >= len(self._games):
+            return None
+        return row
+
+
+def choose_pgn_game_dialog(parent, language, games):
+    """Return the index of the game the user picked, or None on cancel."""
+    games = list(games or [])
+    if not games:
+        return None
+    if len(games) == 1:
+        return 0
+    dialog = _PgnGameDialog(parent, language, games)
+    if dialog.exec() == QDialog.DialogCode.Accepted:
+        return dialog.selected_index()
+    return None
+
+
+def _pgn_game_label(index, headers):
+    white = _pgn_header(headers, "White")
+    black = _pgn_header(headers, "Black")
+    result = _pgn_header(headers, "Result", "*")
+    date = _pgn_header(headers, "Date")
+    if date.startswith("????"):
+        date = "?"
+    event = _pgn_header(headers, "Event")
+    round_number = _pgn_header(headers, "Round")
+    eco = _pgn_header(headers, "ECO")
+
+    details = [result, date]
+    if event != "?":
+        details.append(event)
+    if round_number != "?":
+        details.append(f"R{round_number}")
+    if eco != "?":
+        details.append(eco)
+    return f"{index}. {white} — {black}\n{' · '.join(details)}"
+
+
+def _pgn_header(headers, key, fallback="?"):
+    value = str((headers or {}).get(key) or "").strip()
+    return value or fallback
+
+
+class _PgnPasteDialog(QDialog):
+    def __init__(self, parent, language):
+        super().__init__(parent)
+        self._language = language
+        self._text = None
+        self.setObjectName("pgnPasteDialog")
+        self.setWindowTitle(t("pgn_paste_title", language))
+        self.setMinimumSize(620, 460)
+
+        self._edit = QPlainTextEdit()
+        self._edit.setFont(QFontDatabase.systemFont(QFontDatabase.SystemFont.FixedFont))
+        self._edit.setPlaceholderText(t("pgn_paste_placeholder", language))
+        self._edit.textChanged.connect(self._clear_error)
+
+        self._error = QLabel()
+        self._error.setObjectName("errorLabel")
+        self._error.setWordWrap(True)
+        self._error.setVisible(False)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        load = buttons.button(QDialogButtonBox.StandardButton.Ok)
+        load.setText(t("pgn_games_load", language))
+        load.setObjectName("primaryButton")
+        buttons.button(QDialogButtonBox.StandardButton.Cancel).setText(t("btn_no", language))
+        buttons.accepted.connect(self._accept)
+        buttons.rejected.connect(self.reject)
+
+        self._shortcut = QShortcut(QKeySequence("Ctrl+Return"), self)
+        self._shortcut.activated.connect(self._accept)
+
+        layout = QVBoxLayout(self)
+        layout.setSpacing(10)
+        layout.addWidget(self._edit, 1)
+        layout.addWidget(self._error)
+        layout.addWidget(buttons)
+        self._edit.setFocus()
+
+    def text(self):
+        return self._text
+
+    def _show_error(self, message):
+        self._error.setText(message)
+        self._error.setVisible(True)
+
+    def _clear_error(self):
+        self._error.clear()
+        self._error.setVisible(False)
+
+    def _accept(self):
+        text = self._edit.toPlainText().strip()
+        if not text:
+            self._show_error(t("empty_pgn_error", self._language))
+            return
+        try:
+            games = scan_pgn_games(text)
+        except (ValueError, OSError):
+            games = []
+        if not games:
+            self._show_error(t("pgn_invalid", self._language))
+            return
+        index = 0
+        if len(games) > 1:
+            index = choose_pgn_game_dialog(self, self._language, games)
+            if index is None:
+                return
+        game_text = pgn_game_text(text, games[index])
+        if not pgn_has_moves(game_text):
+            self._show_error(t("pgn_no_moves", self._language))
+            return
+        self._text = game_text
+        self.accept()
+
+
+def pgn_paste_dialog(parent, language):
+    """Return the pasted game, or None when the user cancels."""
+    dialog = _PgnPasteDialog(parent, language)
+    if dialog.exec() == QDialog.DialogCode.Accepted:
+        return dialog.text()
+    return None
