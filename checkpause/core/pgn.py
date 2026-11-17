@@ -50,13 +50,20 @@ def pgn_game_text(text, game):
     return (text or "")[game.offset : game.end].strip()
 
 
-def pgn_has_moves(text):
-    """Whether a single-game PGN contains at least one legal mainline move."""
+def parse_pgn_game(text):
+    """Parse one PGN game, returning ``None`` when the text is unreadable."""
     try:
-        game = chess.pgn.read_game(io.StringIO(text or ""))
+        return chess.pgn.read_game(io.StringIO(text or ""))
     except (ValueError, OSError):
-        return False
-    return game is not None and _has_moves(game)
+        return None
+
+
+def parse_single_game(text):
+    """Parse exactly one game; a document with several games is rejected."""
+    games = scan_pgn_games(text)
+    if len(games) != 1:
+        return None
+    return parse_pgn_game(pgn_game_text(text, games[0]))
 
 
 def _has_moves(game):

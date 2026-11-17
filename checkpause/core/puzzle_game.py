@@ -1,12 +1,12 @@
 """Load a puzzle's source game so the sidebar can show the full move list."""
 
-import io
 import json
 import urllib.parse
 import urllib.request
 
 import chess
-import chess.pgn
+
+from checkpause.core.pgn import parse_single_game
 
 LICHESS_PUZZLE_API = "https://lichess.org/api/puzzle/{puzzle_id}"
 _HISTORY_CACHE = {}
@@ -37,7 +37,7 @@ def history_from_pgn(pgn, fen, opponent_first=False):
         target = chess.Board(fen)
     except ValueError:
         return [], None
-    game = chess.pgn.read_game(io.StringIO(pgn or ""))
+    game = parse_single_game(pgn)
     if game is None:
         return [], None
     start_fen = None

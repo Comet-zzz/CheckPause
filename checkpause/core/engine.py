@@ -1,13 +1,12 @@
-import io
 import os
 import subprocess
 
 import chess
 import chess.engine
-import chess.pgn
 import chess.polyglot
 
 from checkpause.config import BOOK_MAX_PLIES, BOOK_MIN_WEIGHT, ENGINE_LIMIT, REVIEW_MULTIPV
+from checkpause.core.pgn import parse_single_game
 from checkpause.i18n import t
 from checkpause.resources import get_opening_book_path, get_stockfish_path
 
@@ -101,7 +100,7 @@ def format_eval(margin, mate=None):
     return f"{margin / 100.0:+.2f}"
 
 
-def player_side(pgn_text, username):
+def player_side(pgn_text, username, game=None):
     """Which side of the game the local user played: "white", "black" or "".
 
     The PGN tag pairs are the only place that says who played which side, and
@@ -114,7 +113,8 @@ def player_side(pgn_text, username):
     needle = _name_key(username)
     if not needle:
         return ""
-    game = chess.pgn.read_game(io.StringIO(pgn_text or ""))
+    if game is None:
+        game = parse_single_game(pgn_text)
     if game is None:
         return ""
     for side, tag in (("white", "White"), ("black", "Black")):
@@ -172,10 +172,24 @@ class StockfishAnalyzer:
             finally:
                 self._book = None
 
-    def analyze(self, pgn_text, language="zh-CN", on_progress=None, on_move=None, should_stop=None):
-        game = chess.pgn.read_game(io.StringIO(pgn_text))
+    def analyze(
+        self,
+        pgn_text,
+        language="zh-CN",
+        on_progress=None,
+        on_move=None,
+        should_stop=None,
+        game=None,
+    ):
+        if game is None:
+            game = parse_single_game(pgn_text)
         if game is None:
             return None, t("pgn_invalid", language), None
+        return self.analyze_game(game, language, on_progress, on_move, should_stop)
+
+    def analyze_game(
+        self, game, language="zh-CN", on_progress=None, on_move=None, should_stop=None
+    ):
         try:
             board = game.board()
         except ValueError:

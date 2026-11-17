@@ -1,4 +1,3 @@
-import io
 import os
 import time
 
@@ -30,6 +29,7 @@ from checkpause.assets import (
 )
 from checkpause.config import EVAL_DEPTH_OPTIONS
 from checkpause.core.engine import format_eval
+from checkpause.core.pgn import parse_pgn_game, pgn_game_text, scan_pgn_games
 from checkpause.gui.icons import nav_icon
 from checkpause.gui.sound import SoundPlayer, move_sound_kind
 from checkpause.gui.theme import DARK
@@ -351,9 +351,21 @@ class BoardWidget(QWidget):
         return pixmap
 
     def load_pgn(self, pgn_text):
-        self._end_edit()
-        game = chess.pgn.read_game(io.StringIO(pgn_text))
+        games = scan_pgn_games(pgn_text)
+        if len(games) > 1:
+            return False, t("pgn_multiple_games", self._language)
+        if not games:
+            return False, t("pgn_invalid", self._language)
+        game = parse_pgn_game(pgn_game_text(pgn_text, games[0]))
         if game is None:
+            return False, t("pgn_invalid", self._language)
+        return self.load_game(game)
+
+    def load_game(self, game):
+        self._end_edit()
+        try:
+            game.board()
+        except ValueError:
             return False, t("pgn_invalid", self._language)
         moves = list(game.mainline_moves())
         if not moves:
@@ -844,7 +856,7 @@ class BoardWidget(QWidget):
         self.index_changed.emit(self._index)
         return True
 
-    def line_pgn(self, up_to=None):
+    def line_game(self, up_to=None):
         game = chess.pgn.Game()
         if self._start_fen:
             try:
@@ -857,7 +869,10 @@ class BoardWidget(QWidget):
         moves = self._moves if up_to is None else self._moves[: max(0, int(up_to))]
         for move in moves:
             node = node.add_main_variation(move)
-        return str(game)
+        return game
+
+    def line_pgn(self, up_to=None):
+        return str(self.line_game(up_to))
 
     def clear_selection(self):
         self._selected = None

@@ -32,6 +32,7 @@ MESSAGES = {
     "average_stat": "   ─ Average accuracy: {accuracy:.1f}%",
     "total_stat": "   ─ Total games: {total}",
     "pgn_invalid": "Invalid PGN format",
+    "pgn_multiple_games": "This PGN contains several games. Choose one first.",
     "pgn_no_moves": "No moves in PGN",
     "app_title": "CheckPause",
     "menu_settings": "Settings",

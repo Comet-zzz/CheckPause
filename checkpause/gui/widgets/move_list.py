@@ -1,7 +1,4 @@
-import io
-
 import chess
-import chess.pgn
 from PySide6.QtCore import QRect, QSize, Qt, Signal
 from PySide6.QtGui import QColor, QFont, QFontMetrics, QPalette
 from PySide6.QtWidgets import (
@@ -15,6 +12,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from checkpause.core.pgn import parse_single_game
 from checkpause.gui.icons import action_icon
 from checkpause.gui.theme import (
     LIGHT,
@@ -136,9 +134,12 @@ class MoveListWidget(QWidget):
         layout.addWidget(self._table)
 
     def set_moves(self, pgn_text):
-        game = chess.pgn.read_game(io.StringIO(pgn_text))
+        game = parse_single_game(pgn_text)
         if game is None:
             return False
+        return self.set_game(game)
+
+    def set_game(self, game):
         start = game.board()
         board = start.copy()
         sans = []

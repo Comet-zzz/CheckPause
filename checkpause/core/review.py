@@ -11,11 +11,11 @@ Only move and Miss are best-effort and will not always match other tools. The
 thresholds below are the knobs to tune.
 """
 
-import io
 import math
 
 import chess
-import chess.pgn
+
+from checkpause.core.pgn import parse_single_game
 
 # Win probability lost by a move, in "win percentage points". The cutoffs
 # mirror the widely used review scale.
@@ -238,7 +238,7 @@ def classify_move(board, move, record):
     return "Blunder"
 
 
-def classify(results, pgn_text):
+def classify(results, pgn_text, game=None):
     """Annotate every analysed ply with a label and return a summary.
 
     ``results`` are the engine records for the game; ``pgn_text`` supplies the
@@ -251,7 +251,8 @@ def classify(results, pgn_text):
     if not results:
         return [], {"counts": counts, "total": 0}
 
-    game = chess.pgn.read_game(io.StringIO(pgn_text or ""))
+    if game is None:
+        game = parse_single_game(pgn_text)
     moves = list(game.mainline_moves()) if game is not None else []
     board = game.board() if game is not None else None
 

@@ -33,7 +33,12 @@ from checkpause.config import (
 )
 from checkpause.core import collect
 from checkpause.core.engine import compact_analysis, player_side
-from checkpause.core.pgn import pgn_game_text, scan_pgn_games
+from checkpause.core.pgn import (
+    parse_pgn_game,
+    parse_single_game,
+    pgn_game_text,
+    scan_pgn_games,
+)
 from checkpause.core.review import classify
 from checkpause.data.profile import (
     clear_history,
@@ -163,6 +168,7 @@ class MainWindow(QMainWindow):
         self._messages = []
         self._results = []
         self._current_pgn = ""
+        self._current_game = None
         self._current_analysis = ""
         self._user_side = ""
         api_config = get_api_config()
@@ -173,6 +179,7 @@ class MainWindow(QMainWindow):
         # a launch must not depend on a network round trip for that.
         collect.flush_sample_outbox_async(self._server_url)
         self._analysis_worker = None
+        self._analysis_pgn = ""
         self._chat_worker = None
         self._account_worker = None
         self._image_worker = None
@@ -527,28 +534,36 @@ class MainWindow(QMainWindow):
         if self.board.is_editing():
             self.analysis_page.set_status(t("edit_finish_first", self._language))
             return
-        ok, err = self.board.load_pgn(pgn)
+        game = self._current_game
+        if game is None or pgn != self._current_pgn:
+            game = parse_single_game(pgn)
+        if game is None:
+            self.analysis_page.set_status(t("pgn_invalid", self._language))
+            return
+        ok, err = self.board.load_game(game)
         if not ok:
             self.analysis_page.set_status(t("parse_failed", self._language, error=err))
             return
 
+        self._invalidate_analysis(clear_chat=True)
         self._current_pgn = pgn
-        self._user_side = player_side(pgn, (self.profile or {}).get("username", ""))
-        self._results = []
-        self.board.set_results([])
+        self._current_game = game
+        self._user_side = player_side(pgn, (self.profile or {}).get("username", ""), game=game)
         self.board.set_interactive(False)
         self.board.set_edit_enabled(False)
-        self.analysis_page.show_moves(pgn)
-        self.analysis_page.set_accuracy(None)
-        self.analysis_page.set_review([])
-        self.analysis_page.set_progress(0)
+        self.analysis_page.show_game(game)
         self.analysis_page.set_status(t("status_parsing", self._language))
         self.analysis_page.set_busy(True)
         self.tabs.setCurrentWidget(self.analysis_page)
 
         self._analysis_worker = AnalysisWorker(
-            pgn, self._language, self, depth=self._analysis_depth
+            pgn,
+            self._language,
+            self,
+            depth=self._analysis_depth,
+            game=game,
         )
+        self._analysis_pgn = pgn
         self._analysis_worker.progress.connect(self.analysis_page.set_progress)
         self._analysis_worker.move_done.connect(self._on_move_done)
         self._analysis_worker.done.connect(self._on_analysis_done)
@@ -562,6 +577,8 @@ class MainWindow(QMainWindow):
             self.analysis_page.set_status(t("analysis_stopped", self._language))
 
     def _on_move_done(self, index, total, san, fen):
+        if self._current_pgn != self._analysis_pgn:
+            return
         percent = int(index / total * 100)
         self.analysis_page.set_progress(percent)
         self.analysis_page.set_status(t("status_analyzing", self._language, percent=percent))
@@ -575,21 +592,28 @@ class MainWindow(QMainWindow):
         self.board.play_move(from_square, to_square)
 
     def _on_line_changed(self, replaced):
-        if replaced:
-            self._clear_analysis_results()
+        self._invalidate_analysis(clear_chat=True)
         self._refresh_analysis_line("")
 
     def _on_position_applied(self, fen):
-        self._clear_analysis_results()
+        self._invalidate_analysis(clear_chat=True)
         self._refresh_analysis_line("", show_moves=False)
 
     def _clear_analysis_board(self):
         self.board.clear()
         self._current_pgn = ""
         self._user_side = ""
-        self._clear_analysis_results()
+        self._invalidate_analysis(clear_chat=True)
         self.analysis_page.show_empty()
         self.analysis_page.set_status("")
+
+    def _invalidate_analysis(self, clear_chat=True):
+        self._clear_analysis_results()
+        self._current_analysis = ""
+        self._current_game = None
+        if clear_chat:
+            self._messages = []
+            self.chat_page.clear_history()
 
     def _clear_analysis_results(self):
         self._results = []
@@ -599,16 +623,19 @@ class MainWindow(QMainWindow):
         self.analysis_page.set_progress(0)
 
     def _refresh_analysis_line(self, status=None, show_moves=True):
-        self._current_pgn = self.board.line_pgn()
+        self._current_game = self.board.line_game()
+        self._current_pgn = str(self._current_game)
         if show_moves:
-            self.analysis_page.show_moves(self._current_pgn)
+            self.analysis_page.show_game(self._current_game)
         else:
             self.analysis_page.show_empty()
         if status is not None:
             self.analysis_page.set_status(status)
 
     def _on_analysis_done(self, results, accuracy):
-        annotated, _ = classify(results, self._current_pgn)
+        if self._current_pgn != self._analysis_pgn:
+            return
+        annotated, _ = classify(results, self._current_pgn, game=self._current_game)
         self._results = annotated
         self.board.set_results(annotated)
         self.analysis_page.set_progress(100)
@@ -636,6 +663,8 @@ class MainWindow(QMainWindow):
         self.chat_page.append_notice(t("chat_welcome", self._language))
 
     def _on_analysis_failed(self, error):
+        if self._current_pgn != self._analysis_pgn:
+            return
         self.analysis_page.set_status(t("analysis_failed", self._language, error=error))
 
     def _on_analysis_finished(self):
@@ -681,25 +710,32 @@ class MainWindow(QMainWindow):
             if index is None:
                 return False
         game_text = pgn_game_text(text, games[index])
-        ok, err = self.board.load_pgn(game_text)
+        game = parse_pgn_game(game_text)
+        if game is None:
+            self.analysis_page.set_status(t("pgn_invalid", self._language))
+            return False
+        return self._apply_loaded_game(game_text, game)
+
+    def _apply_loaded_game(self, game_text, game):
+        ok, err = self.board.load_game(game)
         if not ok:
             self.analysis_page.set_status(t("parse_failed", self._language, error=err))
             return False
-        self._clear_analysis_results()
+        self._invalidate_analysis(clear_chat=True)
         self._current_pgn = game_text
-        self._user_side = player_side(game_text, (self.profile or {}).get("username", ""))
-        self._current_analysis = ""
-        self._messages = []
-        self.chat_page.clear_history()
-        self.analysis_page.show_moves(game_text)
+        self._current_game = game
+        self._user_side = player_side(
+            game_text, (self.profile or {}).get("username", ""), game=game
+        )
+        self.analysis_page.show_game(game)
         self.analysis_page.set_status("")
         self.tabs.setCurrentWidget(self.analysis_page)
         return True
 
     def _paste_pgn(self):
-        text = pgn_paste_dialog(self, self._language)
-        if text:
-            self._load_pgn_text(text)
+        selection = pgn_paste_dialog(self, self._language)
+        if selection:
+            self._apply_loaded_game(*selection)
 
     def _recognize_image(self):
         if not IMAGE_RECOGNITION_ENABLED:
@@ -726,7 +762,7 @@ class MainWindow(QMainWindow):
 
     def _on_image_recognized(self, result):
         self.board.set_start_fen(result["fen"])
-        self._clear_analysis_results()
+        self._invalidate_analysis(clear_chat=True)
         self._refresh_analysis_line(show_moves=False)
         self.tabs.setCurrentWidget(self.analysis_page)
         self.analysis_page.set_status(self._image_status(result))

@@ -7,6 +7,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 try:
     from PySide6.QtWidgets import QApplication
 
+    from checkpause.core.pgn import parse_single_game
     from checkpause.gui.pages import analysis_page
     from checkpause.gui.pages.analysis_page import AnalysisPage
 
@@ -127,6 +128,14 @@ class ImageRecognitionGateTests(unittest.TestCase):
         page.show_empty()
 
         self.assertEqual(page._move_list._ply_count, 0)
+
+    def test_show_game_reuses_a_parsed_game(self):
+        page = AnalysisPage()
+        game = parse_single_game("1. e4 e5 *")
+
+        self.assertTrue(page.show_game(game))
+
+        self.assertEqual(page._move_list._ply_count, 2)
 
     def test_busy_disables_paste_too(self):
         page = AnalysisPage()

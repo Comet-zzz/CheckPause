@@ -110,7 +110,7 @@ class PgnPasteDialogTests(unittest.TestCase):
 
         self.assertNotEqual(dialog.result(), QDialog.DialogCode.Accepted)
         self.assertFalse(dialog._error.isHidden())
-        self.assertIsNone(dialog.text())
+        self.assertIsNone(dialog.selection())
 
     def test_a_valid_single_game_is_accepted(self):
         dialog = self._dialog()
@@ -119,7 +119,9 @@ class PgnPasteDialogTests(unittest.TestCase):
         dialog._accept()
 
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
-        self.assertIn("1. e4 e5", dialog.text())
+        text, game = dialog.selection()
+        self.assertIn("1. e4 e5", text)
+        self.assertIsNotNone(game)
 
     def test_a_multi_game_paste_keeps_the_selected_game(self):
         dialog = self._dialog()
@@ -128,8 +130,9 @@ class PgnPasteDialogTests(unittest.TestCase):
             dialog._accept()
 
         self.assertEqual(dialog.result(), QDialog.DialogCode.Accepted)
-        self.assertIn("1. d4 d5", dialog.text())
-        self.assertNotIn("Alice", dialog.text())
+        text, _game = dialog.selection()
+        self.assertIn("1. d4 d5", text)
+        self.assertNotIn("Alice", text)
 
     def test_cancelling_the_game_chooser_keeps_the_paste_open(self):
         dialog = self._dialog()
@@ -138,7 +141,7 @@ class PgnPasteDialogTests(unittest.TestCase):
             dialog._accept()
 
         self.assertNotEqual(dialog.result(), QDialog.DialogCode.Accepted)
-        self.assertIsNone(dialog.text())
+        self.assertIsNone(dialog.selection())
 
     def test_a_game_without_moves_is_rejected(self):
         dialog = self._dialog()
@@ -148,7 +151,7 @@ class PgnPasteDialogTests(unittest.TestCase):
 
         self.assertNotEqual(dialog.result(), QDialog.DialogCode.Accepted)
         self.assertFalse(dialog._error.isHidden())
-        self.assertIsNone(dialog.text())
+        self.assertIsNone(dialog.selection())
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ import chess
 import chess.engine
 
 from checkpause.core.engine import (
+    StockfishAnalyzer,
     compact_analysis,
     eval_ratio,
     format_eval,
@@ -143,6 +144,15 @@ class PlayerSideTests(unittest.TestCase):
     def test_a_broken_pgn_does_not_raise(self):
         self.assertEqual(player_side("[[[ not a game", "CometZZZ"), "")
         self.assertEqual(player_side(None, "CometZZZ"), "")
+
+
+class AnalyzerInputTests(unittest.TestCase):
+    def test_a_collection_is_rejected_before_the_engine_starts(self):
+        results, error, accuracy = StockfishAnalyzer().analyze("1. e4 *\n\n1. d4 *")
+
+        self.assertIsNone(results)
+        self.assertTrue(error)
+        self.assertIsNone(accuracy)
 
 
 if __name__ == "__main__":

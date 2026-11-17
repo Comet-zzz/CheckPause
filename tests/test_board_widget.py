@@ -11,6 +11,7 @@ try:
     from PySide6.QtGui import QWheelEvent
     from PySide6.QtWidgets import QApplication
 
+    from checkpause.core.pgn import parse_single_game
     from checkpause.gui.widgets.board import BoardWidget
     from checkpause.gui.widgets.move_list import MoveListWidget
 
@@ -45,6 +46,25 @@ class BoardWidgetTests(unittest.TestCase):
             False,
         )
         board._canvas.wheelEvent(event)
+
+    def test_load_pgn_rejects_a_collection(self):
+        board = BoardWidget()
+
+        ok, error = board.load_pgn(f"{PGN}\n\n{PGN}")
+
+        self.assertFalse(ok)
+        self.assertIn("多局", error)
+        self.assertEqual(board._moves, [])
+
+    def test_load_game_reuses_a_parsed_game(self):
+        board = BoardWidget()
+        game = parse_single_game(PGN)
+
+        ok, error = board.load_game(game)
+
+        self.assertTrue(ok)
+        self.assertIsNone(error)
+        self.assertEqual(len(board._moves), 10)
 
     def test_wheel_browses_back_and_forth(self):
         board = self.make_board()
@@ -361,6 +381,11 @@ class BoardWidgetTests(unittest.TestCase):
         board._eval_depth_combo.setCurrentIndex(index)
         self.assertEqual(depths, [20])
 
+    def test_line_game_reuses_the_current_line(self):
+        board = self.make_board()
+
+        self.assertEqual(str(board.line_game()), board.line_pgn())
+
     def test_line_pgn_round_trips_a_custom_start_position(self):
         board = BoardWidget()
         board.set_start_fen(CUSTOM_FEN)
@@ -402,6 +427,19 @@ class MoveListWidgetTests(unittest.TestCase):
         self.assertEqual(widget._table.item(1, 1).text(), "Kd2")
         self.assertIs(widget._table.item(0, 2), widget._item_for_ply(1))
         self.assertIs(widget._table.item(1, 1), widget._item_for_ply(2))
+
+    def test_a_collection_is_rejected(self):
+        widget = MoveListWidget()
+
+        self.assertFalse(widget.set_moves("1. e4 *\n\n1. d4 *"))
+        self.assertEqual(widget._ply_count, 0)
+
+    def test_set_game_reuses_a_parsed_game(self):
+        widget = MoveListWidget()
+        game = parse_single_game("1. e4 e5 *")
+
+        self.assertTrue(widget.set_game(game))
+        self.assertEqual(widget._ply_count, 2)
 
 
 if __name__ == "__main__":

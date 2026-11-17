@@ -32,6 +32,7 @@ MESSAGES = {
     "average_stat": "   ─ 平均准确度：{accuracy:.1f}%",
     "total_stat": "   ─ 对局总数：{total}",
     "pgn_invalid": "PGN 格式无效",
+    "pgn_multiple_games": "这个 PGN 包含多局对局，请先选择一局。",
     "pgn_no_moves": "PGN 中没有棋步",
     "app_title": "CheckPause",
     "menu_settings": "设置",

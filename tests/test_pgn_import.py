@@ -27,6 +27,7 @@ class PgnImportTests(unittest.TestCase):
             _language="zh-CN",
             _results=[],
             _current_pgn="",
+            _current_game=None,
             _current_analysis="",
             _messages=[],
             _user_side="",
@@ -38,6 +39,8 @@ class PgnImportTests(unittest.TestCase):
         )
         window.tabs.addTab(window.analysis_page, "")
         window._clear_analysis_results = MainWindow._clear_analysis_results.__get__(window)
+        window._invalidate_analysis = MainWindow._invalidate_analysis.__get__(window)
+        window._apply_loaded_game = MainWindow._apply_loaded_game.__get__(window)
         self.window = window
         self.load = MainWindow._load_pgn_text.__get__(window)
 
@@ -48,6 +51,9 @@ class PgnImportTests(unittest.TestCase):
         self.assertTrue(loaded)
         choose.assert_not_called()
         self.assertIn("1. e4 e5", self.window._current_pgn)
+        self.assertIsNotNone(self.window._current_game)
+        self.assertEqual(self.window._current_analysis, "")
+        self.assertEqual(self.window._messages, [])
         self.window.chat_page.clear_history.assert_called_once()
 
     def test_a_multi_game_document_loads_the_chosen_game(self):
@@ -65,6 +71,20 @@ class PgnImportTests(unittest.TestCase):
             loaded = self.load(f"{GAME_ONE}\n\n{GAME_TWO}\n")
 
         self.assertFalse(loaded)
+
+    def test_invalidating_analysis_clears_the_old_context(self):
+        self.window._current_game = object()
+        self.window._current_analysis = "old"
+        self.window._messages = [{"role": "user", "content": "old"}]
+        self.window.board.set_results([{"move": "e2e4"}])
+
+        self.window._invalidate_analysis()
+
+        self.assertIsNone(self.window._current_game)
+        self.assertEqual(self.window._current_analysis, "")
+        self.assertEqual(self.window._messages, [])
+        self.assertEqual(self.window.board._best_moves, {})
+        self.window.chat_page.clear_history.assert_called_once()
 
     def test_invalid_text_reports_an_error(self):
         loaded = self.load("garbage")

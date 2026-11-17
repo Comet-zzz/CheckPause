@@ -159,6 +159,12 @@ class AnalysisPage(QWidget):
         self._move_list.clear()
         return False
 
+    def show_game(self, game):
+        if self._move_list.set_game(game):
+            return True
+        self._move_list.clear()
+        return False
+
     def show_empty(self):
         self._move_list.clear()
 

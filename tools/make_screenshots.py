@@ -50,6 +50,7 @@ from PySide6.QtWidgets import QApplication
 from checkpause.config import DEFAULT_ANALYSIS_DEPTH
 from checkpause.core.engine import StockfishAnalyzer
 from checkpause.core.openings import opening_san
+from checkpause.core.pgn import parse_single_game
 from checkpause.core.review import classify
 from checkpause.data.profile import create_profile, delete_profile, save_profile
 from checkpause.data.puzzles import BUILTIN_ID
@@ -150,16 +151,19 @@ def _capture_welcome(language):
 
 def _open_game(window, pgn, language):
     """Load the game and run the genuine local analysis over it."""
+    game = parse_single_game(pgn)
+    if game is None:
+        raise SystemExit("screenshot game is not valid")
     window._current_pgn = pgn
-    window.analysis_page.show_moves(pgn)
-    window.board.load_pgn(pgn)
-    window._current_pgn = pgn
+    window._current_game = game
+    window.analysis_page.show_game(game)
+    window.board.load_game(game)
 
     print("  running Stockfish analysis...")
-    results, error, accuracy = StockfishAnalyzer().analyze(pgn, language=language)
+    results, error, accuracy = StockfishAnalyzer().analyze_game(game, language=language)
     if error is not None:
         raise SystemExit(f"analysis failed: {error}")
-    annotated, _ = classify(results, pgn)
+    annotated, _ = classify(results, pgn, game=game)
 
     window._results = annotated
     window.board.set_results(annotated)

@@ -1,6 +1,11 @@
 import unittest
 
-from checkpause.core.pgn import pgn_game_text, pgn_has_moves, scan_pgn_games
+from checkpause.core.pgn import (
+    parse_pgn_game,
+    parse_single_game,
+    pgn_game_text,
+    scan_pgn_games,
+)
 
 GAME_ONE = '[Event "One"]\n[White "Alice"]\n[Black "Bob"]\n\n1. e4 e5 2. Nf3 *'
 GAME_TWO = '[Event "Two"]\n[White "Carol"]\n[Black "Dave"]\n\n1. d4 d5 *'
@@ -41,9 +46,21 @@ class ScanPgnGamesTests(unittest.TestCase):
         self.assertEqual(scan_pgn_games(None), [])
 
     def test_moves_must_exist_for_a_pasted_game(self):
-        self.assertTrue(pgn_has_moves("1. e4 e5 *"))
-        self.assertFalse(pgn_has_moves('[White "Alice"]\n\n*'))
-        self.assertFalse(pgn_has_moves("garbage"))
+        game = parse_pgn_game('[White "Alice"]\n\n*')
+
+        self.assertIsNotNone(game)
+        self.assertFalse(any(game.mainline_moves()))
+
+    def test_a_single_game_can_be_parsed_for_reuse(self):
+        game = parse_single_game(GAME_ONE)
+
+        self.assertIsNotNone(game)
+        self.assertEqual(game.headers["White"], "Alice")
+        self.assertIsNotNone(parse_pgn_game(GAME_ONE))
+
+    def test_a_collection_is_not_silently_reduced_to_its_first_game(self):
+        self.assertIsNone(parse_single_game(f"{GAME_ONE}\n\n{GAME_TWO}\n"))
+        self.assertIsNone(parse_single_game(""))
 
 
 if __name__ == "__main__":

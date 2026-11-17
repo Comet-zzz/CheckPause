@@ -60,11 +60,12 @@ class AnalysisWorker(QThread):
     done = Signal(list, float)
     failed = Signal(str)
 
-    def __init__(self, pgn_text, language="zh-CN", parent=None, depth=None):
+    def __init__(self, pgn_text, language="zh-CN", parent=None, depth=None, game=None):
         super().__init__(parent)
         self.pgn_text = pgn_text
         self.language = language
         self.depth = depth
+        self.game = game
 
     def run(self):
         analyzer = StockfishAnalyzer(limit=analysis_limit(self.depth))
@@ -75,6 +76,7 @@ class AnalysisWorker(QThread):
                 on_progress=self.progress.emit,
                 on_move=self._emit_move,
                 should_stop=self.isInterruptionRequested,
+                game=self.game,
             )
         except Exception as exc:
             self.failed.emit(str(exc))

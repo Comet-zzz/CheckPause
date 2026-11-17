@@ -43,7 +43,7 @@ from checkpause import (
     WEBSITE_URL,
 )
 from checkpause.assets import BOARD_THEMES, PIECE_SETS, SOUND_CHOICES
-from checkpause.core.pgn import pgn_game_text, pgn_has_moves, scan_pgn_games
+from checkpause.core.pgn import parse_pgn_game, pgn_game_text, scan_pgn_games
 from checkpause.data.settings import (
     DEFAULT_SERVER_URL,
     get_api_key,
@@ -1189,7 +1189,7 @@ class _PgnPasteDialog(QDialog):
     def __init__(self, parent, language):
         super().__init__(parent)
         self._language = language
-        self._text = None
+        self._selection = None
         self.setObjectName("pgnPasteDialog")
         self.setWindowTitle(t("pgn_paste_title", language))
         self.setMinimumSize(620, 460)
@@ -1224,8 +1224,8 @@ class _PgnPasteDialog(QDialog):
         layout.addWidget(buttons)
         self._edit.setFocus()
 
-    def text(self):
-        return self._text
+    def selection(self):
+        return self._selection
 
     def _show_error(self, message):
         self._error.setText(message)
@@ -1253,16 +1253,20 @@ class _PgnPasteDialog(QDialog):
             if index is None:
                 return
         game_text = pgn_game_text(text, games[index])
-        if not pgn_has_moves(game_text):
+        game = parse_pgn_game(game_text)
+        if game is None:
+            self._show_error(t("pgn_invalid", self._language))
+            return
+        if not any(game.mainline_moves()):
             self._show_error(t("pgn_no_moves", self._language))
             return
-        self._text = game_text
+        self._selection = (game_text, game)
         self.accept()
 
 
 def pgn_paste_dialog(parent, language):
-    """Return the pasted game, or None when the user cancels."""
+    """Return ``(game_text, game)`` for the pasted game, or None on cancel."""
     dialog = _PgnPasteDialog(parent, language)
     if dialog.exec() == QDialog.DialogCode.Accepted:
-        return dialog.text()
+        return dialog.selection()
     return None
