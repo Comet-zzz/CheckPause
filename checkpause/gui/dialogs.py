@@ -575,7 +575,7 @@ def _piece_pixmap(piece_set, code, size):
     return pixmap
 
 
-def _pieces_preview(piece_set, size=26):
+def _pieces_preview(piece_set, size=24):
     gap = 2
     pieces = [_piece_pixmap(piece_set, code, size) for code in PREVIEW_PIECES]
     pixmap = QPixmap(len(pieces) * (size + gap) - gap, size)
@@ -619,7 +619,7 @@ class _SettingsDialog(QDialog):
         self._shell = None
         self._root = QVBoxLayout(self)
         self._root.setContentsMargins(0, 0, 0, 0)
-        self.setFixedWidth(660)
+        self.setFixedWidth(580)
         self._build()
 
     # -- construction ---------------------------------------------------
@@ -829,7 +829,7 @@ class _SettingsDialog(QDialog):
     def _row_label(self, text):
         label = QLabel(text)
         label.setObjectName("settingsRowLabel")
-        label.setMinimumWidth(84)
+        label.setMinimumWidth(56)
         return label
 
     def _link_row(self, icon_name, url, text=None):
@@ -877,7 +877,7 @@ class _SettingsDialog(QDialog):
         row.addWidget(self._row_label(t("menu_pieces", self._language)))
         row.addStretch(1)
         combo = QComboBox()
-        combo.setMinimumWidth(160)
+        combo.setMinimumWidth(140)
         for name in PIECE_SETS:
             combo.addItem(_piece_label(name), name)
         index = combo.findData(self._current.get("piece_set"))
@@ -904,7 +904,7 @@ class _SettingsDialog(QDialog):
         row.addWidget(self._row_label(t("menu_board", self._language)))
         row.addStretch(1)
         combo = QComboBox()
-        combo.setMinimumWidth(160)
+        combo.setMinimumWidth(140)
         for name in BOARD_THEMES:
             combo.addItem(t("board_theme_" + name, self._language), name)
         index = combo.findData(self._current.get("board_theme"))
