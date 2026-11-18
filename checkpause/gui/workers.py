@@ -492,6 +492,8 @@ class PuzzleOnlineWorker(QThread):
             )
         if self.action == "retry":
             return cloud.retry_puzzle(self.server_url, self.token, self.language)
+        if self.action == "retry_list":
+            return cloud.retry_puzzles(self.server_url, self.token, language=self.language)
         if self.action == "me":
             return cloud.fetch_account(
                 self.server_url,

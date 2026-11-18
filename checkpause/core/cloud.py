@@ -27,6 +27,7 @@ PACKS_ENDPOINT = "/v1/pay/packs"
 ORDERS_ENDPOINT = "/v1/pay/orders"
 PUZZLE_NEXT_ENDPOINT = "/v1/puzzles/next"
 PUZZLE_RETRY_ENDPOINT = "/v1/puzzles/retry"
+PUZZLE_RETRY_LIST_ENDPOINT = "/v1/puzzles/retry/list"
 PUZZLE_DAILY_ENDPOINT = "/v1/puzzles/daily"
 PUZZLE_SOLVED_ENDPOINT = "/v1/puzzles/solved"
 PUZZLE_ATTEMPT_ENDPOINT = "/v1/puzzles/attempt"
@@ -294,6 +295,18 @@ def next_puzzle(server_url, token, theme="", difficulty="normal", language="zh-C
 def retry_puzzle(server_url, token, language="zh-CN"):
     """A failed puzzle that has not been solved since."""
     return _get(server_url, PUZZLE_RETRY_ENDPOINT, token, language, timeout=PUZZLE_TIMEOUT)
+
+
+def retry_puzzles(server_url, token, limit=30, language="zh-CN"):
+    """The current mistake set, newest first, for an unrated retry session."""
+    query = urlencode({"limit": int(limit)})
+    return _get(
+        server_url,
+        PUZZLE_RETRY_LIST_ENDPOINT + "?" + query,
+        token,
+        language,
+        timeout=PUZZLE_TIMEOUT,
+    )
 
 
 def fetch_daily_puzzle(server_url, token, difficulty="normal", language="zh-CN"):

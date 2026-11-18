@@ -1470,6 +1470,11 @@ QTableWidget#moveTable::item {
     padding: 5px 10px;
     color: $text;
 }
+#puzzleRetryCount {
+    color: $text_muted;
+    font-size: 11px;
+    font-weight: 600;
+}
 #puzzleRangeGroup {
     background-color: $surface_alt;
     border: 1px solid $border;

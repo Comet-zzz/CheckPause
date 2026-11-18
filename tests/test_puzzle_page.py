@@ -17,6 +17,7 @@ try:
     from checkpause.data import puzzles
     from checkpause.gui.pages import puzzle_page as puzzle_page_module
     from checkpause.gui.pages.puzzle_page import PuzzlePage, _solution_text
+    from checkpause.gui.workers import PuzzleOnlineWorker
 
     _APP = QApplication.instance() or QApplication([])
 except Exception:
@@ -215,6 +216,67 @@ class PuzzlePageTests(unittest.TestCase):
         )
         self.assertIs(self.page._stack.currentWidget(), self.page._library)
 
+    def _start_retry_list(self, count=2):
+        self.page.show()
+        _APP.processEvents()
+        self.page._stack.setCurrentWidget(self.page._profile)
+        self.page._next_request_id = 11
+        rows = [{"puzzle": dict(_puzzle(), id=f"retry-{index}")} for index in range(count)]
+        with mock.patch.object(self.page, "_load_game_history"):
+            self.page._on_online_next_done(
+                "retry_list",
+                {"puzzles": rows, "rating": 1500, "rd": 80},
+                11,
+            )
+
+    def test_retry_list_starts_an_unrated_session(self):
+        self._start_retry_list()
+
+        self.assertTrue(self.page._retry_mode)
+        self.assertFalse(self.page._online_rated)
+        self.assertEqual(self.page._review_index, 0)
+        self.assertIs(self.page._stack.currentWidget(), self.page._train)
+        self.assertFalse(self.page._train._retry_count.isHidden())
+        self.assertTrue(self.page._train._rating_chip.isHidden())
+        self.assertEqual(self.page._train._retry_count.text(), "1 / 2")
+
+    def test_retry_session_keeps_loading_unrated_puzzles(self):
+        self._start_retry_list()
+        with mock.patch.object(self.page, "_load_review_puzzle") as load:
+            self.page._next()
+
+        self.assertEqual(self.page._review_index, 1)
+        load.assert_called_once()
+
+    def test_retry_attempts_are_queued_unrated(self):
+        self._start_retry_list()
+        self.page._online = True
+        self.page._token = "token"
+        self.page._server_url = "https://server"
+        self.page._client_attempt_id = "retry-attempt"
+        self.page._puzzle = _puzzle()
+        self.page._started_at = time.monotonic()
+        with mock.patch.object(self.page, "_drain_attempts"):
+            self.page._record_attempt("failed")
+
+        self.assertFalse(self.page._pending_attempts[-1]["rated"])
+
+    def test_retry_result_keeps_the_rating_hidden(self):
+        self._start_retry_list()
+        self.page._online_rated = False
+        self.page._train.clear_retry_session()
+        self.page._train.set_rating(None)
+        self.page._train.set_retry_session(1, 2)
+
+        self.page._on_online_attempt_done(
+            "attempt",
+            {"rating": 1500, "rating_delta": 0, "rd": 80},
+            {"rated": False, "client_attempt_id": "retry-attempt"},
+        )
+
+        self.assertTrue(self.page._train._rating_chip.isHidden())
+        self.assertFalse(self.page._train._retry_count.isHidden())
+
     def test_solution_text_omits_the_opponent_setup(self):
         text = _solution_text(
             chess.STARTING_FEN,
@@ -317,6 +379,28 @@ class PuzzlePageTests(unittest.TestCase):
         profile = self.page._profile
         self.assertIs(profile._range_box.parentWidget(), profile._rating_hero)
         self.assertIs(profile._themes_label.parentWidget(), profile._themes_box)
+
+    def test_profile_counts_mistakes_solved(self):
+        profile = self.page._profile
+        profile.refresh(
+            {
+                "rating": 1500,
+                "rd": 80,
+                "attempts": 9,
+                "solved": 6,
+                "mistake_solved": 4,
+                "mistake_total": 7,
+                "rating_attempts": 3,
+            },
+            "zh-CN",
+        )
+
+        self.assertFalse(hasattr(profile, "_best_streak"))
+        self.assertEqual(profile._solved.value.text(), "57%")
+        self.assertNotIn("连对", profile._rating_sub.text())
+
+        profile.refresh({"rating": 1500, "attempts": 0}, "zh-CN")
+        self.assertEqual(profile._solved.value.text(), "—")
 
     def test_profile_theme_radar_only_shows_for_rated_profiles(self):
         entries = [
@@ -432,6 +516,36 @@ class PuzzlePageTests(unittest.TestCase):
         )
         self.assertFalse(self.page._profile._notice.isHidden())
         self.assertFalse(self.page._profile._retry_busy)
+
+    def test_retry_list_worker_passes_language_as_language(self):
+        worker = PuzzleOnlineWorker("retry_list", "https://server", "token", "zh-CN")
+
+        with mock.patch(
+            "checkpause.gui.workers.cloud.retry_puzzles",
+            return_value={"puzzles": []},
+        ) as fetch:
+            worker._request()
+
+        fetch.assert_called_once_with("https://server", "token", language="zh-CN")
+
+    def test_online_retry_failure_never_switches_to_local(self):
+        self.page.show()
+        _APP.processEvents()
+        self.page._stack.setCurrentWidget(self.page._profile)
+        with (
+            mock.patch.object(self.page, "_start_local_mistakes") as local,
+            mock.patch.object(self.page, "_start_local_training") as training,
+        ):
+            self.page._on_online_next_failed(
+                "retry_list",
+                "network down",
+                "http_error",
+                self.page._next_request_id,
+            )
+
+        local.assert_not_called()
+        training.assert_not_called()
+        self.assertFalse(self.page._profile._notice.isHidden())
 
     def test_shutdown_does_not_wait_for_a_hanging_online_worker(self):
         worker = _HangingWorker()

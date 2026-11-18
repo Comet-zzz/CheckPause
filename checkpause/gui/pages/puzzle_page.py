@@ -1110,6 +1110,10 @@ class _TrainView(QWidget):
         chip_layout.addWidget(self._rating_delta)
         self._rating_chip.setVisible(False)
 
+        self._retry_count = QLabel()
+        self._retry_count.setObjectName("puzzleRetryCount")
+        self._retry_count.setVisible(False)
+
         self._prompt = QLabel()
         self._prompt.setObjectName("puzzleStatusSub")
         self._prompt.setWordWrap(True)
@@ -1255,6 +1259,7 @@ class _TrainView(QWidget):
         rating_row = QHBoxLayout()
         rating_row.setSpacing(8)
         rating_row.addWidget(self._rating_chip)
+        rating_row.addWidget(self._retry_count)
         rating_row.addStretch(1)
         rating_row.addWidget(self._counter_label)
         side_layout.addLayout(rating_row)
@@ -1301,9 +1306,21 @@ class _TrainView(QWidget):
 
     def set_online_info(self, mode, rating):
         self._counter_label.clear()
+        self.clear_retry_session()
         self.set_rating(rating)
 
+    def set_retry_session(self, index, total):
+        total = max(1, int(total))
+        index = max(1, min(total, int(index)))
+        self._rating_chip.setVisible(False)
+        self._retry_count.setText(f"{index} / {total}")
+        self._retry_count.setVisible(True)
+
+    def clear_retry_session(self):
+        self._retry_count.setVisible(False)
+
     def set_session_info(self, mode, index, total, human_color):
+        self.clear_retry_session()
         self.set_rating(None)
         self._counter_label.setText(
             t(
@@ -1934,12 +1951,12 @@ class _ProfileView(QWidget):
         metrics.setSpacing(10)
         self._attempted = _StatCard("puzzle_profile_attempts")
         self._active_days = _StatCard("puzzle_profile_active_days")
-        self._best_streak = _StatCard("puzzle_profile_best_streak")
+        self._solved = _StatCard("puzzle_profile_solved")
         self._retryable = _ActionCard("puzzle_profile_retryable")
         self._retryable.clicked.connect(self.mistakes_requested.emit)
         self._retryable_count = 0
         self._retry_busy = False
-        for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
+        for card in (self._attempted, self._active_days, self._solved, self._retryable):
             metrics.addWidget(card, 1)
         layout.addLayout(metrics)
 
@@ -2015,28 +2032,20 @@ class _ProfileView(QWidget):
             rated = self._summary.get("rating_attempts")
             if rated:
                 parts.append(t("puzzle_profile_rated_count", language, count=rated))
-            parts.append(
-                t(
-                    "puzzle_profile_streak_value",
-                    language,
-                    count=self._summary.get("streak", 0),
-                )
-            )
-            parts.append(
-                t(
-                    "puzzle_profile_best_streak_value",
-                    language,
-                    count=self._summary.get("best_streak", 0),
-                )
-            )
             self._rating_sub.setText(" · ".join(parts))
         else:
             self._rating_value.setText("—")
             self._rating_sub.setText("")
 
-        self._attempted.set_value(self._summary.get("attempts", 0))
+        attempts = int(self._summary.get("attempts") or 0)
+        self._attempted.set_value(attempts)
         self._active_days.set_value(self._summary.get("active_days", 0))
-        self._best_streak.set_value(self._summary.get("best_streak", 0))
+        mistakes = int(self._summary.get("mistake_total") or 0)
+        if mistakes:
+            solved_mistakes = int(self._summary.get("mistake_solved") or 0)
+            self._solved.set_value(f"{round(100 * solved_mistakes / mistakes)}%")
+        else:
+            self._solved.set_value(None)
         self._retryable_count = int(self._summary.get("retryable") or 0)
         self._retryable.set_value(self._retryable_count)
         self._sync_retry_card()
@@ -2090,7 +2099,7 @@ class _ProfileView(QWidget):
         self._themes_label.setText(t("puzzle_profile_themes", language))
         self._themes_hint.setText(t("puzzle_profile_theme_hint", language))
         self._empty.setText(t("puzzle_profile_empty", language))
-        for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
+        for card in (self._attempted, self._active_days, self._solved, self._retryable):
             card.retranslate(language)
         self._sync_retry_card()
         if self._summary:
@@ -2164,6 +2173,7 @@ class PuzzlePage(QWidget):
         self._streak = 0
         self._review_puzzles = []
         self._review_index = -1
+        self._retry_mode = False
         self._game_workers = set()
         self._history_moves = []
         self._history_start_fen = None
@@ -2337,9 +2347,14 @@ class PuzzlePage(QWidget):
         ):
             self.show_hub()
 
+    def _clear_retry_session(self):
+        self._retry_mode = False
+        self._train.clear_retry_session()
+
     def show_hub(self):
         self._auto_next_timer.stop()
         self._replay_timer.stop()
+        self._clear_retry_session()
         self._leave_challenge()
         self._train_origin = "hub"
         self._practice_mode = False
@@ -2421,6 +2436,7 @@ class PuzzlePage(QWidget):
         self._start_local_training()
 
     def _start_local_training(self):
+        self._clear_retry_session()
         preferred = self._preferred_collection()
         if preferred is None:
             self.show_library()
@@ -2462,6 +2478,7 @@ class PuzzlePage(QWidget):
 
     def _start_online_training(self):
         self._practice_mode = False
+        self._clear_retry_session()
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -2473,9 +2490,10 @@ class PuzzlePage(QWidget):
 
     def _start_online_retry(self):
         self._practice_mode = False
+        self._clear_retry_session()
         self._streak = 0
         self._start_online_request(
-            "retry",
+            "retry_list",
             {},
             t("puzzle_online_retry_loading", self._language),
         )
@@ -2606,6 +2624,7 @@ class PuzzlePage(QWidget):
 
     def _start_daily(self):
         self._leave_challenge()
+        self._clear_retry_session()
         self._practice_mode = False
         self._review_puzzles = []
         self._review_index = -1
@@ -2623,6 +2642,7 @@ class PuzzlePage(QWidget):
             self._start_local_training()
             return
         self._practice_mode = True
+        self._clear_retry_session()
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -2669,13 +2689,26 @@ class PuzzlePage(QWidget):
         self._hub.set_train_enabled(True)
         self._hub.set_notice("")
         self._profile.set_retry_busy(False)
-        if action == "retry":
+        if action in ("retry", "retry_list"):
             self._profile.set_notice("")
         if not self.isVisible() or self._stack.currentWidget() not in (
             self._hub,
             self._train,
             self._profile,
         ):
+            return
+        if action == "retry_list":
+            self._retry_mode = True
+            self._review_puzzles = result.get("puzzles") or []
+            self._review_index = 0
+            self._online_rating = result.get("rating", self._online_rating)
+            self._online_rd = result.get("rd", self._online_rd)
+            if not self._review_puzzles:
+                self._retry_mode = False
+                self._review_index = -1
+                self._profile.set_notice(t("puzzle_mistakes_empty", self._language))
+                return
+            self._load_review_puzzle()
             return
         if action == "solved":
             self._review_puzzles = result.get("puzzles") or []
@@ -2691,6 +2724,10 @@ class PuzzlePage(QWidget):
 
     def _load_review_puzzle(self):
         if not (0 <= self._review_index < len(self._review_puzzles)):
+            if self._retry_mode:
+                self._clear_retry_session()
+                self.show_profile()
+                return
             self._hub.set_notice(t("puzzle_online_solved_empty", self._language))
             self.show_hub()
             return
@@ -2704,6 +2741,11 @@ class PuzzlePage(QWidget):
             {"puzzle": puzzle, "rating": self._online_rating, "rd": self._online_rd},
             rated=False,
         )
+        if self._retry_mode:
+            self._train.set_retry_session(
+                self._review_index + 1,
+                len(self._review_puzzles),
+            )
 
     def _on_online_next_failed(self, action, message, code, request_id):
         if request_id != self._next_request_id:
@@ -2718,7 +2760,7 @@ class PuzzlePage(QWidget):
         if action == "daily":
             self._hub.set_notice(message)
             return
-        if action == "retry" and code == "no_mistakes":
+        if action in ("retry", "retry_list") and code == "no_mistakes":
             if self._stack.currentWidget() is self._profile:
                 self._profile.set_notice(message)
             else:
@@ -2730,20 +2772,19 @@ class PuzzlePage(QWidget):
             self._profile,
         ):
             return
-        self.refresh_collections()
-        if action == "retry":
-            self._start_local_mistakes()
+        current = self._stack.currentWidget()
+        if current is self._profile:
+            self._profile.set_notice(message)
+        elif current is self._train:
+            self._train.set_notice(message)
         else:
-            self._start_local_training()
-        if self._stack.currentWidget() is self._train:
-            self._train.set_notice(t("puzzle_online_fallback", self._language))
+            self._hub.set_notice(message)
 
     def _load_online_puzzle(self, result, rated=True):
         puzzle = result.get("puzzle") if isinstance(result, dict) else None
         if not isinstance(puzzle, dict) or not puzzle.get("fen"):
-            self._start_local_training()
-            if self._stack.currentWidget() is self._train:
-                self._train.set_notice(t("puzzle_online_fallback", self._language))
+            self.show_hub()
+            self._hub.set_notice(t("puzzle_status_bad_data", self._language))
             return
         self._refresh_account()
         self._online = True
@@ -2754,9 +2795,8 @@ class PuzzlePage(QWidget):
         self._collection = None
         self._solved_keys = set()
         if not self._activate_puzzle(puzzle):
-            self._start_local_training()
-            if self._stack.currentWidget() is self._train:
-                self._train.set_notice(t("puzzle_online_fallback", self._language))
+            self.show_hub()
+            self._hub.set_notice(t("puzzle_status_bad_data", self._language))
             return
         self._train.set_online_info(
             t(
@@ -2893,6 +2933,7 @@ class PuzzlePage(QWidget):
         self._online = False
         self._online_rated = True
         self._practice_mode = False
+        self._clear_retry_session()
         self._review_puzzles = []
         self._review_index = -1
         self._streak = 0
@@ -3252,7 +3293,8 @@ class PuzzlePage(QWidget):
         self._online_stats = None
         self._online_stats_days = None
         self._hub_stats = None
-        self._train.set_rating(rating, result.get("rating_delta"))
+        if entry.get("rated", True):
+            self._train.set_rating(rating, result.get("rating_delta"))
         self._hub.set_online(True, rating)
 
     def _on_online_attempt_failed(self, _action, _message, code, entry):
@@ -3493,6 +3535,7 @@ class PuzzlePage(QWidget):
         self._replay_timer.stop()
         self._stop_challenge()
         self._train.set_counter("")
+        self._clear_retry_session()
         self._review_puzzles = []
         self._review_index = -1
         if self._train_origin == "library":
