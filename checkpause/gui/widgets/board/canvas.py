@@ -6,6 +6,7 @@ from PySide6.QtCore import QPointF, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import (
     QBrush,
     QColor,
+    QFont,
     QLinearGradient,
     QPainter,
     QPainterPath,
@@ -34,6 +35,28 @@ _ARROW_SCALES = ((1.0, 1.0), (0.78, 0.82), (0.6, 0.68))
 # swipe before the board moves.
 _WHEEL_NOTCH = 120
 _WHEEL_PIXEL_SCALE = 15
+
+# Coordinates sit inside the board's edge squares, small and unobtrusive, the
+# way an online board does it: no outer frame is spent on them.
+_COORD_SCALE = 0.19
+_COORD_MIN_PIXELS = 9
+
+
+def _coordinate_labels(flipped):
+    """Edge labels as ``(text, row, col, kind)`` in display coordinates.
+
+    Only the left column carries ranks and only the bottom row carries files,
+    so the board stays uncluttered. ``flipped`` follows the displayed side, not
+    the real board.
+    """
+    labels = []
+    for row in range(8):
+        rank = row + 1 if flipped else 8 - row
+        labels.append((str(rank), row, 0, "rank"))
+    for col in range(8):
+        file_index = 7 - col if flipped else col
+        labels.append((chr(ord("a") + file_index), 7, col, "file"))
+    return labels
 
 
 class _BoardCanvas(QWidget):
@@ -404,6 +427,8 @@ class _BoardCanvas(QWidget):
         if drag_return is not None and not self._dragging:
             self._draw_drag_return(painter, x0, y0, square, drag_return)
 
+        self._draw_coordinates(painter, x0, y0, square, flipped, light_color, dark_color)
+
         for uci in owner._lesson_arrows:
             self._draw_arrow(
                 painter,
@@ -428,6 +453,47 @@ class _BoardCanvas(QWidget):
                     self._draw_arrow(painter, best, x0, y0, square)
 
         painter.end()
+
+    def _draw_coordinates(self, painter, x0, y0, cell, flipped, light_color, dark_color):
+        """Label the left column with ranks and the bottom row with files.
+
+        Each label takes the opposite square colour, so it stays legible on
+        every board theme without maintaining a separate coordinate palette.
+        """
+        font = QFont(painter.font())
+        font.setPixelSize(max(_COORD_MIN_PIXELS, round(cell * _COORD_SCALE)))
+        font.setWeight(QFont.Weight.DemiBold)
+
+        pad = max(1.0, cell * 0.05)
+        painter.save()
+        painter.setFont(font)
+        for text, row, col, kind in _coordinate_labels(flipped):
+            square = self._square_from_display(row, col, flipped)
+            is_light = (chess.square_file(square) + chess.square_rank(square)) % 2 == 1
+            # The opposite square's colour is the classic choice; nudging it
+            # away from the background keeps thin labels readable on the
+            # lower-contrast themes (blue, coral).
+            color = QColor(dark_color if is_light else light_color)
+            color = color.darker(115) if is_light else color.lighter(110)
+            painter.setPen(color)
+            if kind == "rank":
+                rect = QRectF(
+                    x0 + col * cell + pad,
+                    y0 + row * cell + pad * 0.35,
+                    cell * 0.55,
+                    cell * 0.5,
+                )
+                flags = int(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop)
+            else:
+                rect = QRectF(
+                    x0 + col * cell + cell * 0.45,
+                    y0 + row * cell + cell * 0.5,
+                    cell * 0.55 - pad,
+                    cell * 0.5 - pad * 0.35,
+                )
+                flags = int(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
+            painter.drawText(rect, flags, text)
+        painter.restore()
 
     def _draw_piece(self, painter, piece, rect, square, scale=1.0):
         renderer = self._owner._piece_renderer(piece)

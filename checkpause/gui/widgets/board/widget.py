@@ -1070,7 +1070,6 @@ class BoardWidget(QWidget):
         if self._theme == DARK:
             return {
                 "margin": "#0DFFFFFF",
-                "coord": "#cfcfcf",
                 "arrow": "#15781b",
                 "eval_light": "#eef0f2",
                 "eval_dark": "#0f1114",
@@ -1078,7 +1077,6 @@ class BoardWidget(QWidget):
             }
         return {
             "margin": "#8CFFFFFF",
-            "coord": "#4a4a4a",
             "arrow": "#15781b",
             "eval_light": "#ffffff",
             "eval_dark": "#2b2f34",

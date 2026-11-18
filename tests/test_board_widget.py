@@ -13,6 +13,7 @@ try:
 
     from checkpause.core.pgn import parse_single_game
     from checkpause.gui.widgets.board import BoardWidget
+    from checkpause.gui.widgets.board.canvas import _coordinate_labels
     from checkpause.gui.widgets.move_list import MoveListWidget
 
     _APP = QApplication.instance() or QApplication([])
@@ -65,6 +66,31 @@ class BoardWidgetTests(unittest.TestCase):
         self.assertTrue(ok)
         self.assertIsNone(error)
         self.assertEqual(len(board._moves), 10)
+
+    def test_coordinates_label_ranks_left_and_files_bottom(self):
+        labels = _coordinate_labels(flipped=False)
+
+        self.assertIn(("8", 0, 0, "rank"), labels)
+        self.assertIn(("1", 7, 0, "rank"), labels)
+        self.assertIn(("a", 7, 0, "file"), labels)
+        self.assertIn(("h", 7, 7, "file"), labels)
+        self.assertEqual(len(labels), 16)
+
+    def test_coordinates_follow_a_flipped_board(self):
+        labels = _coordinate_labels(flipped=True)
+
+        self.assertIn(("1", 0, 0, "rank"), labels)
+        self.assertIn(("8", 7, 0, "rank"), labels)
+        self.assertIn(("h", 7, 0, "file"), labels)
+        self.assertIn(("a", 7, 7, "file"), labels)
+
+    def test_canvas_paints_the_coordinates(self):
+        board = self.make_board()
+        board._canvas.resize(400, 400)
+
+        pixmap = board._canvas.grab()
+
+        self.assertFalse(pixmap.isNull())
 
     def test_wheel_browses_back_and_forth(self):
         board = self.make_board()
