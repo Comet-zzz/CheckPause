@@ -420,7 +420,6 @@ MESSAGES = {
     "puzzle_library_current": "当前题集",
     "puzzle_library_hint": "从左侧选择题集，或导入 CSV / PGN 题集文件。",
     "puzzle_library_select": "选择一个题集。",
-    "puzzle_profile_title": "记录",
     "puzzle_profile_range_7": "7 天",
     "puzzle_profile_range_30": "30 天",
     "puzzle_profile_range_90": "90 天",
@@ -617,7 +616,6 @@ MESSAGES = {
     "puzzle_collection_progress": "已解 {solved} / 共 {total}",
     "puzzle_mode_start": "开始",
     "puzzle_mode_view": "查看",
-    "puzzle_daily_offline": "登录后可做",
     "puzzle_train_analyze": "导入分析",
     "puzzle_train_no_moves": "暂无着法",
     "puzzle_train_moves": "着法",
@@ -626,7 +624,4 @@ MESSAGES = {
     "puzzle_profile_rd": "RD ±{rd}",
     "puzzle_profile_rated_count": "计分题 {count}",
     "puzzle_profile_best_streak_value": "最高连对 {count}",
-    "puzzle_profile_scope_days": "统计口径：最近 {days} 天；未计分练习计入答题数；连对只统计计分题。",
-    "puzzle_profile_scope_all": "统计口径：全部时间；未计分练习计入答题数；连对只统计计分题。",
-    "puzzle_profile_scope_local": "本机档案：所有尝试均为练习；连对按全部练习统计。",
 }

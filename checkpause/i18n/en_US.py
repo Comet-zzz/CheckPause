@@ -422,7 +422,6 @@ MESSAGES = {
     "puzzle_library_current": "Selected",
     "puzzle_library_hint": "Pick a collection on the left, or import a CSV / PGN file.",
     "puzzle_library_select": "Select a collection.",
-    "puzzle_profile_title": "Records",
     "puzzle_profile_range_7": "7 days",
     "puzzle_profile_range_30": "30 days",
     "puzzle_profile_range_90": "90 days",
@@ -619,7 +618,6 @@ MESSAGES = {
     "puzzle_collection_progress": "Solved {solved} of {total}",
     "puzzle_mode_start": "Start",
     "puzzle_mode_view": "View",
-    "puzzle_daily_offline": "Sign in to play",
     "puzzle_train_analyze": "Open in analysis",
     "puzzle_train_no_moves": "No moves yet",
     "puzzle_train_moves": "Moves",
@@ -628,7 +626,4 @@ MESSAGES = {
     "puzzle_profile_rd": "RD ±{rd}",
     "puzzle_profile_rated_count": "Rated {count}",
     "puzzle_profile_best_streak_value": "Best streak {count}",
-    "puzzle_profile_scope_days": "Window: last {days} days. Unrated practice counts towards attempts; streaks only count rated puzzles.",
-    "puzzle_profile_scope_all": "Window: all time. Unrated practice counts towards attempts; streaks only count rated puzzles.",
-    "puzzle_profile_scope_local": "Local profile: every attempt is practice; streaks count all practice.",
 }

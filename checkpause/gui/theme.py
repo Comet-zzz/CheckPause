@@ -1436,10 +1436,6 @@ QTableWidget#moveTable::item {
     color: $text_muted;
     font-size: 12px;
 }
-#puzzleProfileScope {
-    color: $text_muted;
-    font-size: 12px;
-}
 #puzzleLibraryList, #puzzleRecentList {
     background: transparent;
     border: none;

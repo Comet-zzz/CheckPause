@@ -39,7 +39,6 @@ from checkpause.data.puzzles import (
     PuzzleListCollection,
     append_outbox,
     attach_outbox_account_id,
-    attempt_summary,
     delete_collection,
     list_collections,
     load_outbox,
@@ -964,11 +963,8 @@ class _HubView(QWidget):
         )
         self._btn_signin.setVisible(not self._online)
         self._btn_practice.setVisible(self._online)
-        self._daily_card.button.setEnabled(self._online)
-        self._daily_card.button.setVisible(self._online)
-        self._daily_card.set_description(
-            "" if self._online else t("puzzle_daily_offline", self._language)
-        )
+        for card in (self._records_card, self._daily_card, self._challenge_card):
+            card.setVisible(self._online)
 
     def set_notice(self, text=""):
         self._notice.setText(text or "")
@@ -1880,8 +1876,6 @@ class _ProfileView(QWidget):
         self._btn_back = QPushButton()
         self._btn_back.setObjectName("puzzleGhostButton")
         self._btn_back.clicked.connect(self.back_requested.emit)
-        self._title = QLabel()
-        self._title.setObjectName("puzzleHeaderTitle")
         self._range_box = QFrame()
         self._range_box.setObjectName("puzzleRangeGroup")
         range_layout = QHBoxLayout(self._range_box)
@@ -1902,14 +1896,8 @@ class _ProfileView(QWidget):
         header = QHBoxLayout()
         header.setSpacing(8)
         header.addWidget(self._btn_back)
-        header.addWidget(self._title)
         header.addStretch(1)
-        header.addWidget(self._range_box)
         layout.addLayout(header)
-        self._scope_note = QLabel()
-        self._scope_note.setObjectName("puzzleProfileScope")
-        self._scope_note.setWordWrap(True)
-        layout.addWidget(self._scope_note)
 
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
@@ -1935,6 +1923,11 @@ class _ProfileView(QWidget):
         hero_text.addWidget(self._rating_value)
         hero_text.addWidget(self._rating_sub)
         hero_layout.addLayout(hero_text, 1)
+        hero_layout.addWidget(
+            self._range_box,
+            0,
+            Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignRight,
+        )
         layout.addWidget(self._rating_hero)
 
         metrics = QHBoxLayout()
@@ -1952,12 +1945,12 @@ class _ProfileView(QWidget):
 
         self._themes_label = QLabel()
         self._themes_label.setObjectName("puzzleSectionLabel")
-        layout.addWidget(self._themes_label)
         self._themes_box = QFrame()
         self._themes_box.setObjectName("puzzleThemesBox")
         themes_layout = QVBoxLayout(self._themes_box)
         themes_layout.setContentsMargins(16, 14, 16, 10)
         themes_layout.setSpacing(8)
+        themes_layout.addWidget(self._themes_label)
         self._radar = _ThemeRadar()
         themes_layout.addWidget(self._radar, 0, Qt.AlignmentFlag.AlignHCenter)
         self._themes_hint = QLabel()
@@ -1995,7 +1988,6 @@ class _ProfileView(QWidget):
 
     def _on_range_button(self, days):
         self._range_days = int(days)
-        self._update_scope()
         self.range_changed.emit(self._range_days)
 
     def set_range(self, days):
@@ -2003,15 +1995,7 @@ class _ProfileView(QWidget):
             if value == days:
                 button.setChecked(True)
                 self._range_days = days
-                self._update_scope()
                 return
-
-    def _update_scope(self):
-        if self._summary.get("rating") is None:
-            self._scope_note.setText(t("puzzle_profile_scope_local", self._language))
-            return
-        key = "puzzle_profile_scope_days" if self._range_days else "puzzle_profile_scope_all"
-        self._scope_note.setText(t(key, self._language, days=self._range_days))
 
     def set_notice(self, text=""):
         self._notice.setText(text or "")
@@ -2021,7 +2005,7 @@ class _ProfileView(QWidget):
         self._language = language
         self._summary = summary or {}
         rating = self._summary.get("rating")
-        self._rating_hero.setVisible(rating is not None)
+        self._rating_hero.setVisible(True)
         if rating is not None:
             self._rating_value.setText(f"{float(rating):.1f}")
             parts = []
@@ -2046,6 +2030,9 @@ class _ProfileView(QWidget):
                 )
             )
             self._rating_sub.setText(" · ".join(parts))
+        else:
+            self._rating_value.setText("—")
+            self._rating_sub.setText("")
 
         self._attempted.set_value(self._summary.get("attempts", 0))
         self._active_days.set_value(self._summary.get("active_days", 0))
@@ -2080,21 +2067,17 @@ class _ProfileView(QWidget):
         entries = [entries[index] for index in order]
         labels = [labels[index] for index in order]
         self._radar.set_entries(entries, labels, self._language)
-        visible = rating is not None
-        self._themes_box.setVisible(visible)
-        self._themes_label.setVisible(visible)
+        self._themes_box.setVisible(rating is not None)
         hint = (
             "puzzle_profile_theme_hint_empty"
             if self._radar.is_placeholder()
             else "puzzle_profile_theme_hint"
         )
         self._themes_hint.setText(t(hint, self._language))
-        self._update_scope()
 
     def retranslate(self, language):
         self._language = language
         self._btn_back.setText(t("puzzle_train_back", language))
-        self._title.setText(t("puzzle_profile_title", language))
         range_keys = (
             "puzzle_profile_range_7",
             "puzzle_profile_range_30",
@@ -2110,7 +2093,6 @@ class _ProfileView(QWidget):
         for card in (self._attempted, self._active_days, self._best_streak, self._retryable):
             card.retranslate(language)
         self._sync_retry_card()
-        self._update_scope()
         if self._summary:
             self.refresh(self._summary, language)
 
@@ -2349,7 +2331,10 @@ class PuzzlePage(QWidget):
     def refresh_account(self):
         """Re-read the saved account after the sign-in dialog changed it."""
         self._refresh_account()
-        if self._stack.currentWidget() is self._hub:
+        current = self._stack.currentWidget()
+        if current is self._hub or (
+            not self._is_online() and current in (self._profile, self._train)
+        ):
             self.show_hub()
 
     def show_hub(self):
@@ -2404,35 +2389,28 @@ class PuzzlePage(QWidget):
 
     def show_profile(self):
         self._refresh_account()
+        if not self._is_online():
+            self.show_hub()
+            return
         self._profile.set_range(self._profile_days)
-        local = self._profile_summary()
-        if self._is_online():
-            if self._online_stats is not None and self._online_stats_days == self._profile_days:
-                self._profile.refresh(self._online_stats, self._language)
-                self._profile.set_notice("")
-            else:
-                self._profile.refresh(local, self._language)
-                self._fetch_online_stats()
-        else:
-            self._profile.refresh(local, self._language)
+        if self._online_stats is not None and self._online_stats_days == self._profile_days:
+            self._profile.refresh(self._online_stats, self._language)
             self._profile.set_notice("")
+        else:
+            self._profile.refresh({}, self._language)
+            self._fetch_online_stats()
         self._stack.setCurrentWidget(self._profile)
-
-    def _profile_summary(self):
-        return attempt_summary(days=self._profile_days or None)
 
     def _set_profile_range(self, days):
         self._profile_days = int(days)
-        if self._is_online():
-            self._online_stats = None
-            self._profile.set_notice(t("puzzle_online_loading", self._language))
-            if self._stats_worker is not None and self._stats_worker.isRunning():
-                self._stats_refresh_pending = True
-            else:
-                self._fetch_online_stats()
+        if not self._is_online():
             return
-        self._profile.refresh(self._profile_summary(), self._language)
-        self._profile.set_notice("")
+        self._online_stats = None
+        self._profile.set_notice(t("puzzle_online_loading", self._language))
+        if self._stats_worker is not None and self._stats_worker.isRunning():
+            self._stats_refresh_pending = True
+        else:
+            self._fetch_online_stats()
 
     def _start_training(self):
         self._leave_challenge()
@@ -2835,6 +2813,8 @@ class PuzzlePage(QWidget):
         self._hub.set_online(False)
         self._hub.set_notice(t("puzzle_online_signin_required", self._language))
         self._train.set_notice(t("puzzle_online_signin_required", self._language))
+        if self._stack.currentWidget() in (self._profile, self._train):
+            self.show_hub()
 
     def _fetch_online_stats(self):
         if self._stats_worker is not None and self._stats_worker.isRunning():

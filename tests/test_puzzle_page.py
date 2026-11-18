@@ -267,9 +267,16 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertEqual(self.page._hub._btn_practice.text(), "练习模式")
         self.assertFalse(self.page._hub._btn_practice.isHidden())
 
+        self.assertFalse(self.page._hub._records_card.isHidden())
+        self.assertFalse(self.page._hub._daily_card.isHidden())
+        self.assertFalse(self.page._hub._challenge_card.isHidden())
+
         self.page._hub.set_online(False, None)
         self.assertEqual(self.page._hub._btn_train.text(), "开始答题")
         self.assertTrue(self.page._hub._btn_practice.isHidden())
+        self.assertTrue(self.page._hub._records_card.isHidden())
+        self.assertTrue(self.page._hub._daily_card.isHidden())
+        self.assertTrue(self.page._hub._challenge_card.isHidden())
 
     def test_practice_mode_requests_unrated_puzzles(self):
         self.page._token = "token"
@@ -302,21 +309,14 @@ class PuzzlePageTests(unittest.TestCase):
         preferred = self.page._preferred_collection()
         self.assertEqual(preferred.id, "test")
 
-    def test_profile_labels_local_and_rated_scope(self):
-        self.assertIn("本机", self.page._profile._scope_note.text())
+    def test_profile_drops_the_header_and_scope_copy(self):
+        self.assertFalse(hasattr(self.page._profile, "_title"))
+        self.assertFalse(hasattr(self.page._profile, "_scope_note"))
 
-        self.page._profile.refresh(
-            {
-                "rating": 1500,
-                "rd": 80,
-                "attempts": 1,
-                "accuracy": 100,
-                "recent": [],
-                "themes": [],
-            },
-            "zh-CN",
-        )
-        self.assertIn("连对只统计计分题", self.page._profile._scope_note.text())
+    def test_profile_moves_range_and_theme_title_into_cards(self):
+        profile = self.page._profile
+        self.assertIs(profile._range_box.parentWidget(), profile._rating_hero)
+        self.assertIs(profile._themes_label.parentWidget(), profile._themes_box)
 
     def test_profile_theme_radar_only_shows_for_rated_profiles(self):
         entries = [
@@ -354,9 +354,23 @@ class PuzzlePageTests(unittest.TestCase):
         self.assertEqual(self.page._hub._records_card.title.text(), "记录")
         self.assertEqual(self.page._hub._records_card.button.text(), "查看")
 
-    def test_records_card_opens_the_profile(self):
-        self.page._hub._records_card.button.click()
+    def test_records_card_opens_the_profile_when_signed_in(self):
+        self.page._token = "token"
+        self.page._server_url = "https://server"
+        self.page._auth_expired = False
+        with (
+            mock.patch.object(self.page, "_refresh_account"),
+            mock.patch.object(self.page, "_fetch_online_stats"),
+        ):
+            self.page._hub._records_card.button.click()
+
         self.assertIs(self.page._stack.currentWidget(), self.page._profile)
+
+    def test_records_cannot_be_opened_offline(self):
+        self.page.show_hub()
+        self.page._hub._records_card.button.click()
+
+        self.assertIs(self.page._stack.currentWidget(), self.page._hub)
 
     def test_profile_range_uses_segmented_buttons(self):
         self.assertFalse(hasattr(self.page._profile, "_range"))
