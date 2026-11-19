@@ -1,14 +1,14 @@
 {
-  "latest": "2.2.0",
-  "notes": "新增在线谜题，优化训练界面与反馈；识图功能持续优化中。",
+  "latest": "2.2.1",
+  "notes": "更快的 AI 落子与更顺手的复盘：Stockfish 常驻、鼠标滚轮浏览着法、多局 PGN 选择与界面细节优化。",
   "sha256": {
-    "windows-x86_64": "56873cf7ef41149acaba46536e760084c2f6435f7df745cfe0b0946e8690f5b0"
+    "windows-x86_64": "214c697efd53bdc7a287df484b6bbae22d11227357434e1f2c8051a2de861c71"
   },
-  "sig": "jWto7DQMMezFCHyqxO9VWDNimbU1MubYlPjHCXCB0W+ae0QoVgRXCEJQzz7kzFpVdDgKcywpuO5xt/gkp/a7Bw==",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.2.0.zip",
+  "sig": "+Zit1LMcKUl+hp0Qxdq/2h0CkPrTGSW6l9hDmkYlaqwwl8d9aBaXACT1h+dzjFEmqtLTrz2s9TgtcO+3mf/7CA==",
+  "url": "https://checkpause.com/download/CheckPause_Setup_2.2.1.zip",
   "urls": {
-    "macos-arm64": "https://checkpause.com/download/CheckPause-2.2.0-macOS-M-series.dmg",
-    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.2.0-macOS-Intel.dmg",
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.2.0.zip"
+    "macos-arm64": "https://checkpause.com/download/CheckPause-2.2.1-macOS-M-series.dmg",
+    "macos-x86_64": "https://checkpause.com/download/CheckPause-2.2.1-macOS-Intel.dmg",
+    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.2.1.zip"
   }
 }
