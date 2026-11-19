@@ -245,8 +245,8 @@ def create_order(server_url, token, product_id, language="zh-CN"):
 def order_status(server_url, token, order_id, language="zh-CN"):
     """Whether an order has been paid.
 
-    Asking is what makes a purchase arrive: Alipay either notifies the server
-    or, as here, the server asks Alipay.
+    Creem orders are settled by the webhook, so this only reads the local
+    order. Legacy Alipay orders are still confirmed by asking Alipay.
     """
     return _get(server_url, ORDERS_ENDPOINT + "/" + str(order_id), token, language)
 
