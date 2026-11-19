@@ -150,6 +150,55 @@ class PuzzlePageTests(unittest.TestCase):
         self.page._back_from_train()
         self.assertIs(self.page._stack.currentWidget(), self.page._hub)
 
+    def _start_retry_from_profile(self, count=2):
+        self.page._token = "token"
+        self.page._server_url = "http://server"
+        self.page._online_stats = {}
+        self.page._online_stats_days = 30
+        self.page._refresh_account = mock.Mock()
+        self._start_retry_list(count)
+
+    def test_back_from_online_retry_returns_to_the_profile(self):
+        self._start_retry_from_profile()
+
+        self.assertIs(self.page._stack.currentWidget(), self.page._train)
+        self.assertEqual(self.page._train_origin, "profile")
+
+        self.page._back_from_train()
+
+        self.assertIs(self.page._stack.currentWidget(), self.page._profile)
+
+    def test_finishing_online_retry_returns_to_the_profile(self):
+        self._start_retry_from_profile(count=1)
+
+        self.page._next()
+
+        self.assertIs(self.page._stack.currentWidget(), self.page._profile)
+
+    def test_local_mistakes_remember_the_profile_origin(self):
+        with mock.patch.object(puzzle_page_module, "mistake_puzzles", return_value=[_puzzle()]):
+            self.page._start_local_mistakes()
+
+        self.assertEqual(self.page._train_origin, "profile")
+
+    def test_train_and_profile_share_the_floating_back_button(self):
+        profile = self.page._profile
+        for view in (self.page._train, profile):
+            self.assertEqual(view._btn_back.objectName(), "puzzleBackButton")
+            self.assertEqual(view._btn_back.text(), "")
+            self.assertEqual(view._btn_back.width(), 32)
+
+        self.page.resize(1200, 800)
+        self.page._stack.setCurrentWidget(profile)
+        self.page.show()
+        _APP.processEvents()
+        _APP.processEvents()
+
+        self.assertLess(
+            profile._btn_back.geometry().right(),
+            profile._inner.geometry().x(),
+        )
+
     def test_local_puzzles_do_not_request_lichess_history(self):
         self._standard_collection()
         with mock.patch.object(self.page, "_load_game_history") as history:
@@ -292,7 +341,7 @@ class PuzzlePageTests(unittest.TestCase):
 
         self.assertEqual(self.page._collection.id, puzzles.MISTAKES_ID)
         self.assertEqual(self.page._collection.count, 1)
-        self.assertEqual(self.page._train_origin, "hub")
+        self.assertEqual(self.page._train_origin, "profile")
         self.assertIsNotNone(self.page._session)
 
     def test_an_expired_session_still_queues_the_attempt(self):

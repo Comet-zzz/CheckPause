@@ -892,7 +892,7 @@ class _HubView(QWidget):
         self._collections_icon = QLabel()
         self._collections_icon.setFixedSize(18, 18)
         self._collections_label = QLabel()
-        self._collections_label.setObjectName("puzzleSectionLabel")
+        self._collections_label.setObjectName("puzzleModeTitle")
         self._btn_library = QPushButton()
         self._btn_library.setObjectName("puzzleGhostButton")
         self._btn_library.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -1055,6 +1055,23 @@ class _HubView(QWidget):
         self.apply_icons(self._theme)
 
 
+class _FloatingBackButton(QPushButton):
+    """Icon-only back control used by pages that float over their content."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("puzzleBackButton")
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.setFixedSize(32, 32)
+        self.setIconSize(QSize(20, 20))
+
+    def apply_icons(self, theme):
+        self.setIcon(action_icon(theme, "back"))
+
+    def retranslate(self, language):
+        self.setAccessibleName(t("puzzle_train_back", language))
+
+
 class _TrainView(QWidget):
     back_requested = Signal()
     hint_requested = Signal()
@@ -1072,11 +1089,7 @@ class _TrainView(QWidget):
         self._puzzle_rating = None
         self.setObjectName("puzzleTrain")
 
-        self._btn_back = QPushButton()
-        self._btn_back.setObjectName("puzzleBackButton")
-        self._btn_back.setCursor(Qt.CursorShape.PointingHandCursor)
-        self._btn_back.setFixedSize(32, 32)
-        self._btn_back.setIconSize(QSize(18, 18))
+        self._btn_back = _FloatingBackButton(self)
         self._btn_back.clicked.connect(self.back_requested.emit)
         self._counter_label = QLabel()
         self._counter_label.setObjectName("puzzleCounterLabel")
@@ -1517,13 +1530,9 @@ class _TrainView(QWidget):
 
     def apply_icons(self, theme):
         self._theme = theme
-        for button, name in (
-            (self._btn_back, "back"),
-            (self._btn_analyze, "rail_analysis"),
-        ):
-            button.setIcon(action_icon(theme, name))
-            button.setIconSize(QSize(18, 18))
-        self._btn_back.setIconSize(QSize(20, 20))
+        self._btn_back.apply_icons(theme)
+        self._btn_analyze.setIcon(action_icon(theme, "rail_analysis"))
+        self._btn_analyze.setIconSize(QSize(18, 18))
         self._btn_next.setIcon(action_icon(theme, "play", on_accent=True))
         self._btn_next.setIconSize(QSize(18, 18))
         kinds = {
@@ -1543,7 +1552,7 @@ class _TrainView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._btn_back.setAccessibleName(t("puzzle_train_back", language))
+        self._btn_back.retranslate(language)
         self._btn_hint.setText(t("puzzle_train_hint", language))
         self._btn_reveal.setText(t("puzzle_train_reveal", language))
         self._btn_next.setText(t("puzzle_train_continue", language))
@@ -1890,8 +1899,7 @@ class _ProfileView(QWidget):
         layout.setContentsMargins(32, 24, 32, 32)
         layout.setSpacing(14)
 
-        self._btn_back = QPushButton()
-        self._btn_back.setObjectName("puzzleGhostButton")
+        self._btn_back = _FloatingBackButton(self)
         self._btn_back.clicked.connect(self.back_requested.emit)
         self._range_box = QFrame()
         self._range_box.setObjectName("puzzleRangeGroup")
@@ -1910,11 +1918,6 @@ class _ProfileView(QWidget):
             self._range_group.addButton(button)
             range_layout.addWidget(button)
             self._range_buttons.append((days, button))
-        header = QHBoxLayout()
-        header.setSpacing(8)
-        header.addWidget(self._btn_back)
-        header.addStretch(1)
-        layout.addLayout(header)
 
         self._notice = QLabel()
         self._notice.setObjectName("puzzleNotice")
@@ -1993,15 +1996,28 @@ class _ProfileView(QWidget):
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(scroll)
+        scroll.verticalScrollBar().rangeChanged.connect(self._place_back_button)
+        self._btn_back.raise_()
         self.retranslate(self._language)
         self.refresh({}, self._language)
         self.set_range(self._range_days)
+        QTimer.singleShot(0, self._place_back_button)
+
+    def _place_back_button(self, *_args):
+        content_left = self._inner.mapTo(self, self._inner.rect().topLeft()).x()
+        self._btn_back.move(max(8, content_left - 40), 12)
+        self._btn_back.raise_()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        QTimer.singleShot(0, self._place_back_button)
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
         width = max(0, min(1040, self.width() - 64))
         if self._inner.width() != width:
             self._inner.setFixedWidth(width)
+        QTimer.singleShot(0, self._place_back_button)
 
     def _on_range_button(self, days):
         self._range_days = int(days)
@@ -2086,7 +2102,7 @@ class _ProfileView(QWidget):
 
     def retranslate(self, language):
         self._language = language
-        self._btn_back.setText(t("puzzle_train_back", language))
+        self._btn_back.retranslate(language)
         range_keys = (
             "puzzle_profile_range_7",
             "puzzle_profile_range_30",
@@ -2106,8 +2122,7 @@ class _ProfileView(QWidget):
             self.refresh(self._summary, language)
 
     def apply_icons(self, theme):
-        self._btn_back.setIcon(action_icon(theme, "nav_prev"))
-        self._btn_back.setIconSize(QSize(18, 18))
+        self._btn_back.apply_icons(theme)
         self._radar.set_theme(theme)
         tint = QColor(16, 20, 26, 36) if theme == LIGHT else QColor(0, 0, 0, 110)
         self._themes_shadow.setColor(tint)
@@ -2474,7 +2489,7 @@ class PuzzlePage(QWidget):
             },
             failed,
         )
-        self._start_collection_object(collection, index=0, origin="hub")
+        self._start_collection_object(collection, index=0, origin="profile")
 
     def _start_online_training(self):
         self._practice_mode = False
@@ -2740,6 +2755,7 @@ class PuzzlePage(QWidget):
         self._load_online_puzzle(
             {"puzzle": puzzle, "rating": self._online_rating, "rd": self._online_rd},
             rated=False,
+            origin="profile" if self._retry_mode else "hub",
         )
         if self._retry_mode:
             self._train.set_retry_session(
@@ -2780,7 +2796,7 @@ class PuzzlePage(QWidget):
         else:
             self._hub.set_notice(message)
 
-    def _load_online_puzzle(self, result, rated=True):
+    def _load_online_puzzle(self, result, rated=True, origin="hub"):
         puzzle = result.get("puzzle") if isinstance(result, dict) else None
         if not isinstance(puzzle, dict) or not puzzle.get("fen"):
             self.show_hub()
@@ -2789,7 +2805,7 @@ class PuzzlePage(QWidget):
         self._refresh_account()
         self._online = True
         self._online_rated = bool(rated)
-        self._train_origin = "hub"
+        self._train_origin = origin
         self._online_rating = result.get("rating")
         self._online_rd = result.get("rd")
         self._collection = None
@@ -3473,6 +3489,7 @@ class PuzzlePage(QWidget):
                     "rd": self._online_rd,
                 },
                 rated=False,
+                origin=self._train_origin,
             )
         elif self._puzzle is not None:
             self._load_puzzle(self._index)
@@ -3525,8 +3542,13 @@ class PuzzlePage(QWidget):
             return
         if self._index + 1 < self._collection.count and self._load_puzzle(self._index + 1):
             return
+        self._show_train_origin()
+
+    def _show_train_origin(self):
         if self._train_origin == "library":
             self.show_library()
+        elif self._train_origin == "profile":
+            self.show_profile()
         else:
             self.show_hub()
 
@@ -3538,10 +3560,7 @@ class PuzzlePage(QWidget):
         self._clear_retry_session()
         self._review_puzzles = []
         self._review_index = -1
-        if self._train_origin == "library":
-            self.show_library()
-        else:
-            self.show_hub()
+        self._show_train_origin()
 
     def _mark_current_solved(self):
         if self._collection is None or self._puzzle is None:
