@@ -37,7 +37,7 @@ from checkpause.gui.opening_picker import choose_opening_dialog
 from checkpause.gui.theme import LIGHT, danger_color
 from checkpause.gui.widgets.board import BoardWidget
 from checkpause.gui.widgets.move_list import MoveListWidget
-from checkpause.gui.workers import EngineMoveWorker
+from checkpause.gui.workers import PlayEngineWorker
 from checkpause.i18n import t
 
 CLOCK_TICK_MS = 100
@@ -71,6 +71,8 @@ class PlayPage(QWidget):
         self._session = PlaySession()
         self._engine_worker = None
         self._engine_error = None
+        self._pending_token = 0
+        self._game_id = 0
         self._clock_active = "unset"
         self._started = False
 
@@ -316,9 +318,10 @@ class PlayPage(QWidget):
         return card
 
     def _prepare_game(self):
-        self._stop_engine_worker()
+        self._cancel_engine()
         self._engine_error = None
         self._started = False
+        self._game_id += 1
         endgame = self._selected_endgame() if self._start_mode == "endgame" else None
         opening = self._selected_opening() if self._start_mode == "opening" else None
         self._session.new_game(
@@ -388,9 +391,12 @@ class PlayPage(QWidget):
             parts.append(opening_display_name(opening, self._language))
         self._summary_label.setText(" · ".join(parts))
 
+    def _thinking(self):
+        return self._pending_token != 0
+
     def _update_status(self):
         session = self._session
-        thinking = self._engine_worker is not None and self._engine_worker.isRunning()
+        thinking = self._thinking()
         if session.result_kind is not None:
             text = t("play_result_" + session.result_kind, self._language)
         elif self._engine_error is not None:
@@ -626,12 +632,7 @@ class PlayPage(QWidget):
 
     def _on_move_requested(self, from_square, to_square):
         session = self._session
-        if (
-            not self._started
-            or session.paused
-            or session.game_over
-            or self._engine_worker is not None
-        ):
+        if not self._started or session.paused or session.game_over or self._thinking():
             return
         if session.board.turn != session.human_color:
             return
@@ -668,29 +669,35 @@ class PlayPage(QWidget):
 
     def _start_engine(self):
         self._engine_error = None
-        worker = EngineMoveWorker(
+        worker = self._engine_worker
+        if worker is None or not worker.isRunning():
+            worker = PlayEngineWorker(self._language, self)
+            worker.move_ready.connect(self._on_engine_move)
+            worker.failed.connect(self._on_engine_failed)
+            worker.finished.connect(self._on_engine_finished)
+            self._engine_worker = worker
+            worker.start()
+        self._pending_token = worker.request(
             self._session.board.fen(),
             self._level_rating,
-            self._language,
-            self,
+            self._game_id,
         )
-        worker.move_ready.connect(self._on_engine_move)
-        worker.failed.connect(self._on_engine_failed)
-        worker.finished.connect(self._on_engine_finished)
-        self._engine_worker = worker
         self._update_buttons()
-        worker.start()
 
-    def _on_engine_move(self, uci):
-        if self.sender() is not self._engine_worker:
+    def _on_engine_move(self, token, uci):
+        if token != self._pending_token:
             return
+        self._pending_token = 0
         if self._session.game_over:
+            self._update_buttons()
             return
         try:
             move = chess.Move.from_uci(uci)
         except ValueError:
+            self._update_buttons()
             return
         if move not in self._session.board.legal_moves:
+            self._update_buttons()
             return
         self._session.push(move)
         self._sync_clock_timer()
@@ -699,13 +706,14 @@ class PlayPage(QWidget):
             return
         self._update_buttons()
 
-    def _on_engine_failed(self, error):
-        if self.sender() is not self._engine_worker:
+    def _on_engine_failed(self, token, error):
+        if token != self._pending_token:
             return
+        self._pending_token = 0
         self._engine_error = error
         self._clock_timer.stop()
         self._update_clock_labels()
-        self._update_status()
+        self._update_buttons()
         QMessageBox.warning(
             self,
             t("app_title", self._language),
@@ -716,6 +724,7 @@ class PlayPage(QWidget):
         worker = self.sender()
         if worker is self._engine_worker:
             self._engine_worker = None
+            self._pending_token = 0
         worker.deleteLater()
         self._update_buttons()
 
@@ -730,7 +739,7 @@ class PlayPage(QWidget):
 
     def _undo(self):
         session = self._session
-        if self._engine_worker is not None or session.game_over or session.paused:
+        if self._thinking() or session.game_over or session.paused:
             return
         if not session.undo():
             return
@@ -745,6 +754,7 @@ class PlayPage(QWidget):
     def _resign(self):
         if self._session.game_over:
             return
+        self._cancel_engine()
         self._session.resign()
         self._clock_timer.stop()
         self._update_clock_labels()
@@ -757,7 +767,7 @@ class PlayPage(QWidget):
 
     def _update_buttons(self):
         session = self._session
-        thinking = self._engine_worker is not None and self._engine_worker.isRunning()
+        thinking = self._thinking()
         self._btn_undo.setEnabled(
             self._started
             and session.can_undo()
@@ -819,10 +829,16 @@ class PlayPage(QWidget):
         self._sync_start_mode()
         self._prepare_game()
 
+    def _cancel_engine(self):
+        self._pending_token = 0
+        if self._engine_worker is not None:
+            self._engine_worker.cancel()
+
     def _stop_engine_worker(self):
-        worker = self._engine_worker
-        self._engine_worker = None
-        if worker is not None and worker.isRunning():
+        worker, self._engine_worker = self._engine_worker, None
+        self._pending_token = 0
+        if worker is not None:
+            worker.stop()
             worker.wait(5000)
 
     def shutdown(self):

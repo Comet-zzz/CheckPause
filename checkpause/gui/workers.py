@@ -92,42 +92,111 @@ class AnalysisWorker(QThread):
         self.move_done.emit(index, total, san, fen)
 
 
-class EngineMoveWorker(QThread):
-    move_ready = Signal(str)
-    failed = Signal(str)
+class PlayEngineWorker(QThread):
+    """Keep one Stockfish alive and play one move per request.
 
-    def __init__(self, fen, rating, language="zh-CN", parent=None):
+    Restarting the engine for every move paid its start-up cost each time and
+    threw away the transposition table. This worker keeps the process across
+    moves and games, passes a per-game token so ``ucinewgame`` runs once per
+    game, and drops a move whose request the user has already replaced.
+    """
+
+    move_ready = Signal(int, str)
+    failed = Signal(int, str)
+
+    def __init__(self, language="zh-CN", parent=None):
         super().__init__(parent)
-        self.fen = fen
-        self.rating = rating
         self.language = language
+        self._engine = None
+        self._supports_elo = True
+        self._elo_floor = None
+        self._lock = threading.Lock()
+        self._wake = threading.Condition(self._lock)
+        self._request = None
+        self._token = 0
+        self._running = True
+
+    def request(self, fen, rating, game):
+        with self._wake:
+            self._token += 1
+            token = self._token
+            self._request = (token, fen, int(rating), game)
+            self._wake.notify_all()
+        return token
+
+    def cancel(self):
+        with self._wake:
+            self._token += 1
+            self._request = None
+            self._wake.notify_all()
+
+    def stop(self):
+        with self._wake:
+            self._running = False
+            self._token += 1
+            self._request = None
+            self._wake.notify_all()
 
     def run(self):
         try:
-            path = get_stockfish_path(self.language)
-            engine = open_stockfish(path)
-        except Exception as exc:
-            self.failed.emit(str(exc))
-            return
-
-        try:
-            supports_elo, floor = _engine_elo_floor(engine)
-            settings = play_engine_settings(self.rating, elo_floor=floor, supports_elo=supports_elo)
-            with contextlib.suppress(chess.engine.EngineError):
-                engine.configure(settings["options"])
-            limit = chess.engine.Limit(nodes=settings["nodes"])
-            result = engine.play(chess.Board(self.fen), limit)
-        except Exception as exc:
-            self.failed.emit(str(exc))
-            return
+            while True:
+                with self._wake:
+                    while self._running and self._request is None:
+                        self._wake.wait()
+                    if not self._running:
+                        break
+                    token, fen, rating, game = self._request
+                    self._request = None
+                try:
+                    move = self._play(fen, rating, game)
+                except Exception as exc:
+                    self._discard_engine()
+                    if self._is_current(token):
+                        self.failed.emit(token, str(exc))
+                    continue
+                if not self._is_current(token):
+                    continue
+                if move is None:
+                    self.failed.emit(token, t("play_no_move", self.language))
+                else:
+                    self.move_ready.emit(token, move.uci())
         finally:
+            self._discard_engine()
+
+    def _is_current(self, token):
+        with self._lock:
+            return self._running and token == self._token
+
+    def _play(self, fen, rating, game):
+        engine = self._ensure_engine()
+        settings = play_engine_settings(
+            rating, elo_floor=self._elo_floor, supports_elo=self._supports_elo
+        )
+        options = dict(settings["options"])
+        if self._supports_elo and settings["approximate"]:
+            # A previous stronger level can leave the Elo limiter on, and it
+            # overrides Skill Level, so switch it off explicitly.
+            options["UCI_LimitStrength"] = False
+        result = engine.play(
+            chess.Board(fen),
+            chess.engine.Limit(nodes=settings["nodes"]),
+            game=game,
+            options=options,
+        )
+        return result.move
+
+    def _ensure_engine(self):
+        if self._engine is None:
+            engine = open_stockfish(get_stockfish_path(self.language))
+            self._supports_elo, self._elo_floor = _engine_elo_floor(engine)
+            self._engine = engine
+        return self._engine
+
+    def _discard_engine(self):
+        engine, self._engine = self._engine, None
+        if engine is not None:
             with contextlib.suppress(Exception):
                 engine.quit()
-
-        if result.move is None:
-            self.failed.emit(t("play_no_move", self.language))
-            return
-        self.move_ready.emit(result.move.uci())
 
 
 # Live searches stream every new depth. The board redraws on each one, so the
