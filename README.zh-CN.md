@@ -120,14 +120,14 @@ CheckPause 使用本地 Stockfish 评估每一步，再由任意 OpenAI 兼容�
 
 **最新版：CheckPause v2.2.1（Windows x64）**
 
-- 🚀 **国内加速下载（推荐）**：[CheckPause_Setup_2.2.1.zip](https://checkpause.com/download/CheckPause_Setup_2.2.1.zip) — 同一份文件放在国内能稳定连上的服务器上，通常几十秒下完
+- 🚀 **全球 CDN（推荐）**：[CheckPause_Setup_2.2.1.zip](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause_Setup_2.2.1.zip) — 托管在 Cloudflare R2，海外和代理网络通常比旧镜像快很多
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/download/v2.2.1/CheckPause_Setup_2.2.1.zip)（138.9 MiB，已内置 Stockfish、开局库、棋子资源、走棋音效与 Lichess 精选题集）
 - SHA-256：`214C697EFD53BDC7A287DF484B6BBAE22D11227357434E1F2C8051A2DE861C71`（压缩包；两个链接是同一个文件，哈希一致）
 - **解压压缩包**，得到 `CheckPause_Setup_2.2.1.exe`（其 SHA-256 为 `6BC95DDFA2CF8C0478EEC54ED73693F3ABD5BB876ECA67C9F5A5ECA80211F805`），双击运行安装包即可，安装后从桌面或开始菜单启动；程序未签名，若 Windows SmartScreen 提示，请选择「更多信息 → 仍要运行」。
 
 **macOS 最新版：CheckPause v2.2.1**
 
-- 🚀 **国内加速下载（推荐）**：[M 系列](https://checkpause.com/download/CheckPause-2.2.1-macOS-M-series.dmg)（173.7 MiB）｜[Intel](https://checkpause.com/download/CheckPause-2.2.1-macOS-Intel.dmg)（100.8 MiB）
+- 🚀 **全球 CDN（推荐）**：[M 系列](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause-2.2.1-macOS-M-series.dmg)（173.7 MiB）｜[Intel](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause-2.2.1-macOS-Intel.dmg)（100.8 MiB）
 - 📦 [GitHub 下载](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.2.1)（发布页上有两个 `.dmg`）
 - SHA-256：Apple Silicon `231A4305F7E8136EFB897EFBDF06F88D03C054A8FF3A00EA85E64DF8F7C9E7D0`，Intel `ECCDF493CB548E23E05F41AF684F19E44D8DEC0F17E70FCD6A8CA1599F8F9B74`
 - 打开 `.dmg`，把 CheckPause 拖进「应用程序」，首次打开请**右键点击图标 → 打开**（程序未签名、未公证）。

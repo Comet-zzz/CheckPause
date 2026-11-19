@@ -120,14 +120,14 @@ Requirements: Windows 10/11 (x64) or macOS 11+ (Apple Silicon or Intel). No Pyth
 
 **Latest: CheckPause v2.2.1 (Windows x64)**
 
-- 🚀 **Fast mirror (recommended in China)**: [CheckPause_Setup_2.2.1.zip](https://checkpause.com/download/CheckPause_Setup_2.2.1.zip) — the same file served from a host that is reachable without the usual throttling, usually done in well under a minute
+- 🚀 **Global CDN (recommended)**: [CheckPause_Setup_2.2.1.zip](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause_Setup_2.2.1.zip) — served from Cloudflare R2, usually much faster than the old mirror outside mainland China
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/download/v2.2.1/CheckPause_Setup_2.2.1.zip) (138.9 MiB — ships with Stockfish, the opening book, piece assets, move sounds, and a curated Lichess puzzle set)
 - SHA-256: `214C697EFD53BDC7A287DF484B6BBAE22D11227357434E1F2C8051A2DE861C71` (the zip; both links serve the identical file)
 - **Extract the zip** to get `CheckPause_Setup_2.2.1.exe` (SHA-256 `6BC95DDFA2CF8C0478EEC54ED73693F3ABD5BB876ECA67C9F5A5ECA80211F805`), then run the installer and launch CheckPause from the desktop or Start Menu. The build is unsigned; if SmartScreen appears, choose More info → Run anyway.
 
 **Latest: CheckPause v2.2.1 (macOS)**
 
-- 🚀 **Fast mirror (recommended in China)**: [M-series](https://checkpause.com/download/CheckPause-2.2.1-macOS-M-series.dmg) (173.7 MiB) · [Intel](https://checkpause.com/download/CheckPause-2.2.1-macOS-Intel.dmg) (100.8 MiB)
+- 🚀 **Global CDN (recommended)**: [M-series](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause-2.2.1-macOS-M-series.dmg) (173.7 MiB) · [Intel](https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause-2.2.1-macOS-Intel.dmg) (100.8 MiB)
 - 📦 [Download from GitHub](https://github.com/Comet-zzz/CheckPause/releases/tag/v2.2.1) (both `.dmg` files on the release page)
 - SHA-256: arm64 `231A4305F7E8136EFB897EFBDF06F88D03C054A8FF3A00EA85E64DF8F7C9E7D0`, Intel `ECCDF493CB548E23E05F41AF684F19E44D8DEC0F17E70FCD6A8CA1599F8F9B74`
 - Open the `.dmg`, drag CheckPause into Applications, then **right-click the icon → Open** the first time (the build is unsigned and not notarized).
