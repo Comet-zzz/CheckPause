@@ -1,3 +1,51 @@
+# v2.2.1 – Bug Fixes & Interface Polish
+
+> **A focused patch: faster engine replies, smoother move review, more reliable PGN and analysis handling, and a cleaner interface.**
+
+---
+
+## 🎯 What's New
+
+### 🐞 Bug fixes
+- 修复打开包含多局对局的 PGN 文件时只能看到第一局的问题；现在会先弹出对局选择，再载入指定对局。
+- 修复载入新棋谱、清空棋盘或改动线路后，旧分析结果与聊天上下文仍可能串到当前局面的问题；棋盘、着法表与引擎现在共用同一份已解析棋谱。
+
+- Fixed PGN files containing several games only loading the first one; the app now asks which game to open.
+- Fixed stale analysis results and chat context leaking into a new or edited line; the board, move list, and engine now share one parsed game.
+
+### ✨ Interface & interaction
+- 移除顶部菜单栏，设置、个性化与帮助统一收进侧栏齿轮菜单。
+- 支持用鼠标滚轮浏览着法，复盘时前后切换更顺手。
+
+- Removed the top menu bar and moved settings, personalization, and help into the rail's gear menu.
+- Added mouse-wheel move browsing for quicker review.
+
+### ⚡ Performance
+- 与 AI 对弈时引擎改为常驻进程，不再每一步重新启动 Stockfish；落子响应更快，同一局内复用搜索缓存。
+
+- The AI opponent now keeps one Stockfish process alive instead of restarting it for every move, so replies arrive faster and the search cache is reused within a game.
+
+## 🛠️ Full Changelog
+- fix(analysis): choose a game when a PGN contains several
+- refactor(analysis): parse each PGN once and clear stale analysis
+- feat(ui): browse moves with the mouse wheel
+- chore(gui): move the top menus into the rail settings menu
+- perf(play): reuse one Stockfish process for AI moves
+
+---
+
+## ⚠️ Breaking Changes
+
+- 无破坏性变更。
+
+- No breaking changes.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v2.2.0...v2.2.1
+
+---
+
 # v2.2.0 – Online Puzzles & Interface Polish
 
 > **A new online puzzle experience, a cleaner interface, and continued image-recognition work.**
