@@ -4,11 +4,11 @@
   "sha256": {
     "windows-x86_64": "214c697efd53bdc7a287df484b6bbae22d11227357434e1f2c8051a2de861c71"
   },
-  "sig": "+Zit1LMcKUl+hp0Qxdq/2h0CkPrTGSW6l9hDmkYlaqwwl8d9aBaXACT1h+dzjFEmqtLTrz2s9TgtcO+3mf/7CA==",
-  "url": "https://checkpause.com/download/CheckPause_Setup_2.2.1.zip",
+  "sig": "Qhn4K1+ETZ+kdPVcHEtgbCeS7FG9fMYsrjxGZks8Mly+UZaFDufEuFSctV5vYWGce27o1HJWWv79/jcBByPfCA==",
+  "url": "https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause_Setup_2.2.1.zip",
   "urls": {
     "macos-arm64": "https://checkpause.com/download/CheckPause-2.2.1-macOS-M-series.dmg",
     "macos-x86_64": "https://checkpause.com/download/CheckPause-2.2.1-macOS-Intel.dmg",
-    "windows-x86_64": "https://checkpause.com/download/CheckPause_Setup_2.2.1.zip"
+    "windows-x86_64": "https://pub-d4ecc17f7295423188e5f8da52a4c89f.r2.dev/CheckPause_Setup_2.2.1.zip"
   }
 }
