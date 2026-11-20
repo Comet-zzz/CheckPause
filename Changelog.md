@@ -372,182 +372,78 @@
 
 # v1.0.0 - Graphical Interface, Move List, Personalization, and Performance
 
-> The first stable series of CheckPause. It grows from a command-line tool into a distributable, bilingual desktop app: a PyQt6 interface, light/dark themes, SMS-style AI chat, a clickable move list, a Lichess-style custom board with personalization, board flipping and performance ratings, an opening book, a configurable OpenAI-compatible API, and one-command Windows packaging.
+> **The first stable series of CheckPause: a distributable, bilingual PyQt6 desktop app with board analysis, AI chat, a clickable move list, personalization, and one-command packaging.**
 
 ---
 
 ## 🎯 What's New
 
-### 🖥️ PyQt6 graphical interface
-- 新增 `run_gui.py` 入口，代码整理为 `checkpause/` 包；命令行界面保留在 `cli/`。
-- 左侧棋盘，「导入 / 分析 / 统计」三个标签页；顶栏菜单与标签页使用同一套按钮样式。
-- 支持从文件打开 PGN、分析进度条与结果展示；导入页可直接粘贴 PGN，不再显示多余的「PGN 棋谱」标题。
+### 🖥️ Graphical interface
+- 新增 PyQt6 桌面界面：导入 / 分析 / 统计、棋盘、着法列表、浅色/深色主题。
+- 支持打开或粘贴 PGN，显示分析进度与逐手结果。
+- 着法列表可点击跳转，并高亮当前步。
 
-- Added the `run_gui.py` entry and reorganised the code into the `checkpause` package; the CLI stays available under `cli/`.
-- Board on the left, with Import / Analysis / Statistics tabs; the menu bar shares the same button styling as the tabs.
-- Open PGN files, watch an analysis progress bar, and review results; paste a PGN straight into the Import tab without the redundant "PGN game" heading.
+- Added a PyQt6 desktop interface: Import / Analysis / Statistics, board, move list, and light/dark themes.
+- Open or paste PGNs, with analysis progress and per-move results.
+- Click any move to jump to that position and highlight the current ply.
 
-### 🧵 Background workers
-- `StockfishAnalyzer` 改为可复用类，支持进度、逐步和停止回调。
-- 新增 `AnalysisWorker` 与 `ChatWorker`（`QThread`），所有 UI 更新通过信号回传，分析可随时停止。
+### 💬 AI chat and analysis
+- AI 对话改为左右气泡、流式输出和思考计时，分析可随时停止。
+- 准确度改为五档表现评级，并显示在分析页和统计页。
+- Stockfish 在后台运行，不阻塞界面；开局谱着按满分计算并跳过分析。
 
-- `StockfishAnalyzer` is now a reusable class with progress, per-move, and stop callbacks.
-- Added `AnalysisWorker` and `ChatWorker` (`QThread`); all UI updates go through signals and analysis can be stopped at any time.
+- AI chat uses left/right bubbles with streaming replies and a thinking timer; analysis can be stopped at any time.
+- Accuracy is shown as five performance tiers on the analysis and statistics views.
+- Stockfish runs in the background; book moves score full marks and skip engine analysis.
 
-### 🧱 Project structure
-- 根目录的平铺模块整理为包结构：`checkpause/`（`core/` 引擎与 AI、`data/` 档案与设置、`i18n/` 文案、`gui/` 界面），命令行界面独立为 `cli/`。
-- `config.py` 只保留常量与提示词；资源路径解析移到 `checkpause/resources.py`，棋子集与棋盘主题集中在 `checkpause/assets.py`。
-- 引擎不再负责打印进度，终端进度条移入 `cli/engine_cli.py`；`userdata / settings / profile` 合并到 `checkpause/data/`。
-- 中英文文案拆分为 `i18n/zh_CN.py` 与 `i18n/en_US.py`；聊天气泡配色集中到 `gui/theme.py`。
-- 新增 `tests/`，用 `unittest` 覆盖表现评级、文案键一致性、档案读写与压缩分析。
+### ♟️ Board and personalization
+- 棋盘改为自绘，支持多套 Lichess 棋子、多种配色、翻转、高亮和引擎箭头。
+- 新增 Polyglot 开局库，前 15 回合的谱着直接命中。
+- 外观选择立即生效，并保存到 `profile.json`。
 
-- Flat root modules became a package: `checkpause/` (`core/` engine and AI, `data/` profile and settings, `i18n/` strings, `gui/` interface), with the CLI split into `cli/`.
-- `config.py` now holds only constants and prompts; resource lookup moved to `checkpause/resources.py`, and piece sets and board themes live in `checkpause/assets.py`.
-- The engine no longer prints progress; the CLI progress bar moved to `cli/engine_cli.py`, and `userdata / settings / profile` merged into `checkpause/data/`.
-- Locale dictionaries split into `i18n/zh_CN.py` and `i18n/en_US.py`; chat bubble colors now live in `gui/theme.py`.
-- Added `tests/`, using `unittest` to cover performance ratings, message-key parity, profile storage, and compact analysis.
+- The board is drawn in-house with multiple Lichess piece sets, themes, flipping, highlights, and engine arrows.
+- Added a Polyglot opening book for the first 15 moves.
+- Appearance choices apply immediately and persist in `profile.json`.
 
-### 💬 SMS-style AI chat
-- AI 回复显示在左侧气泡，用户消息显示在右侧气泡，圆角、自动换行。
-- 气泡配色随明暗主题切换，并带流式输出与思考计时。
+### 🔌 API and packaging
+- API 设置支持 Key、Base URL、模型名，兼容 OpenAI 格式接口和本地服务。
+- 提供 PyInstaller 打包脚本，Stockfish、开局库和棋子随程序分发。
+- 未配置 API 时程序照常启动，只有 AI 对话会提示去设置。
 
-- AI replies appear in left bubbles; user messages appear on the right, rounded and word-wrapped.
-- Bubbles follow the light/dark theme and stream replies with a thinking timer.
-
-### 📋 Clickable move list
-- 导入或开始分析 PGN 后，右侧显示「回合号 / 白方 / 黑方」着法列表，替代纯文本。
-- 点击任意着法，棋盘立即跳到该局面，并高亮当前步；分析过程中高亮随进度移动。
-- 「查看棋步 / 编辑 PGN」按钮可在列表与原文之间切换。
-
-- After importing or analyzing a PGN, the right side shows a move list (# / White / Black) instead of raw text.
-- Clicking a move jumps the board to that position and highlights the current ply; the highlight follows analysis progress.
-- A View moves / Edit PGN button toggles between the list and the raw text.
-
-### ♟️ Board, controls, and personalization
-- 棋盘改为 `QPainter` 自绘，不再使用 `chess.svg` 的默认样式。
-- 采用 Lichess 开源棋子集，坐标、上一步高亮、被将军高亮和引擎箭头全部自绘，并跟随明暗主题。
-- 新增「个性化」菜单（位于「设置」与「帮助」之间）：
-  - **棋子**：cburnett、merida、chessnut、fantasy、spatial、celtic、kiwen-suwi、rhosgfx、totoy、mpchess（共 10 套）。
-  - **棋盘**：绿色、棕色、蓝色、灰色、紫色、珊瑚（共 6 种配色）。
-- 外观选择立即生效，并保存到 `profile.json`，下次启动自动恢复。
-
-- The board is drawn with `QPainter` instead of the default `chess.svg` styling.
-- Lichess open-source piece sets are used; coordinates, last-move highlight, check highlight, and the engine arrow are all drawn by us and follow the active theme.
-- Added a Personalization menu between Settings and Help:
-  - **Pieces**: cburnett, merida, chessnut, fantasy, spatial, celtic, kiwen-suwi, rhosgfx, totoy, mpchess (10 sets).
-  - **Board**: Green, Brown, Blue, Gray, Purple, Coral (6 themes).
-- Choices apply immediately, are saved to `profile.json`, and are restored on the next launch.
-
-### 📊 Performance ratings
-- 准确度改为五档"表现"评级：
-  - 卓越 / Optimal：85% – 100%
-  - 精准 / Precise：75% – 84%
-  - 稳健 / Competent：65% – 74%
-  - 平均 / Steady：50% – 64%
-  - 欠考虑 / Volatile：0% – 49%
-- 分析页显示本局表现；统计页保留"平均准确度 / 最近准确度"数值。
-- 统计数据表新增居中的"表现"列（附百分比）。
-
-- Accuracy is shown as five performance tiers:
-  - Optimal: 85% – 100%; Precise: 75% – 84%; Competent: 65% – 74%; Steady: 50% – 64%; Volatile: 0% – 49%.
-- The Analysis tab shows the game's performance; the Statistics tab keeps the average/latest accuracy numbers.
-- The stats table gains a centered Performance column (with the percentage).
-
-### 📖 Opening book
-- 使用 Polyglot 格式开局库，通过 `chess.polyglot` 读取，无需额外依赖。
-- 命中谱着时按满分计算并跳过该步引擎分析，仅在前 15 个回合（30 个半回合）内启用。
-- 谱库源文件为 `assets/openings.pgn`（53 条常见开局线路），由 `tools/build_openings.py` 编译为 `assets/opening_book.bin`。
-
-- Uses a Polyglot opening book read via `chess.polyglot`, with no extra dependency.
-- Book moves score full marks and skip engine analysis for that move, limited to the first 15 moves (30 plies).
-- The source is `assets/openings.pgn` (53 common opening lines), compiled into `assets/opening_book.bin` by `tools/build_openings.py`.
-
-### 🔌 Configurable API
-- 「设置 > API 设置...」可配置 **API Key**、**接口地址（Base URL）** 和 **模型名称**。
-- 适用于 DeepSeek、OpenAI、OpenRouter、中转服务以及本地 Ollama / vLLM / LM Studio 等兼容接口。
-- 默认仍为 DeepSeek（`https://api.deepseek.com` + `deepseek-flash`），未填写的地址或模型自动使用默认值。
-- 未配置 API 时程序照常打开，仅 AI 对话提示去设置。
-
-- Settings > API settings... configures the **API key**, **base URL**, and **model name**.
-- Works with DeepSeek, OpenAI, OpenRouter, proxy services, and local OpenAI-compatible servers such as Ollama, vLLM, or LM Studio.
-- Defaults remain DeepSeek (`https://api.deepseek.com` + `deepseek-flash`); empty fields fall back to the defaults.
-- The app opens normally without a configured API; only AI chat prompts you to set one.
-
-### 📦 Packaging and user data
-- 配置改为懒加载：缺少 API Key 或 Stockfish 时不再启动即崩溃。
-- 用户数据迁移到 `%APPDATA%\CheckPause\`（`profile.json` 与 `settings.json`），旧档案自动迁移。
-- 新增 `CheckPause.spec`、`build_exe.ps1` 与 `requirements-build.txt`，用 PyInstaller 打包为 `dist\CheckPause\CheckPause.exe`。
-- Stockfish、开局谱库和棋子资源随 exe 一起分发。
-
-- Configuration is lazy-loaded: a missing API key or Stockfish no longer crashes on startup.
-- User data moved to `%APPDATA%\CheckPause\` (`profile.json` and `settings.json`); existing profiles migrate automatically.
-- Added `CheckPause.spec`, `build_exe.ps1`, and `requirements-build.txt` to build `dist\CheckPause\CheckPause.exe` with PyInstaller.
-- Stockfish, the opening book, and piece assets ship with the exe.
-
-### 🎨 Themes and localization
-- 「设置 > 外观」可在浅色/深色模式间切换，默认浅色，偏好持久化。
-- GUI 与 CLI 共用 `checkpause/i18n/`，界面支持中英文切换。
-
-- Settings > Appearance switches between light and dark mode; light is the default and the choice is persisted.
-- GUI and CLI share `checkpause/i18n/`, supporting Chinese and English.
-
----
+- API settings cover key, base URL, and model, compatible with OpenAI-style and local endpoints.
+- Added a PyInstaller build script; Stockfish, the opening book, and pieces ship with the app.
+- The app starts without an API key; only AI chat asks you to configure one.
 
 ## 🛠️ Full Changelog
 - feat(gui): add the PyQt6 main window with board, chat, and stats
-- feat(gui): run Stockfish analysis and AI chat in background threads
-- feat(gui): open PGN files with analysis progress
-- feat(gui): add light/dark themes with persistence
-- feat(gui): render chat as theme-aware left/right bubbles
 - feat(gui): draw the board with QPainter, Lichess pieces, highlights, and arrows
-- feat(gui): make board navigation icon-only and add a flip-board control
-- feat(gui): add a Personalization menu with 10 piece sets and 6 board themes
-- feat(gui): add a clickable move list with current-ply highlighting and an editor toggle
-- feat(gui): map accuracy to five performance ratings on the analysis and stats views
-- feat(engine): expose `StockfishAnalyzer` with progress/move/stop callbacks
+- feat(gui): add a clickable move list with current-ply highlighting
+- feat(gui): add a Personalization menu with piece sets and board themes
+- feat(gui): map accuracy to five performance ratings
 - feat(engine): treat opening book moves as full marks and skip engine analysis
-- feat(engine): report book moves in the compact analysis sent to the AI
 - feat(api): configure an OpenAI-compatible base URL, key, and model
-- feat(settings): store API config under the user data directory
-- feat(config): lazy-load the API key and Stockfish with frozen-app path support
-- feat(tools): add a PGN-to-Polyglot opening book builder
-- feat(packaging): add a PyInstaller spec and build script bundling Stockfish, book, and pieces
-- feat(profile): persist language, theme, `piece_set`, and `board_theme`
-- refactor(profile): absolute paths, `delete_profile()`, and legacy profile migration
-- refactor(ai): build the client per request and report errors provider-neutrally
+- feat(packaging): add a PyInstaller spec and build script
 - refactor(app): move core code into the `checkpause` package and the CLI into `cli/`
-- refactor(config): split constants, resource lookup, assets, and user data storage
-- refactor(engine): move the CLI progress wrapper into `cli/engine_cli.py`
-- refactor(i18n): split locale dictionaries and centralise chat colors in the theme module
-- test: add unittest coverage for ratings, i18n keys, profile storage, and compact analysis
-- chore(gui): rename tabs to Import / Analysis / Statistics and style the menu bar like tabs
-- build: point `CheckPause.spec` at `run_gui.py`
-- chore(gui): reduce the default window size without changing proportions
-- chore(assets): bundle 10 Lichess piece sets
-- fix(engine): keep the CLI wrapper behavior unchanged
-- docs(about): add author, copyright, and piece-set attributions
 
 ---
 
 ## ⚠️ Breaking Changes
 
-- 用户数据位置从程序目录改为 `%APPDATA%\CheckPause\`，旧数据会自动迁移。
-- 评分口径变化：开局谱着现在恒为满分，分析更快。
-- API 设置从「仅 key」扩展为「key + 地址 + 模型」；旧的 `api_key` 配置继续有效。
-- 新增依赖 `PyQt6`，请重新执行 `pip install -r requirements.txt`。
-- 入口脚本由 `gui_main.py` 改为 `run_gui.py`；命令行入口为 `run_cli.py`（或 `python -m cli.main`），模块路径统一为 `checkpause.*`。
-- 历史记录仍按数值准确度存储，统计页顶部保留准确度数值，表格改为居中的"表现"列。
-- 分发时请提供整个 `dist\CheckPause` 文件夹；每位用户需填写自己的 API Key。
-- 棋子集遵循各自许可（GPLv2+、Apache-2.0、MIT、CC BY、CC0），分发时请保留署名。
+- 用户数据迁到 `%APPDATA%\CheckPause\`，旧数据自动迁移。
+- 新增 PyQt6 依赖；入口改为 `run_gui.py`，命令行入口为 `run_cli.py`。
+- 开局谱着改为满分；API 设置从仅 Key 扩展为 Key + 地址 + 模型。
+- 棋子素材各自保留原许可，分发时保留署名。
 
-- User data now lives in `%APPDATA%\CheckPause\`; existing data is migrated automatically.
-- Scoring change: opening book moves now always count as full marks and analysis is faster.
-- API settings grew from key-only to key + base URL + model; existing `api_key` values keep working.
-- Added the `PyQt6` dependency; run `pip install -r requirements.txt` again.
-- The GUI entry is now `run_gui.py`; start the CLI with `run_cli.py` (or `python -m cli.main`), and all module paths are now `checkpause.*`.
-- History is still stored as numeric accuracy; the stats summary keeps accuracy numbers and the table shows a centered Performance column.
-- Ship the whole `dist\CheckPause` folder; each user must provide their own API key.
-- Piece sets keep their own licenses (GPLv2+, Apache-2.0, MIT, CC BY, CC0); keep the attributions when redistributing.
+- User data moved to `%APPDATA%\CheckPause\`; existing data migrates automatically.
+- Added the PyQt6 dependency; the GUI entry is `run_gui.py` and the CLI entry is `run_cli.py`.
+- Opening-book moves now score full marks; API settings grew from key-only to key + base URL + model.
+- Piece assets keep their original licenses; keep the attributions when redistributing.
+
+---
+
+**Full Changelog**: https://github.com/Comet-zzz/CheckPause/compare/v0.3.1...v1.0.0
+
+---
 
 # v0.3.1 - Bilingual CLI and Persistent Language Preferences
 
