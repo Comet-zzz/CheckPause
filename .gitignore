@@ -25,9 +25,6 @@ dist/
 coverage.xml
 htmlcov/
 
-# Local sandbox test database
-sandbox-local.db*
-
 # IDE / editors
 .idea/
 .vscode/
