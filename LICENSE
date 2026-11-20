@@ -23,7 +23,19 @@ above:
 
   - Stockfish (https://stockfishchess.org/) - GPLv3. Distributed unmodified and
     launched as a separate process.
+  - python-chess - GPL-3.0-or-later. Used in-process for PGN parsing, move
+    generation, and puzzle validation. Redistributing a combined work may
+    trigger the GPL's source-availability requirements; review before
+    distribution.
+  - openai - Apache-2.0. API client.
+  - python-dotenv - BSD-3-Clause. Local .env loader.
+  - numpy - BSD-3-Clause, with bundled 0BSD, MIT, Zlib, and CC0 components.
+  - onnxruntime - MIT.
+  - cryptography - Apache-2.0 or BSD-3-Clause.
+  - The Lichess puzzle database (https://database.lichess.org/) - CC0.
   - The Lichess piece sets listed in the README Credits - GPLv2+ / Apache-2.0 /
     MIT / CC BY / CC0, each owned by its author.
   - Qt / PySide6 - LGPL-3.0, linked dynamically.
+  - PyInstaller - GPL-2.0-or-later with its bootloader exception; used to
+    build the Windows and macOS packages.
   - Inno Setup - used to build the installer.

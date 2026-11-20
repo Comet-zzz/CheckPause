@@ -2,10 +2,10 @@
 
 The script boots the actual ``MainWindow`` on Qt's offscreen platform, loads a
 real game and runs a real local Stockfish analysis so every score, arrow and
-label in the pictures is genuine, then fills the chat, statistics, play and
-puzzle pages with representative content and saves window grabs under
-``docs/readme/<language>/``. Every grab keeps the window at its default size
-and layout; nothing is resized or rescaled. One animated GIF walks the analysis
+label in the pictures is genuine, then fills the puzzles hub, puzzle records,
+chat and statistics pages with representative content and saves window grabs under
+``docs/readme/<language>/``. Every grab uses the same fixed capture size and
+layout; nothing is resized or rescaled. One animated GIF walks the analysis
 board through the decisive phase of the game, and the chat shot replays a
 genuine cloud-tier reply captured in ``tools/screenshot_chat.json``.
 
@@ -43,24 +43,23 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-import chess
 from PIL import Image
 from PySide6.QtWidgets import QApplication
 
 from checkpause.config import DEFAULT_ANALYSIS_DEPTH
 from checkpause.core.engine import StockfishAnalyzer
-from checkpause.core.openings import opening_san
 from checkpause.core.pgn import parse_single_game
 from checkpause.core.review import classify
 from checkpause.data.profile import create_profile, delete_profile, save_profile
-from checkpause.data.puzzles import BUILTIN_ID
+from checkpause.data.puzzles import PuzzleCollection, builtin_collection
 from checkpause.data.settings import MODE_LOCAL, set_ai_mode
 from checkpause.gui.main_window import MainWindow
 from checkpause.i18n import t
 
-# Every grab is saved exactly as the window renders it at the application's own
-# default size (1034x726 logical, set in MainWindow): no resize, no rescale, so
-# the pictures match what a user sees.
+# Grab at the application's default window size so the README screenshots match
+# what a new user sees on first launch.
+CAPTURE_WIDTH = 1080
+CAPTURE_HEIGHT = 624
 LANGUAGES = ("en-US", "zh-CN")
 FOLDERS = {"en-US": "en", "zh-CN": "zh"}
 OUTPUT_ROOT = ROOT / "docs" / "readme"
@@ -133,6 +132,7 @@ def _boot_window(language, with_profile):
         # account opens the welcome screen; the shots want the local tier.
         set_ai_mode(MODE_LOCAL)
     window = MainWindow()
+    window.resize(CAPTURE_WIDTH, CAPTURE_HEIGHT)
     window._update_timer.stop()
     window.show()
     _pump(150)
@@ -224,65 +224,52 @@ def _capture_stats(window, language):
     _grab(window, _folder(language) / "stats.png")
 
 
-def _capture_play(window):
-    page = window.play_page
-    time_index = page._time_combo.findData("rapid_10_0")
-    if time_index >= 0:
-        page._time_combo.setCurrentIndex(time_index)
-    for index, opening in enumerate(page._openings):
-        if opening_san(opening).startswith("1. e4 e5 2. Nf3 Nc6 3. Bc4"):
-            page._start_mode = "opening"
-            page._opening_index = index
-            page._sync_start_mode()
-            page._prepare_game()
-            break
-
-    page._started = True
-    page._session.clock_started = True
-    page._session.clock_remaining = {chess.WHITE: 512.0, chess.BLACK: 536.0}
-    page._update_panel_state()
-    page._sync_clock_timer()
-    page._update_clock_labels()
-
-    window._module = "play"
-    window._show_module()
-    _grab(window, _folder(window._language) / "play.png")
-    page._clock_timer.stop()
-
-
-def _puzzle_index():
-    """Pick one built-in puzzle that shows a readable middlegame position."""
-    sample = ROOT / "assets" / "puzzles" / "lichess_sample.jsonl"
-    fallback = None
-    for index, line in enumerate(sample.read_text(encoding="utf-8").splitlines()):
-        try:
-            puzzle = json.loads(line)
-        except ValueError:
-            continue
-        themes = puzzle.get("themes") or []
-        rating = puzzle.get("rating") or 0
-        if "middlegame" not in themes or "mateIn2" not in themes:
-            continue
-        if not 1000 <= rating <= 1400:
-            continue
-        if len(puzzle.get("moves") or []) < 4:
-            continue
-        if puzzle.get("id") == "005nD":
-            return index
-        if fallback is None:
-            fallback = index
-    return fallback
-
-
 def _capture_puzzle(window, language):
     page = window.puzzle_page
-    page.refresh_collections(select_id=BUILTIN_ID)
-    index = _puzzle_index()
-    if index is not None:
-        page._start_collection(BUILTIN_ID, index)
     window._module = "puzzle"
     window._show_module()
-    _grab(window, _folder(language) / "puzzle.png")
+    page.show_hub()
+    builtin = builtin_collection()
+    if builtin is not None:
+        page._hub.set_collections([PuzzleCollection(builtin)], window._language)
+    page._hub.set_online(True, 1500)
+    path = _folder(language) / "puzzle.png"
+    _grab(window, path)
+    with Image.open(path) as image:
+        image.crop((0, 0, image.width, 340)).save(path)
+
+
+def _capture_puzzle_records(window, language):
+    page = window.puzzle_page
+    summary = {
+        "rating": 1500,
+        "rd": 80,
+        "rating_attempts": 42,
+        "attempts": 128,
+        "active_days": 12,
+        "mistake_total": 40,
+        "mistake_solved": 28,
+        "retryable": 12,
+        "theme_radar": [
+            {"theme": "mate", "performance": 78, "attempts": 24, "accuracy": 83},
+            {"theme": "fork", "performance": 66, "attempts": 20, "accuracy": 75},
+            {"theme": "pin", "performance": 58, "attempts": 18, "accuracy": 72},
+            {"theme": "middlegame", "performance": 54, "attempts": 16, "accuracy": 69},
+            {"theme": "endgame", "performance": 49, "attempts": 14, "accuracy": 64},
+            {"theme": "opening", "performance": 44, "attempts": 12, "accuracy": 58},
+        ],
+    }
+    window._module = "puzzle"
+    window._show_module()
+    page._profile.set_range(30)
+    page._profile.refresh(summary, window._language)
+    page._stack.setCurrentWidget(page._profile)
+    window.resize(CAPTURE_WIDTH, 900)
+    path = _folder(language) / "puzzle_records.png"
+    _grab(window, path)
+    with Image.open(path) as image:
+        image.crop((0, 0, image.width, 780)).save(path)
+    window.resize(CAPTURE_WIDTH, CAPTURE_HEIGHT)
 
 
 def _save_walkthrough(window, language, records):
@@ -333,8 +320,8 @@ def _capture_language(language):
     _goto_ply(window, records, HERO_PLY)
     _capture_analysis(window, language)
     _capture_stats(window, language)
-    _capture_play(window)
     _capture_puzzle(window, language)
+    _capture_puzzle_records(window, language)
 
     window._module = "analysis"
     window._show_module()

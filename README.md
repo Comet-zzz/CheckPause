@@ -1,13 +1,11 @@
 # ♟️ CheckPause
 
-A chess analysis tool that combines game-tree search with natural language generation to help players understand their own decision-making biases.
-
 <a href="#⬇️-download"><img alt="Downloads" src="https://img.shields.io/github/downloads/Comet-zzz/CheckPause/total?style=for-the-badge&label=Download&color=brightgreen"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.2.1/CheckPause_Setup_2.2.1.zip"><img alt="Windows x64" src="https://img.shields.io/badge/Windows-x64-0078D4?style=for-the-badge&logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI%2BPHBhdGggZmlsbD0iI2ZmZiIgZD0iTTAgMGgxMS40djExLjRIMHptMTIuNiAwSDI0djExLjRIMTIuNnpNMCAxMi42aDExLjRWMjRIMHptMTIuNiAwSDI0VjI0SDEyLjZ6Ii8%2BPC9zdmc%2B"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.2.1/CheckPause-2.2.1-macOS-M-series.dmg"><img alt="macOS M-series" src="https://img.shields.io/badge/macOS-M--series-black?style=for-the-badge&logo=apple&logoColor=white"></a><a href="https://github.com/Comet-zzz/CheckPause/releases/download/v2.2.1/CheckPause-2.2.1-macOS-Intel.dmg"><img alt="macOS Intel" src="https://img.shields.io/badge/macOS-Intel-black?style=for-the-badge&logo=apple&logoColor=white"></a>
 [![license](https://img.shields.io/badge/license-Proprietary-lightgrey?style=for-the-badge)](LICENSE)
 [![Chinese](https://img.shields.io/badge/%E4%B8%AD%E6%96%87-brown?style=for-the-badge)](README.zh-CN.md)
 [![English](https://img.shields.io/badge/English-blue?style=for-the-badge)](README.md)
 
-CheckPause evaluates every move with a local Stockfish engine, then lets any OpenAI-compatible model explain the engine data in plain language, alongside a clickable move list, a custom-drawn board, performance ratings, and a personal growth profile.
+CheckPause uses Stockfish for analysis, then lets any OpenAI-compatible model translate the engine data into natural-language explanations. It also includes puzzles, lessons, and play.
 
 ![CheckPause reviewing a game: engine arrows on the board, move labels in the list, and the accuracy summary](docs/readme/en/analysis.png)
 
@@ -15,54 +13,60 @@ CheckPause evaluates every move with a local Stockfish engine, then lets any Ope
 
 ## ✨ Features
 
-### ♟️ Review every move like a report card
+### ♟️ Completely free analysis
 
 ![Stepping through the decisive phase of a game, with engine arrows and move labels](docs/readme/en/walkthrough.gif)
 
 - Stockfish scores every ply in the background, with a progress bar and a stop button; book moves are recognised from the bundled Polyglot opening book and skip the engine entirely.
-- Every move gets a label the way a review report does it — Brilliant, Great, Best, Excellent, Good, Book, Forced, Only move, Inaccuracy, Mistake, Miss, Blunder — and the game an accuracy rating on a five-tier scale (Optimal / Precise / Competent / Steady / Volatile).
-- Click any move to jump to that position; the board draws the engine's best-move arrows, shows a live evaluation bar, and flips with one click.
+- Judge every move — Brilliant, Great, Best, Excellent, Good, Book, Forced, Only move, Inaccuracy, Mistake, Miss, Blunder — then give the game an accuracy rating.
+- Click any move to jump to that position, or use the mouse wheel to browse the game.
 
 ### 💬 Ask the engine data in plain language
 
 ![Asking the coach why a knight sacrifice still favours White](docs/readme/en/chat.png)
 
-- The engine data (PGN plus per-move scores and best moves) is passed to the model as context, and answers stream in token by token.
-- Follow-up questions work like a coach conversation: "Wasn't 10.Nxb5 just losing a knight?" gets an answer grounded in the numbers on screen.
-- Works with DeepSeek, OpenAI, OpenRouter, or a local model — anything that speaks the OpenAI API.
+- Engine data is passed to the LLM as context.
+- Ask about any move: "Wasn't 10.Nxb5 just losing a knight?" — answers stay grounded in the data.
+- Works with OpenAI, OpenRouter, and local models — anything that speaks the OpenAI API.
 
-### 🎮 Play the computer
+### 🧩 Train with puzzles
 
-![Playing the engine with both clocks running and one-click send to analysis](docs/readme/en/play.png)
+![Online puzzles: rating, daily puzzle, and challenge modes](docs/readme/en/puzzle.png)
+
+- With a cloud account, use online puzzles; offline, use the curated sample or import your own Lichess CSV or FEN-based PGN collections.
+- Correct/wrong feedback with automatic opponent replies, hint arrows and retry; rating and themes shown per puzzle.
+- A cloud account syncs your puzzle rating and mistakes.
+- The Records page shows your online rating, practice history, and theme performance.
+
+![Puzzle records: online rating, practice stats, and theme performance](docs/readme/en/puzzle_records.png)
+
+### 🎮 Play
+
+![Game setup: choose side, clock, level, and starting position](docs/readme/en/play.png)
 
 - A 100–3000 rating slider; 1320 and above is calibrated by Stockfish's own Elo limiter, and below that Skill Level and a node budget approximate it.
 - Common time controls (1+0 through 30+0, with increments or unlimited), White or Black, and selectable openings and endgames.
 - Click-to-move, promotion picking, undo, resign — and a one-click send to analysis when the game ends. The setup pickers lock once a game is under way and unlock on New game.
 
-### 🧩 Train with puzzles
+### 🎓 Learn the basics
 
-![Solving a Lichess puzzle with rating and theme info](docs/readme/en/puzzle.png)
+- Short interactive lessons on the board, grouped by topic; each step explains the idea, then asks the user to play the correct move.
+- Lesson progress is saved locally, so you can continue next time.
 
-- A curated Lichess sample ships with the app, and you can import your own open collections (Lichess CSV, or FEN-based PGN); large collections are read lazily.
-- Correct/wrong feedback with automatic opponent replies, hint arrows and retry; rating and themes shown per puzzle.
-- A Favorites collection automatically gathers the puzzles you star or miss.
-
-### 📈 Watch your numbers
+### 📈 Records
 
 ![Accuracy history on the Statistics tab](docs/readme/en/stats.png)
 
 - Total games, average accuracy, and the latest game's accuracy at a glance.
 - A per-game history table with the date, the rating tier, and the percentage.
 
-### 🎨 Make it yours
+### ☁️ Optional cloud account
 
-- 10 Lichess open-source piece sets, 6 board themes, and light/dark modes, applied instantly and saved.
-- Move sounds for quiet moves, captures, checks, castling and promotions, in a Default set or Off; every clip is synthesised by the project, with no third-party assets.
-- A Chinese or English interface, switchable at any time; analysis depth (12–18) and evaluation depth (10–22) adjustable under Personalization.
+- Sign in to sync puzzle rating and mistakes and to use the hosted AI tier.
 
 ### 🔒 Private by design
 
-- Your games and API keys stay on your machine; analysis never depends on the cloud.
+- Local engine analysis and your API key stay on your machine. Cloud features (hosted AI, online puzzles, account sync) send only the data needed for those features to checkpause.com.
 
 ---
 
@@ -75,8 +79,8 @@ Requirements: Windows 10/11 (x64) or macOS 11+ (Apple Silicon or Intel). No Pyth
 1. Get `CheckPause_Setup_2.2.1.zip` from the Download section at the end of this file, then extract it to get `CheckPause_Setup_2.2.1.exe`.
 2. Run the installer and follow the prompts — no administrator rights needed, and a desktop shortcut is optional.
 3. Launch CheckPause from the desktop or Start Menu; the first launch lets you sign in to a cloud account, create one, or continue offline.
-4. Open Settings → API settings... and fill in the API key, base URL and model name for an OpenAI-compatible endpoint (for example DeepSeek).
-5. Paste or open a PGN on the Import tab, click Analyze, then ask questions on the Analysis tab.
+4. Open the gear menu in the side rail → API settings... and fill in the API key, base URL and model name for an OpenAI-compatible endpoint (for example DeepSeek).
+5. Open or paste a PGN in the Panel module, click Analyze, then ask questions on the Analysis tab.
 
 > Analysis and board features work without an API key; only AI chat needs one.
 
@@ -93,16 +97,16 @@ Requirements: Windows 10/11 (x64) or macOS 11+ (Apple Silicon or Intel). No Pyth
 
 ## ⚙️ Configuration and data
 
-- Settings → API settings... is the bring-your-own-key path: enter the API key, base URL and model name for any OpenAI-compatible service. Signing in to a cloud account switches the app to the hosted tier instead.
-- User data lives in `%APPDATA%\CheckPause\` on Windows and `~/Library/Application Support/CheckPause/` on macOS: `profile.json` (username, language, theme, appearance, history) and `settings.json` (API config); legacy profiles migrate automatically.
+- The side-rail gear menu → API settings... is the bring-your-own-key path: enter the API key, base URL and model name for any OpenAI-compatible service. Signing in to a cloud account switches the app to the hosted tier instead.
+- User data lives in `%APPDATA%\CheckPause\` on Windows and `~/Library/Application Support/CheckPause/` on macOS: `profile.json` (username, language, theme, appearance, history), `settings.json` (non-secret settings), and `secrets.dat` (API key and account token); legacy profiles migrate automatically.
 
 ---
 
 ## ❓ FAQ
 
-- **Do I need an account?** No. The board, engine analysis, play and puzzles all work in offline mode; a cloud account only unlocks the hosted AI tier.
-- **Do I need an API key?** Only for AI chat. Enter your own key under Settings → API settings..., or sign in to use the hosted tier.
-- **Is my game uploaded?** Local engine analysis never leaves your machine. When you ask the AI questions, the game and engine data are sent to the model you configured — the same is true on the hosted tier.
+- **Do I need an account?** No. Board analysis, play, and local puzzles work offline without an account; a cloud account adds hosted AI, online puzzles, and rating/mistake sync.
+- **Do I need an API key?** Only for AI chat. Enter your own key under the side-rail gear menu → API settings..., or sign in to use the hosted tier.
+- **Is my game uploaded?** Local engine analysis never leaves your machine. When you ask the AI questions, the game and engine data are sent to the model you configured; cloud features send only what they need to checkpause.com.
 - **Why does Windows SmartScreen / macOS warn?** The builds are unsigned: choose More info → Run anyway on Windows, or right-click the icon → Open on macOS.
 
 ---
@@ -110,9 +114,10 @@ Requirements: Windows 10/11 (x64) or macOS 11+ (Apple Silicon or Intel). No Pyth
 ## 🙏 Credits
 
 - Pieces come from Lichess open-source piece sets (cburnett, merida, chessnut, fantasy, spatial, celtic, kiwen-suwi, rhosgfx, totoy, mpchess), each owned by its author under GPLv2+ / Apache-2.0 / MIT / CC BY / CC0 licenses.
-- Engine: [Stockfish](https://stockfishchess.org/) (GPLv3); the opening book is compiled from public opening lines.
+- Engine: [Stockfish](https://stockfishchess.org/) (GPLv3); the opening book is compiled from public opening lines. Puzzle data comes from the [Lichess puzzle database](https://database.lichess.org/) (CC0).
+- Python libraries: python-chess (GPL-3.0+), openai (Apache-2.0), PySide6 (LGPL-3.0), numpy (BSD-3-Clause and bundled licenses), onnxruntime (MIT), cryptography (Apache-2.0 or BSD-3-Clause), python-dotenv (BSD-3-Clause). See [LICENSE](LICENSE) for the full third-party list.
 - The installer is built with [Inno Setup](https://jrsoftware.org/isinfo.php) and uses its official Simplified Chinese language file (`installer/languages/ChineseSimplified.isl`, maintained by Zhenghan Yang).
-- License: CheckPause is proprietary software — Copyright (C) 2026 CometZZZ, all rights reserved. See [LICENSE](LICENSE). Bundled components keep their own terms: Stockfish is GPLv3 (source available at https://stockfishchess.org/download/), and the piece sets keep the licenses listed above.
+- License: CheckPause is proprietary software — Copyright (C) 2026 CometZZZ, all rights reserved. See [LICENSE](LICENSE). Bundled components keep their own terms, including Stockfish (GPLv3, separate process), python-chess (GPL-3.0+), and the piece sets listed above.
 
 ---
 

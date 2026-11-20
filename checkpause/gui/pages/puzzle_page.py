@@ -979,6 +979,7 @@ class _HubView(QWidget):
             item = self._collection_grid.takeAt(0)
             widget = item.widget()
             if widget is not None:
+                widget.hide()
                 widget.deleteLater()
         self._cards = []
         visible = list(collections)
