@@ -27,16 +27,20 @@ from checkpause.core.updater import (
 )
 
 _REAL_UPDATE_PUBLIC_KEY = updater_module.UPDATE_PUBLIC_KEY
+_REAL_RETRY_DELAY = updater_module.DOWNLOAD_RETRY_DELAY
 
 
 def setUpModule():
     # The legacy tests use unsigned fixtures; signature tests opt back in with
     # their own key.
     updater_module.UPDATE_PUBLIC_KEY = ""
+    # Retries must not make the suite wait between attempts.
+    updater_module.DOWNLOAD_RETRY_DELAY = 0
 
 
 def tearDownModule():
     updater_module.UPDATE_PUBLIC_KEY = _REAL_UPDATE_PUBLIC_KEY
+    updater_module.DOWNLOAD_RETRY_DELAY = _REAL_RETRY_DELAY
 
 
 def _is_url_map(value):
@@ -196,6 +200,140 @@ class UpdateDownloadTests(unittest.TestCase):
     def test_rejects_version_strings_that_could_escape_the_update_folder(self):
         with self.assertRaises(UpdateDownloadError):
             download_update("https://example.com/update.zip", "../2.0.5")
+
+
+class FakeRangeResponse:
+    """A 206 reply carrying the bytes after ``start``, as R2 does."""
+
+    def __init__(self, payload, start, url="https://example.com/update.zip"):
+        self._body = io.BytesIO(payload[start:])
+        self.headers = {
+            "Content-Length": str(len(payload) - start),
+            "Content-Range": f"bytes {start}-{len(payload) - 1}/{len(payload)}",
+        }
+        self.status = 206
+        self._url = url
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        self._body.close()
+
+    def geturl(self):
+        return self._url
+
+    def read(self, size):
+        return self._body.read(size)
+
+
+class DroppedResponse:
+    """Sends half the archive, then drops the connection like a lost Wi-Fi link."""
+
+    def __init__(self, payload, drop_after):
+        self._payload = payload
+        self._drop_after = drop_after
+        self.headers = {"Content-Length": str(len(payload))}
+        self._reads = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        pass
+
+    def geturl(self):
+        return "https://example.com/update.zip"
+
+    def read(self, _size):
+        self._reads += 1
+        if self._reads == 1:
+            return self._payload[: self._drop_after]
+        raise OSError("connection reset")
+
+
+def _range_start(request_object):
+    value = request_object.headers.get("Range")
+    if not value:
+        return 0
+    return int(value.removeprefix("bytes=").split("-")[0])
+
+
+class DownloadRetryTests(unittest.TestCase):
+    def test_resumes_after_a_dropped_connection(self):
+        version = "2.0.5"
+        payload = _update_archive(version)
+        half = len(payload) // 2
+        requested_ranges = []
+
+        def opener(request_object, timeout=None):
+            start = _range_start(request_object)
+            requested_ranges.append(start)
+            if start:
+                return FakeRangeResponse(payload, start)
+            return DroppedResponse(payload, half)
+
+        progress = []
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer_path = download_update(
+                "https://example.com/update.zip",
+                version,
+                progress=lambda downloaded, total: progress.append((downloaded, total)),
+                download_dir=temp_dir,
+                opener=opener,
+                expected_sha256=hashlib.sha256(payload).hexdigest(),
+            )
+            with open(installer_path, "rb") as installer:
+                self.assertEqual(installer.read(), b"MZtest installer")
+
+        # The retry asked for the bytes after the half already written.
+        self.assertEqual(requested_ranges, [0, half])
+        self.assertEqual(progress[-1], (len(payload), len(payload)))
+        self.assertIn((half, len(payload)), progress)
+
+    def test_restarts_when_the_server_ignores_the_range_request(self):
+        version = "2.0.5"
+        payload = _update_archive(version)
+        requested_ranges = []
+
+        def opener(request_object, timeout=None):
+            start = _range_start(request_object)
+            requested_ranges.append(start)
+            if start:
+                # A 200 reply ignores Range and sends the whole archive again.
+                return FakeDownloadResponse(payload)
+            return DroppedResponse(payload, len(payload) // 2)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            installer_path = download_update(
+                "https://example.com/update.zip",
+                version,
+                download_dir=temp_dir,
+                opener=opener,
+            )
+            with open(installer_path, "rb") as installer:
+                self.assertEqual(installer.read(), b"MZtest installer")
+
+        self.assertEqual(requested_ranges, [0, len(payload) // 2])
+
+    def test_gives_up_after_the_last_attempt(self):
+        version = "2.0.5"
+        payload = _update_archive(version)
+        attempts = []
+
+        def opener(_request_object, timeout=None):
+            attempts.append(timeout)
+            return DroppedResponse(payload, 0)
+
+        with tempfile.TemporaryDirectory() as temp_dir, self.assertRaises(UpdateDownloadError):
+            download_update(
+                "https://example.com/update.zip",
+                version,
+                download_dir=temp_dir,
+                opener=opener,
+            )
+
+        self.assertEqual(len(attempts), updater_module.DOWNLOAD_ATTEMPTS)
 
 
 class VersionTests(unittest.TestCase):

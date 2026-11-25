@@ -1029,10 +1029,14 @@ class _UpdateDownloadDialog(QDialog):
         self.setWindowTitle(t("update_title", language))
         self.setMinimumWidth(360)
         self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, False)
+        self.setWindowFlag(Qt.WindowType.WindowMinimizeButtonHint, True)
 
         self._status = QLabel(t("update_downloading", language))
         self._progress = QProgressBar()
         self._progress.setRange(0, 0)
+        # The status line already carries the percentage; letting the bar draw
+        # it too duplicated the number and the fill then covered it.
+        self._progress.setTextVisible(False)
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
         self._cancel_button = buttons.button(QDialogButtonBox.StandardButton.Cancel)
         self._cancel_button.setText(t("update_cancel", language))

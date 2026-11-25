@@ -24,6 +24,7 @@ from checkpause.core.updater import (
     UpdateDownloadError,
     check_for_update,
     download_update,
+    keep_system_awake,
 )
 from checkpause.data.puzzles import PuzzleImportError, import_collection
 from checkpause.i18n import t
@@ -653,13 +654,14 @@ class UpdateDownloadWorker(QThread):
 
     def run(self):
         try:
-            self.installer_path = download_update(
-                self._url,
-                self._version,
-                progress=self.progress.emit,
-                should_cancel=self.isInterruptionRequested,
-                expected_sha256=self._sha256,
-            )
+            with keep_system_awake():
+                self.installer_path = download_update(
+                    self._url,
+                    self._version,
+                    progress=self.progress.emit,
+                    should_cancel=self.isInterruptionRequested,
+                    expected_sha256=self._sha256,
+                )
         except UpdateDownloadCancelledError:
             return
         except UpdateDownloadError as exc:

@@ -10,12 +10,15 @@ None instead of raising, so being offline simply means "no update found".
 
 import base64
 import binascii
+import contextlib
 import hashlib
+import http.client
 import json
 import platform
 import re
 import sys
 import tempfile
+import time
 import zipfile
 import zlib
 from concurrent.futures import ThreadPoolExecutor
@@ -57,6 +60,12 @@ REQUEST_TIMEOUT = 4.0
 DOWNLOAD_TIMEOUT = 15.0
 DOWNLOAD_CHUNK_SIZE = 64 * 1024
 MAX_UPDATE_SIZE = 1024 * 1024 * 1024
+# A dropped connection used to end the whole 138MB download. Each attempt keeps
+# the bytes already on disk and asks the server for the rest, so a short stall
+# costs a few seconds instead of a full restart.
+DOWNLOAD_ATTEMPTS = 3
+DOWNLOAD_RETRY_DELAY = 1.5
+_CONTENT_RANGE = re.compile(r"bytes\s+(\d+)-(\d+)/(\d+|\*)")
 
 
 def platform_key(system=None, machine=None):
@@ -93,6 +102,39 @@ class UpdateDownloadError(RuntimeError):
 
 class UpdateDownloadCancelledError(RuntimeError):
     """Raised when the user cancels an update download."""
+
+
+class _RetryableDownloadError(UpdateDownloadError):
+    """A download failure that a resume attempt can plausibly fix."""
+
+
+@contextlib.contextmanager
+def keep_system_awake():
+    """Stop Windows from sleeping through a long download.
+
+    A user who minimizes the window and walks away can return to a machine that
+    suspended the network adapter, which killed every download. Pinning the
+    system awake for the life of the worker thread removes that dependency on
+    the user keeping the window in front. No-op on other platforms.
+    """
+    if sys.platform != "win32":
+        yield
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        es_continuous = 0x80000000
+        es_system_required = 0x00000001
+        kernel32.SetThreadExecutionState(es_continuous | es_system_required)
+    except (AttributeError, OSError, ValueError):
+        yield
+        return
+    try:
+        yield
+    finally:
+        with contextlib.suppress(AttributeError, OSError, ValueError):
+            kernel32.SetThreadExecutionState(es_continuous)
 
 
 def parse_version(text):
@@ -272,24 +314,60 @@ def _is_https_url(url):
     return parsed_url.scheme == "https" and bool(parsed_url.hostname)
 
 
-def _download_archive(url, archive_part, progress, should_cancel, fetch):
-    request_object = request.Request(
-        url,
-        headers={"User-Agent": f"CheckPause/{APP_VERSION}"},
-    )
+def _content_range(value):
+    """Split a Content-Range header into (start byte, total bytes or 0)."""
+    match = _CONTENT_RANGE.fullmatch(str(value or "").strip())
+    if match is None:
+        return None
+    total = int(match.group(3)) if match.group(3).isdigit() else 0
+    return int(match.group(1)), total
+
+
+def _content_length(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _download_attempt(url, archive_part, progress, should_cancel, fetch):
+    """Fetch the archive once, resuming from the bytes already on disk."""
+    existing = archive_part.stat().st_size if archive_part.exists() else 0
+    if existing > MAX_UPDATE_SIZE:
+        raise UpdateDownloadError("update archive is too large")
+    headers = {"User-Agent": f"CheckPause/{APP_VERSION}"}
+    if existing:
+        headers["Range"] = f"bytes={existing}-"
+    request_object = request.Request(url, headers=headers)
     with fetch(request_object, timeout=DOWNLOAD_TIMEOUT) as response:
         if not _is_https_url(response.geturl()):
             raise UpdateDownloadError("download redirected away from HTTPS")
-        content_length = response.headers.get("Content-Length")
-        total = int(content_length) if content_length else 0
+        status = getattr(response, "status", 200)
+        if existing and status == 206:
+            content_range = _content_range(response.headers.get("Content-Range"))
+            if content_range is None or content_range[0] != existing:
+                # The server answered a different range than we asked for, so
+                # appending would corrupt the archive. Start over instead.
+                with contextlib.suppress(FileNotFoundError):
+                    archive_part.unlink()
+                raise _RetryableDownloadError("update download did not resume correctly")
+            total = content_range[1]
+            mode = "ab"
+        else:
+            # No partial file, or the server ignored the Range header and sent
+            # the whole archive again: rewrite the file from the first byte.
+            existing = 0
+            total = _content_length(response.headers.get("Content-Length"))
+            mode = "wb"
         if total < 0 or total > MAX_UPDATE_SIZE:
             raise UpdateDownloadError("update archive size is invalid")
+        if total and total < existing:
+            raise UpdateDownloadError("update archive size is invalid")
 
-        downloaded = 0
-        digest = hashlib.sha256()
+        downloaded = existing
         if progress is not None:
             progress(downloaded, total)
-        with archive_part.open("wb") as output:
+        with archive_part.open(mode) as output:
             while True:
                 _check_download_cancelled(should_cancel)
                 chunk = response.read(DOWNLOAD_CHUNK_SIZE)
@@ -298,13 +376,61 @@ def _download_archive(url, archive_part, progress, should_cancel, fetch):
                 downloaded += len(chunk)
                 if downloaded > MAX_UPDATE_SIZE:
                     raise UpdateDownloadError("update archive is too large")
-                digest.update(chunk)
                 output.write(chunk)
                 if progress is not None:
                     progress(downloaded, total)
         if total and downloaded != total:
-            raise UpdateDownloadError("download size does not match")
-        return digest.hexdigest()
+            raise _RetryableDownloadError("download size does not match")
+
+
+def _wait_before_retry(seconds, should_cancel):
+    """Sleep between attempts while still honouring a cancel request."""
+    deadline = time.monotonic() + seconds
+    while True:
+        _check_download_cancelled(should_cancel)
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return
+        time.sleep(min(0.2, remaining))
+
+
+def _download_archive(url, archive_part, progress, should_cancel, fetch):
+    """Download the archive, resuming the partial file across retries."""
+    last_error = None
+    for attempt in range(1, DOWNLOAD_ATTEMPTS + 1):
+        try:
+            _download_attempt(url, archive_part, progress, should_cancel, fetch)
+            return
+        except UpdateDownloadCancelledError:
+            raise
+        except _RetryableDownloadError as exc:
+            last_error = exc
+        except UpdateDownloadError:
+            raise
+        except error.HTTPError as exc:
+            # A missing file or a refusal will not fix itself; a rate limit or
+            # a server-side error can.
+            if exc.code < 500 and exc.code != 429:
+                raise UpdateDownloadError(str(exc)) from exc
+            last_error = exc
+        except Exception as exc:
+            # urllib raises platform-specific errors (timeouts, resets,
+            # IncompleteRead); a resume attempt is the right response to all.
+            last_error = exc
+        if attempt < DOWNLOAD_ATTEMPTS:
+            _wait_before_retry(DOWNLOAD_RETRY_DELAY * attempt, should_cancel)
+    raise last_error
+
+
+def _sha256_file(path):
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        while True:
+            chunk = source.read(DOWNLOAD_CHUNK_SIZE)
+            if not chunk:
+                break
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _extract_installer(archive_path, installer_part, installer_name, should_cancel):
@@ -360,7 +486,8 @@ def download_update(
     _check_download_cancelled(should_cancel)
     try:
         update_dir.mkdir(parents=True, exist_ok=True)
-        actual_sha256 = _download_archive(url, archive_part, progress, should_cancel, fetch)
+        _download_archive(url, archive_part, progress, should_cancel, fetch)
+        actual_sha256 = _sha256_file(archive_part)
         if expected_sha256 and actual_sha256 != expected_sha256:
             raise UpdateDownloadError("update archive hash does not match")
         archive_part.replace(archive_path)
@@ -377,6 +504,7 @@ def download_update(
     except (
         OSError,
         error.URLError,
+        http.client.HTTPException,
         ValueError,
         zipfile.BadZipFile,
         zipfile.LargeZipFile,
